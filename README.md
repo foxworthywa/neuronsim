@@ -8,7 +8,11 @@ No build step. Open `index.html` in a browser (or serve the folder with any stat
 ```
 npm test          # biology unit tests (Node 18+)
 npm start         # optional: serve on http://localhost:8080
+node build.js     # bundle everything into dist/index.html (one self-contained file)
 ```
+
+`dist/index.html` is the single-file version: copy it anywhere, double-click it, or drop it on
+GitHub Pages / a course site. It is regenerated from the source files by `node build.js`.
 
 ## What the student does
 

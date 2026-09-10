@@ -3,6 +3,8 @@
 An interactive, model-driven lesson that helps students build an intuitive, *causal*
 understanding of neuronal signaling: receive → integrate → decide → propagate → transmit.
 
+**Live version:** https://foxworthywa.github.io/neuronsim/ (rebuilt automatically on every push).
+
 No build step. Open `index.html` in a browser (or serve the folder with any static server).
 
 ```

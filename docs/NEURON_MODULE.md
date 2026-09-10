@@ -16,6 +16,23 @@ Implemented in `app.js` (`LESSON`).
 | 9 | Down the axon | unrolled axon with per-segment channel states and V-vs-position profile; three electrodes | fires; watches wave and channel states | what opens the next segment; why not backward | terminal spike |
 | 10 | Passing it on | our terminal facing the next neuron; then whole neuron | sends an AP; watches Ca²⁺ → release → next-neuron EPSP | which channel responds to voltage; what the next neuron does | release event; loop closed → Lab |
 
+## On-stage explanation (the sim explains itself)
+
+- **Narrator bar** under every view: one sentence generated from the current model state
+  (which channels are open, which ion is moving which way, what that does to Vm). It changes as
+  the state changes, so the student reads the causal chain off the picture without a lecture.
+- **Voltage ladder** (membrane views): a vertical scale with E_K, rest, threshold, 0 and E_Na;
+  a pointer at Vm; an orange arrow up whose length is the Na⁺ share of open channels and a violet
+  arrow down for K⁺. "Vm is pulled toward the equilibrium potential of whichever ion has the most
+  open channels" becomes visible.
+- **Causal checklist** (synapse views): AP arrives → Ca²⁺ channels open → Ca²⁺ in → vesicles
+  fuse → transmitter crosses → receptors open → Na⁺ (or Cl⁻) flows → EPSP (or IPSP). Each row
+  lights while the model is in that state and ticks off afterwards.
+- **Open-channel sub-plot** under the voltage trace (AP scene): Na⁺ and K⁺ conductance in time
+  with the voltage, so the shape of the curve is seen to follow the channels.
+- Threshold is not drawn until the integration scene introduces it; the resting-membrane scene
+  runs with voltage-gated Na⁺ channels absent so opening a channel cannot fire the cell.
+
 ## Free-play lab
 
 Same model, all controls: fire inputs (single or repeated), synapse strengths, current injection,

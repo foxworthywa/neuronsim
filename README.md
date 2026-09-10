@@ -29,6 +29,11 @@ Ten scenes, each following **predict → observe → explain**:
 9. Propagation along the axon; why it is one-way.
 10. The terminal: Ca²⁺ entry and release onto the next neuron. The loop closes.
 
+The stage explains itself as it runs: a narrator line describes the current state in causal
+terms, a voltage ladder shows Na⁺ pulling Vm up toward +67 mV and K⁺ pulling it down toward
+−95 mV in proportion to open channels, and the synapse view ticks off each step of transmission
+as the model reaches it.
+
 Then a **free-play lab**: block Na⁺/K⁺/Ca²⁺ channels, change extracellular K⁺, switch off
 the pump, inject current, fire inputs repeatedly, and record from any compartment.
 

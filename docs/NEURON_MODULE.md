@@ -1,7 +1,8 @@
 # NEURON_MODULE.md — scene sequence (Prototype 0.1 + 0.2)
 
 Every scene lists: the view, what the student does, the prediction(s), and the acceptance condition.
-Implemented in `app.js` (`LESSON`).
+Implemented in `lessons/neuron.js` (`lesson(kit)`); scenes 3, 4 and 8 come from `scenes/shared.js`
+(see `docs/APP_API.md`).
 
 | # | Scene | View | Student does | Predict | Done when |
 |---|-------|------|--------------|---------|-----------|

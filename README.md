@@ -10,7 +10,7 @@ No build step. Open `index.html` in a browser (or serve the folder with any stat
 ```
 npm test          # biology unit tests (Node 18+)
 npm start         # optional: serve on http://localhost:8080
-node build.js     # bundle everything into dist/index.html (one self-contained file)
+node build.js     # bundle each page into dist/<page>.html (one self-contained file each)
 ```
 
 `dist/index.html` is the single-file version: copy it anywhere, double-click it, or drop it on
@@ -47,11 +47,17 @@ the pump, inject current, fire inputs repeatedly, and record from any compartmen
   12 axon segments, terminal). Presynaptic terminals model Ca²⁺ channel gating, cytosolic Ca²⁺,
   vesicle release and transmitter clearance; receptors bind transmitter and open. Works in the
   browser and in Node.
-- `app.js` — the lesson engine (scenes, questions, feedback, activity gating), the SVG views
-  (neuron, membrane strip, synapse, axon) and the canvas voltage trace. Every visual is rendered
-  from engine state; nothing is a pre-baked animation.
-- `tests/biology.test.js` — "scientific unit tests" asserting the physiology.
-- `docs/` — `PRODUCT.md`, `BIOLOGY.md`, `PEDAGOGY.md`, `VISUAL_STYLE.md`, `NEURON_MODULE.md`.
+- `app.js` — the page-agnostic lesson engine (scenes, questions, feedback, activity gating),
+  the generic membrane view and the canvas voltage trace (`SimApp.init`, see `docs/APP_API.md`).
+  Every visual is rendered from engine state; nothing is a pre-baked animation.
+- `scenes/shared.js` — the resting-membrane, recording-electrode and action-potential scenes,
+  built from a cell profile so other modules (muscle) can re-stage them.
+- `lessons/neuron.js` — everything neuron-specific: the neuron drawing, the zoom/neuron/synapse/axon
+  views, the ten-scene lesson and the lab. `index.html` + `style.css` are the page.
+- `tests/biology.test.js` — "scientific unit tests" asserting the physiology;
+  `tests/ui/smoke.js` — a Playwright walk of every scene, step and lab view (`npm run test:ui`).
+- `docs/` — `PRODUCT.md`, `BIOLOGY.md`, `PEDAGOGY.md`, `VISUAL_STYLE.md`, `NEURON_MODULE.md`,
+  `MUSCLE_MODULE.md`, `APP_API.md`.
 
 Keyboard: **space** pauses/resumes the simulation clock. The speed menu sets how much simulated
 time passes per real second (default 1 %: a 2 ms action potential takes ~0.2 s; scenes 7–10 use

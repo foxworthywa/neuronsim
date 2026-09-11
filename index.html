@@ -4,134 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>NeuronSim — How a neuron signals</title>
-<style>
-  :root {
-    --bg: #f6f5f0;
-    --panel: #ffffff;
-    --ink: #1f2430;
-    --muted: #5f6675;
-    --line: #d9d6cc;
-    --accent: #2f6fd6;
-    --accent-ink: #ffffff;
-    --good: #2f9e5b;
-    --bad: #d24b3f;
-    --warn: #c98a1b;
-    --na: #e8772e;
-    --k: #8e5cf0;
-    --cl: #3cae6c;
-    --ca: #2d8fd5;
-    --anion: #8f97a6;
-    --nt: #d63c8a;
-    --membrane: #2a2f3a;
-    --outside: #f2f5fb;
-    --inside: #fbf3e6;
-  }
-  * { box-sizing: border-box; }
-  html, body { height: 100%; }
-  body {
-    margin: 0; background: var(--bg); color: var(--ink);
-    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    display: flex; flex-direction: column; height: 100vh; overflow: hidden;
-  }
-  header {
-    display: flex; align-items: center; gap: 14px; padding: 8px 16px;
-    background: var(--panel); border-bottom: 1px solid var(--line);
-  }
-  header h1 { font-size: 17px; margin: 0; font-weight: 650; letter-spacing: .2px; }
-  header .sub { color: var(--muted); font-size: 13px; }
-  header .spacer { flex: 1; }
-  header button, .panel button, .actions button, .lab button {
-    font: inherit; font-size: 14px; padding: 6px 12px; border-radius: 8px;
-    border: 1px solid var(--line); background: #fff; color: var(--ink); cursor: pointer;
-  }
-  header button:hover, .panel button:hover, .actions button:hover, .lab button:hover { border-color: #b8b4a6; background: #faf9f5; }
-  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-  button.primary:hover { background: #2a62bd; }
-  button:disabled { opacity: .45; cursor: not-allowed; }
-  header select { font: inherit; font-size: 13px; padding: 4px 6px; border-radius: 6px; border: 1px solid var(--line); background: #fff; }
-  #progress { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
-  #progress button {
-    width: 26px; height: 26px; padding: 0; border-radius: 50%; font-size: 12px; color: var(--muted);
-    border: 1px solid var(--line); background: #fff;
-  }
-  #progress button.done { background: #e2ecfb; border-color: #b9cdf0; color: #2f4f86; }
-  #progress button.current { background: var(--accent); color: #fff; border-color: var(--accent); }
-
-  main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 380px; grid-template-rows: minmax(0, 1fr) auto; gap: 10px; padding: 10px 16px 14px; }
-  #stage-wrap { grid-column: 1; grid-row: 1; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; position: relative; overflow: hidden; min-height: 420px; display: flex; flex-direction: column; }
-  #stage-top { display: flex; align-items: center; gap: 10px; padding: 6px 12px 4px; }
-  #stage { flex: 1; min-height: 0; width: 100%; display: block; background: var(--bg); }
-  #stage svg { width: 100%; height: 100%; display: block; }
-  #stage-caption { flex: 1; font-size: 13px; color: var(--muted); }
-  #vm-badge { font-size: 13px; font-variant-numeric: tabular-nums; background: #fff; border: 1px solid var(--line); padding: 3px 10px; border-radius: 8px; white-space: nowrap; }
-  #vm-badge b { font-size: 16px; }
-  #narrator { margin: 4px 10px 10px; font-size: 14px; line-height: 1.35; background: #fbfaf6; border: 1px solid var(--line); border-left: 4px solid var(--accent); padding: 7px 12px; border-radius: 8px; min-height: 44px; color: var(--ink); }
-  #narrator:empty { visibility: hidden; }
-  #narrator b { font-weight: 650; }
-  #narrator .dir { font-weight: 700; letter-spacing: .3px; }
-  #paused-badge { position: absolute; left: 50%; bottom: 70px; transform: translateX(-50%); font-size: 12px; background: #fff3d6; border: 1px solid #ecd9a6; color: #7a5a10; padding: 3px 10px; border-radius: 999px; display: none; }
-
-  #panel { grid-column: 2; grid-row: 1 / span 2; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
-  #panel h2 { margin: 0; font-size: 16px; }
-  #panel .scene-label { font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); }
-  #panel .text p { margin: 0 0 8px; }
-  #panel .text p:last-child { margin-bottom: 0; }
-  .question { border: 1px solid #cfdcf3; background: #f3f7fe; border-radius: 10px; padding: 10px 12px; }
-  .question .prompt { font-weight: 600; margin-bottom: 8px; }
-  .question .options { display: flex; flex-direction: column; gap: 6px; }
-  .question .options button { text-align: left; }
-  .question .options button.correct { border-color: var(--good); background: #eaf7ee; }
-  .question .options button.wrong { border-color: var(--bad); background: #fdeeec; }
-  .feedback { margin-top: 8px; padding: 8px 10px; border-radius: 8px; font-size: 14px; }
-  .feedback.good { background: #eaf7ee; border: 1px solid #bfe3ca; }
-  .feedback.bad { background: #fdeeec; border: 1px solid #f0c3bd; }
-  .actions { display: flex; flex-wrap: wrap; gap: 6px; }
-  .actions button.na { border-color: var(--na); color: #a04d12; }
-  .actions button.k { border-color: var(--k); color: #5b39a8; }
-  .actions button.cl { border-color: var(--cl); color: #23724a; }
-  .actions button.ca { border-color: var(--ca); color: #1c5f92; }
-  .actions button.held { background: #fff1e6; }
-  .status { font-size: 13px; color: var(--muted); }
-  .status.ok { color: var(--good); }
-  .nav { margin-top: auto; display: flex; gap: 8px; justify-content: space-between; align-items: center; padding-top: 8px; border-top: 1px solid var(--line); }
-  .hint { font-size: 13px; color: var(--muted); }
-  .ion { display: inline-block; padding: 0 5px; border-radius: 999px; color: #fff; font-size: 12px; font-weight: 600; }
-  .ion.na { background: var(--na); } .ion.k { background: var(--k); } .ion.cl { background: var(--cl); } .ion.ca { background: var(--ca); } .ion.nt { background: var(--nt); }
-  kbd.part { background: #eef0f4; border: 1px solid #d6dae2; border-radius: 4px; padding: 0 5px; font: inherit; font-size: 13px; }
-
-  #trace-wrap { grid-column: 1; grid-row: 2; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px 6px; }
-  #trace-head { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
-  #trace-head label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
-  #trace { width: 100%; height: 200px; display: block; }
-  #trace.with-g { height: 250px; }
-  .legend { display: inline-flex; gap: 10px; align-items: center; }
-  .legend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 4px; }
-
-  .lab { display: grid; grid-template-columns: 1fr; gap: 8px; }
-  .lab .row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
-  .lab .row label { flex: 1; }
-  .lab .row input[type=range] { flex: 2; }
-  .lab .row .val { width: 62px; text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
-  .lab h3 { margin: 6px 0 0; font-size: 13px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
-
-  .loop-diagram { display: flex; flex-direction: column; gap: 4px; align-items: stretch; font-size: 13px; }
-  .loop-diagram .node { padding: 5px 8px; border-radius: 8px; border: 1px solid var(--line); background: #fafaf7; text-align: center; transition: background .2s, border-color .2s; }
-  .loop-diagram .node.hot { background: #fff1e6; border-color: var(--na); font-weight: 600; }
-  .loop-diagram .arrow { text-align: center; color: var(--muted); line-height: 1; }
-
-  @media (max-height: 640px) {
-    body { height: auto; min-height: 100vh; overflow: auto; }
-    main { display: flex; flex-direction: column; }
-    #stage-wrap { min-height: 420px; }
-  }
-  @media (max-width: 980px) {
-    body { height: auto; min-height: 100vh; overflow: auto; }
-    main { grid-template-columns: 1fr; grid-template-rows: auto auto auto; }
-    #stage-wrap { grid-column: 1; grid-row: 1; min-height: 340px; }
-    #trace-wrap { grid-column: 1; grid-row: 2; }
-    #panel { grid-column: 1; grid-row: 3; }
-  }
-</style>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 <header>
@@ -180,5 +53,11 @@
 
 <script src="engine.js"></script>
 <script src="app.js"></script>
+<script src="scenes/shared.js"></script>
+<script src="lessons/neuron.js"></script>
+<script>
+  // Boot: the generic SimApp runs the neuron model with the neuron lesson (see docs/APP_API.md).
+  window.__neuronsim = SimApp.init(Object.assign({ model: new NeuronSim.Neuron() }, NeuronLesson));
+</script>
 </body>
 </html>

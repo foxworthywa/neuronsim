@@ -12,11 +12,13 @@ free-play lab.
 Architecture:
 
 ```
-LESSON ENGINE (app.js: LESSON, gotoStep, renderPanel)
+LESSON CONTENT (lessons/neuron.js + scenes/shared.js: the scene arrays)
+   ↓
+LESSON ENGINE (app.js: SimApp.init, gotoStep, renderPanel)
    question system            simulation state (engine.js: Neuron)
                                   ions · channels · voltage
                                           │
-                              RENDERER (app.js: views.*)
+                RENDERER (app.js: membrane view, trace; lessons/neuron.js: views)
                        neuron · membrane · synapse · axon · trace
 ```
 

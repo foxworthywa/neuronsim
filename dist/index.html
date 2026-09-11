@@ -5,132 +5,136 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>NeuronSim — How a neuron signals</title>
 <style>
-  :root {
-    --bg: #f6f5f0;
-    --panel: #ffffff;
-    --ink: #1f2430;
-    --muted: #5f6675;
-    --line: #d9d6cc;
-    --accent: #2f6fd6;
-    --accent-ink: #ffffff;
-    --good: #2f9e5b;
-    --bad: #d24b3f;
-    --warn: #c98a1b;
-    --na: #e8772e;
-    --k: #8e5cf0;
-    --cl: #3cae6c;
-    --ca: #2d8fd5;
-    --anion: #8f97a6;
-    --nt: #d63c8a;
-    --membrane: #2a2f3a;
-    --outside: #f2f5fb;
-    --inside: #fbf3e6;
-  }
-  * { box-sizing: border-box; }
-  html, body { height: 100%; }
-  body {
-    margin: 0; background: var(--bg); color: var(--ink);
-    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    display: flex; flex-direction: column; height: 100vh; overflow: hidden;
-  }
-  header {
-    display: flex; align-items: center; gap: 14px; padding: 8px 16px;
-    background: var(--panel); border-bottom: 1px solid var(--line);
-  }
-  header h1 { font-size: 17px; margin: 0; font-weight: 650; letter-spacing: .2px; }
-  header .sub { color: var(--muted); font-size: 13px; }
-  header .spacer { flex: 1; }
-  header button, .panel button, .actions button, .lab button {
-    font: inherit; font-size: 14px; padding: 6px 12px; border-radius: 8px;
-    border: 1px solid var(--line); background: #fff; color: var(--ink); cursor: pointer;
-  }
-  header button:hover, .panel button:hover, .actions button:hover, .lab button:hover { border-color: #b8b4a6; background: #faf9f5; }
-  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-  button.primary:hover { background: #2a62bd; }
-  button:disabled { opacity: .45; cursor: not-allowed; }
-  header select { font: inherit; font-size: 13px; padding: 4px 6px; border-radius: 6px; border: 1px solid var(--line); background: #fff; }
-  #progress { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
-  #progress button {
-    width: 26px; height: 26px; padding: 0; border-radius: 50%; font-size: 12px; color: var(--muted);
-    border: 1px solid var(--line); background: #fff;
-  }
-  #progress button.done { background: #e2ecfb; border-color: #b9cdf0; color: #2f4f86; }
-  #progress button.current { background: var(--accent); color: #fff; border-color: var(--accent); }
+/* NeuronSim / MuscleSim page styles (shared by index.html and muscle.html). */
+:root {
+  --bg: #f6f5f0;
+  --panel: #ffffff;
+  --ink: #1f2430;
+  --muted: #5f6675;
+  --line: #d9d6cc;
+  --accent: #2f6fd6;
+  --accent-ink: #ffffff;
+  --good: #2f9e5b;
+  --bad: #d24b3f;
+  --warn: #c98a1b;
+  --na: #e8772e;
+  --k: #8e5cf0;
+  --cl: #3cae6c;
+  --ca: #2d8fd5;
+  --anion: #8f97a6;
+  --nt: #d63c8a;
+  --membrane: #2a2f3a;
+  --outside: #f2f5fb;
+  --inside: #fbf3e6;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+}
+header {
+  display: flex; align-items: center; gap: 14px; padding: 8px 16px;
+  background: var(--panel); border-bottom: 1px solid var(--line);
+}
+header h1 { font-size: 17px; margin: 0; font-weight: 650; letter-spacing: .2px; }
+header .sub { color: var(--muted); font-size: 13px; }
+header .spacer { flex: 1; }
+header button, .panel button, .actions button, .lab button {
+  font: inherit; font-size: 14px; padding: 6px 12px; border-radius: 8px;
+  border: 1px solid var(--line); background: #fff; color: var(--ink); cursor: pointer;
+}
+header button:hover, .panel button:hover, .actions button:hover, .lab button:hover { border-color: #b8b4a6; background: #faf9f5; }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button.primary:hover { background: #2a62bd; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+header select { font: inherit; font-size: 13px; padding: 4px 6px; border-radius: 6px; border: 1px solid var(--line); background: #fff; }
+#progress { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+#progress button {
+  width: 26px; height: 26px; padding: 0; border-radius: 50%; font-size: 12px; color: var(--muted);
+  border: 1px solid var(--line); background: #fff;
+}
+#progress button.done { background: #e2ecfb; border-color: #b9cdf0; color: #2f4f86; }
+#progress button.current { background: var(--accent); color: #fff; border-color: var(--accent); }
 
-  main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 380px; grid-template-rows: minmax(0, 1fr) auto; gap: 10px; padding: 10px 16px 14px; }
-  #stage-wrap { grid-column: 1; grid-row: 1; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; position: relative; overflow: hidden; min-height: 420px; display: flex; flex-direction: column; }
-  #stage-top { display: flex; align-items: center; gap: 10px; padding: 6px 12px 4px; }
-  #stage { flex: 1; min-height: 0; width: 100%; display: block; background: var(--bg); }
-  #stage svg { width: 100%; height: 100%; display: block; }
-  #stage-caption { flex: 1; font-size: 13px; color: var(--muted); }
-  #vm-badge { font-size: 13px; font-variant-numeric: tabular-nums; background: #fff; border: 1px solid var(--line); padding: 3px 10px; border-radius: 8px; white-space: nowrap; }
-  #vm-badge b { font-size: 16px; }
-  #narrator { margin: 4px 10px 10px; font-size: 14px; line-height: 1.35; background: #fbfaf6; border: 1px solid var(--line); border-left: 4px solid var(--accent); padding: 7px 12px; border-radius: 8px; min-height: 44px; color: var(--ink); }
-  #narrator:empty { visibility: hidden; }
-  #narrator b { font-weight: 650; }
-  #narrator .dir { font-weight: 700; letter-spacing: .3px; }
-  #paused-badge { position: absolute; left: 50%; bottom: 70px; transform: translateX(-50%); font-size: 12px; background: #fff3d6; border: 1px solid #ecd9a6; color: #7a5a10; padding: 3px 10px; border-radius: 999px; display: none; }
+main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 380px; grid-template-rows: minmax(0, 1fr) auto; gap: 10px; padding: 10px 16px 14px; }
+#stage-wrap { grid-column: 1; grid-row: 1; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; position: relative; overflow: hidden; min-height: 420px; display: flex; flex-direction: column; }
+#stage-top { display: flex; align-items: center; gap: 10px; padding: 6px 12px 4px; }
+#stage { flex: 1; min-height: 0; width: 100%; display: block; background: var(--bg); }
+#stage svg { width: 100%; height: 100%; display: block; }
+#stage-caption { flex: 1; font-size: 13px; color: var(--muted); }
+#vm-badge { font-size: 13px; font-variant-numeric: tabular-nums; background: #fff; border: 1px solid var(--line); padding: 3px 10px; border-radius: 8px; white-space: nowrap; }
+#vm-badge b { font-size: 16px; }
+#narrator { margin: 4px 10px 10px; font-size: 14px; line-height: 1.35; background: #fbfaf6; border: 1px solid var(--line); border-left: 4px solid var(--accent); padding: 7px 12px; border-radius: 8px; min-height: 44px; color: var(--ink); }
+#narrator:empty { visibility: hidden; }
+#narrator b { font-weight: 650; }
+#narrator .dir { font-weight: 700; letter-spacing: .3px; }
+#paused-badge { position: absolute; left: 50%; bottom: 70px; transform: translateX(-50%); font-size: 12px; background: #fff3d6; border: 1px solid #ecd9a6; color: #7a5a10; padding: 3px 10px; border-radius: 999px; display: none; }
 
-  #panel { grid-column: 2; grid-row: 1 / span 2; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
-  #panel h2 { margin: 0; font-size: 16px; }
-  #panel .scene-label { font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); }
-  #panel .text p { margin: 0 0 8px; }
-  #panel .text p:last-child { margin-bottom: 0; }
-  .question { border: 1px solid #cfdcf3; background: #f3f7fe; border-radius: 10px; padding: 10px 12px; }
-  .question .prompt { font-weight: 600; margin-bottom: 8px; }
-  .question .options { display: flex; flex-direction: column; gap: 6px; }
-  .question .options button { text-align: left; }
-  .question .options button.correct { border-color: var(--good); background: #eaf7ee; }
-  .question .options button.wrong { border-color: var(--bad); background: #fdeeec; }
-  .feedback { margin-top: 8px; padding: 8px 10px; border-radius: 8px; font-size: 14px; }
-  .feedback.good { background: #eaf7ee; border: 1px solid #bfe3ca; }
-  .feedback.bad { background: #fdeeec; border: 1px solid #f0c3bd; }
-  .actions { display: flex; flex-wrap: wrap; gap: 6px; }
-  .actions button.na { border-color: var(--na); color: #a04d12; }
-  .actions button.k { border-color: var(--k); color: #5b39a8; }
-  .actions button.cl { border-color: var(--cl); color: #23724a; }
-  .actions button.ca { border-color: var(--ca); color: #1c5f92; }
-  .actions button.held { background: #fff1e6; }
-  .status { font-size: 13px; color: var(--muted); }
-  .status.ok { color: var(--good); }
-  .nav { margin-top: auto; display: flex; gap: 8px; justify-content: space-between; align-items: center; padding-top: 8px; border-top: 1px solid var(--line); }
-  .hint { font-size: 13px; color: var(--muted); }
-  .ion { display: inline-block; padding: 0 5px; border-radius: 999px; color: #fff; font-size: 12px; font-weight: 600; }
-  .ion.na { background: var(--na); } .ion.k { background: var(--k); } .ion.cl { background: var(--cl); } .ion.ca { background: var(--ca); } .ion.nt { background: var(--nt); }
-  kbd.part { background: #eef0f4; border: 1px solid #d6dae2; border-radius: 4px; padding: 0 5px; font: inherit; font-size: 13px; }
+#panel { grid-column: 2; grid-row: 1 / span 2; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
+#panel h2 { margin: 0; font-size: 16px; }
+#panel .scene-label { font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); }
+#panel .text p { margin: 0 0 8px; }
+#panel .text p:last-child { margin-bottom: 0; }
+.question { border: 1px solid #cfdcf3; background: #f3f7fe; border-radius: 10px; padding: 10px 12px; }
+.question .prompt { font-weight: 600; margin-bottom: 8px; }
+.question .options { display: flex; flex-direction: column; gap: 6px; }
+.question .options button { text-align: left; }
+.question .options button.correct { border-color: var(--good); background: #eaf7ee; }
+.question .options button.wrong { border-color: var(--bad); background: #fdeeec; }
+.feedback { margin-top: 8px; padding: 8px 10px; border-radius: 8px; font-size: 14px; }
+.feedback.good { background: #eaf7ee; border: 1px solid #bfe3ca; }
+.feedback.bad { background: #fdeeec; border: 1px solid #f0c3bd; }
+.actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.actions button.na { border-color: var(--na); color: #a04d12; }
+.actions button.k { border-color: var(--k); color: #5b39a8; }
+.actions button.cl { border-color: var(--cl); color: #23724a; }
+.actions button.ca { border-color: var(--ca); color: #1c5f92; }
+.actions button.held { background: #fff1e6; }
+.status { font-size: 13px; color: var(--muted); }
+.status.ok { color: var(--good); }
+.nav { margin-top: auto; display: flex; gap: 8px; justify-content: space-between; align-items: center; padding-top: 8px; border-top: 1px solid var(--line); }
+.hint { font-size: 13px; color: var(--muted); }
+.ion { display: inline-block; padding: 0 5px; border-radius: 999px; color: #fff; font-size: 12px; font-weight: 600; }
+.ion.na { background: var(--na); } .ion.k { background: var(--k); } .ion.cl { background: var(--cl); } .ion.ca { background: var(--ca); } .ion.nt { background: var(--nt); }
+kbd.part { background: #eef0f4; border: 1px solid #d6dae2; border-radius: 4px; padding: 0 5px; font: inherit; font-size: 13px; }
 
-  #trace-wrap { grid-column: 1; grid-row: 2; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px 6px; }
-  #trace-head { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
-  #trace-head label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
-  #trace { width: 100%; height: 200px; display: block; }
-  #trace.with-g { height: 250px; }
-  .legend { display: inline-flex; gap: 10px; align-items: center; }
-  .legend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 4px; }
+#trace-wrap { grid-column: 1; grid-row: 2; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px 6px; }
+#trace-head { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+#trace-head label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+#trace { width: 100%; height: 200px; display: block; }
+#trace.with-g { height: 250px; }
+#trace.with-bands { height: calc(200px + var(--bands, 1) * 50px); }
+#trace.with-g.with-bands { height: calc(250px + var(--bands, 1) * 50px); }
+.legend { display: inline-flex; gap: 10px; align-items: center; }
+.legend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 4px; }
 
-  .lab { display: grid; grid-template-columns: 1fr; gap: 8px; }
-  .lab .row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
-  .lab .row label { flex: 1; }
-  .lab .row input[type=range] { flex: 2; }
-  .lab .row .val { width: 62px; text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
-  .lab h3 { margin: 6px 0 0; font-size: 13px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
+.lab { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.lab .row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.lab .row label { flex: 1; }
+.lab .row input[type=range] { flex: 2; }
+.lab .row .val { width: 62px; text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+.lab h3 { margin: 6px 0 0; font-size: 13px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
 
-  .loop-diagram { display: flex; flex-direction: column; gap: 4px; align-items: stretch; font-size: 13px; }
-  .loop-diagram .node { padding: 5px 8px; border-radius: 8px; border: 1px solid var(--line); background: #fafaf7; text-align: center; transition: background .2s, border-color .2s; }
-  .loop-diagram .node.hot { background: #fff1e6; border-color: var(--na); font-weight: 600; }
-  .loop-diagram .arrow { text-align: center; color: var(--muted); line-height: 1; }
+.loop-diagram { display: flex; flex-direction: column; gap: 4px; align-items: stretch; font-size: 13px; }
+.loop-diagram .node { padding: 5px 8px; border-radius: 8px; border: 1px solid var(--line); background: #fafaf7; text-align: center; transition: background .2s, border-color .2s; }
+.loop-diagram .node.hot { background: #fff1e6; border-color: var(--na); font-weight: 600; }
+.loop-diagram .arrow { text-align: center; color: var(--muted); line-height: 1; }
 
-  @media (max-height: 640px) {
-    body { height: auto; min-height: 100vh; overflow: auto; }
-    main { display: flex; flex-direction: column; }
-    #stage-wrap { min-height: 420px; }
-  }
-  @media (max-width: 980px) {
-    body { height: auto; min-height: 100vh; overflow: auto; }
-    main { grid-template-columns: 1fr; grid-template-rows: auto auto auto; }
-    #stage-wrap { grid-column: 1; grid-row: 1; min-height: 340px; }
-    #trace-wrap { grid-column: 1; grid-row: 2; }
-    #panel { grid-column: 1; grid-row: 3; }
-  }
+@media (max-height: 640px) {
+  body { height: auto; min-height: 100vh; overflow: auto; }
+  main { display: flex; flex-direction: column; }
+  #stage-wrap { min-height: 420px; }
+}
+@media (max-width: 980px) {
+  body { height: auto; min-height: 100vh; overflow: auto; }
+  main { grid-template-columns: 1fr; grid-template-rows: auto auto auto; }
+  #stage-wrap { grid-column: 1; grid-row: 1; min-height: 340px; }
+  #trace-wrap { grid-column: 1; grid-row: 2; }
+  #panel { grid-column: 1; grid-row: 3; }
+}
+
 </style>
 </head>
 <body>
@@ -218,16 +222,30 @@
 
   // Hodgkin–Huxley gating kinetics, shifted so the resting potential is ≈ −70 mV.
   const HH_SHIFT = 0;
-  function hhRates(V) {
+  // opts.hShift shifts the inactivation (h) curve only, in mV (negative = inactivates at more
+  // negative voltages, as mammalian muscle Na⁺ channels do); opts.phi divides all three time
+  // constants (a temperature correction: the squid rates are for 6 °C). Both default to the
+  // classic behaviour so the neuron is unchanged.
+  function hhRates(V, opts) {
     const v = V + HH_SHIFT;
+    const hs = opts && opts.hShift ? opts.hShift : 0;
+    const phi = opts && opts.phi ? opts.phi : 1;
+    const vh = v - hs;
     const am = 0.1 * vtrap(v + 40, 10), bm = 4 * Math.exp(-(v + 65) / 18);
-    const ah = 0.07 * Math.exp(-(v + 65) / 20), bh = 1 / (1 + Math.exp(-(v + 35) / 10));
+    const ah = 0.07 * Math.exp(-(vh + 65) / 20), bh = 1 / (1 + Math.exp(-(vh + 35) / 10));
     const an = 0.01 * vtrap(v + 55, 10), bn = 0.125 * Math.exp(-(v + 65) / 80);
     return {
-      minf: am / (am + bm), taum: 1 / (am + bm),
-      hinf: ah / (ah + bh), tauh: 1 / (ah + bh),
-      ninf: an / (an + bn), taun: 1 / (an + bn),
+      minf: am / (am + bm), taum: 1 / ((am + bm) * phi),
+      hinf: ah / (ah + bh), tauh: 1 / ((ah + bh) * phi),
+      ninf: an / (an + bn), taun: 1 / ((an + bn) * phi),
     };
+  }
+
+  // Pump off → gradients slowly run down (accelerated for teaching). Shared by both models.
+  function pumpRundown(conc, k) {
+    if (conc.Na.in < 60) conc.Na.in += k * 6;
+    if (conc.K.in > 60) conc.K.in -= k * 6;
+    if (conc.K.out < 30) conc.K.out += k * 1.5;
   }
 
   // ---------------------------------------------------------------------------
@@ -383,6 +401,8 @@
         gKMax: (s.gK || 0) * s.area * 1e-5,
         gL: (s.gL || 0.1) * s.area * 1e-5,
         EL: -70,
+        // nominal shares of the lumped leak, used only for drawing ion traffic and the ladder
+        gKLeak: 0.75 * (s.gL || 0.1) * s.area * 1e-5, gNaLeak: 0.06 * (s.gL || 0.1) * s.area * 1e-5,
         V: -70, m: 0, h: 1, n: 0,
         gNa: 0, gK: 0, iNa: 0, iK: 0, iL: 0, iSynE: 0, iSynI: 0, iAx: 0,
         dVdt: 0,
@@ -457,7 +477,7 @@
       this.terminal.reset(); this.nextReceptor.reset();
       this.next.V = -70; this.next.i = 0;
       this.manual = { gNa: 0, gK: 0, gCl: 0 };
-      this.stim = {};
+      this.stim = {}; this._pulseEnd = null;
       this.naBlock = 0; this.kBlock = 0; this.pumpOn = true;
       this.conc = JSON.parse(JSON.stringify(DEFAULT_CONC));
       this.calibrateLeak();
@@ -478,6 +498,14 @@
       if (nA) this.stim[idx] = nA; else delete this.stim[idx];
     }
 
+    /** Inject `nA` into a compartment for `ms` of simulated time, then stop automatically. */
+    pulse(comp, nA, ms) {
+      const idx = typeof comp === 'number' ? comp : this.byName[comp].index;
+      this.setStim(idx, nA);
+      this._pulseComp = idx; this._pulseEnd = this.t + ms;
+      this.events.push({ t: this.t, type: 'shock', comp: idx, nA });
+    }
+
     /** Advance the model by `ms` of simulated time. */
     advance(ms) {
       const steps = Math.max(1, Math.round(ms / this.dt));
@@ -491,12 +519,9 @@
       const n = comps.length;
 
       // Pump off → gradients slowly run down (accelerated for teaching).
-      if (!this.pumpOn && this.pumpRundownRate > 0) {
-        const c = this.conc, k = this.pumpRundownRate * dt;
-        if (c.Na.in < 60) c.Na.in += k * 6;
-        if (c.K.in > 60) c.K.in -= k * 6;
-        if (c.K.out < 30) c.K.out += k * 1.5;
-      }
+      if (!this.pumpOn && this.pumpRundownRate > 0) pumpRundown(this.conc, this.pumpRundownRate * dt);
+      // timed current pulses (see pulse())
+      if (this._pulseEnd != null && this.t >= this._pulseEnd) { this.setStim(this._pulseComp, 0); this._pulseEnd = null; }
 
       // --- input synapses (presynaptic terminals driven by template APs)
       for (const inp of this.inputs) {
@@ -604,12 +629,23 @@
     input(id) { return this.inputs.find(x => x.id === id); }
   }
 
-  return { Neuron, Terminal, Receptor, nernst, hhRates, templateAP, DEFAULT_CONC, N_AXON };
+  return { Neuron, Terminal, Receptor, nernst, hhRates, expEuler, vtrap, pumpRundown, templateAP, DEFAULT_CONC, N_AXON };
 });
 
 </script>
 <script>
-/* NeuronSim app: renderer + lesson engine. The simulation lives in engine.js. */
+/*
+ * SimApp: page-agnostic renderer + lesson engine (see docs/APP_API.md).
+ *
+ * Nothing here knows which cell it is drawing. A page supplies a model (the simulation), a
+ * profile (landmarks and words), a whole-cell drawing, extra views, the lesson and the lab:
+ *
+ *   window.__neuronsim = SimApp.init({ model, profile, drawCell, views, lesson, lab });
+ *
+ * The generic parts kept here: utilities and drawing helpers, the membrane view, the trace,
+ * the step runner (questions, activities, navigation), the lab shell and the frame loop.
+ * Classic script (no modules) so the pages open from file://.
+ */
 (function () {
   'use strict';
 
@@ -642,58 +678,1119 @@
   const ION_COLOR = { Na: '#e8772e', K: '#8e5cf0', Cl: '#3cae6c', Ca: '#2d8fd5', A: '#8f97a6', NT: '#d63c8a' };
   const ION_LABEL = { Na: 'Na⁺', K: 'K⁺', Cl: 'Cl⁻', Ca: 'Ca²⁺', A: 'A⁻', NT: '' };
 
-  // Voltage → colour (blue = hyperpolarized, slate = rest, orange/red = depolarized)
-  const V_STOPS = [[-95, [59, 111, 214]], [-70, [125, 138, 165]], [-55, [190, 165, 110]], [-20, [240, 160, 48]], [45, [229, 72, 46]]];
-  function vColor(V) {
-    V = clamp(V, -95, 45);
-    for (let i = 0; i < V_STOPS.length - 1; i++) {
-      const [v0, c0] = V_STOPS[i], [v1, c1] = V_STOPS[i + 1];
-      if (V <= v1) {
-        const t = (V - v0) / (v1 - v0);
-        return `rgb(${Math.round(lerp(c0[0], c1[0], t))},${Math.round(lerp(c0[1], c1[1], t))},${Math.round(lerp(c0[2], c1[2], t))})`;
+  function fmtV(V) { return (V < 0 ? '−' : '+') + Math.abs(V).toFixed(1); }
+  // A landmark voltage as a signed integer ("+67", "−70") for labels and copy.
+  function fmtE(V) { return (V < 0 ? '−' : '+') + Math.abs(Math.round(V)); }
+
+  // Channel catalogue for drawChannel / the membrane view. A page may add entries
+  // (Object.assign(kit.CH, {...})); an entry may carry current(c, V, E, sim) and state(c, sim)
+  // so the membrane view can animate channel types this file does not know about.
+  const CH = {
+    Na_leak: { color: ION_COLOR.Na, label: 'Na⁺ leak', ion: 'Na', dir: -1 },
+    K_leak: { color: ION_COLOR.K, label: 'K⁺ leak', ion: 'K', dir: 1 },
+    Na_v: { color: ION_COLOR.Na, label: 'voltage-gated Na⁺', ion: 'Na', dir: -1, gated: true },
+    K_v: { color: ION_COLOR.K, label: 'voltage-gated K⁺', ion: 'K', dir: 1, gated: true },
+    Ca_v: { color: ION_COLOR.Ca, label: 'voltage-gated Ca²⁺', ion: 'Ca', dir: -1, gated: true },
+    Na_manual: { color: ION_COLOR.Na, label: 'Na⁺ channel (yours)', ion: 'Na', dir: -1 },
+    K_manual: { color: ION_COLOR.K, label: 'K⁺ channel (yours)', ion: 'K', dir: 1 },
+    Cl_manual: { color: ION_COLOR.Cl, label: 'Cl⁻ channel (yours)', ion: 'Cl', dir: -1 },
+    AMPA: { color: ION_COLOR.Na, label: 'excitatory receptor (cation channel)', ion: 'Na', dir: -1, receptor: true },
+    GABA: { color: ION_COLOR.Cl, label: 'inhibitory receptor (Cl⁻ channel)', ion: 'Cl', dir: -1, receptor: true },
+    pump: { color: '#6b7280', label: 'Na⁺/K⁺ pump (ATP)' },
+  };
+
+  function drawChannel(parent, x, yTop, yBot, type, scale) {
+    scale = scale || 1;
+    const spec = CH[type];
+    const g = svgEl('g', { transform: `translate(${x},0)` }, parent);
+    const w = 16 * scale, gap = 6 * scale, h = yBot - yTop, ymid = (yTop + yBot) / 2;
+    if (type === 'pump') {
+      svgEl('rect', { x: -26 * scale, y: yTop - 2, width: 52 * scale, height: h + 4, rx: 8 * scale, fill: '#e5e7eb', stroke: '#374151', 'stroke-width': 2 }, g);
+      svgEl('text', { x: 0, y: ymid + 4 * scale, 'font-size': 11 * scale, 'font-weight': 700, 'text-anchor': 'middle', fill: '#374151', text: 'ATP' }, g);
+      const na = svgEl('g', {}, g), k = svgEl('g', {}, g);
+      return { g, spec, pumpNa: na, pumpK: k, x, yTop, yBot };
+    }
+    const left = svgEl('rect', { x: -gap - w, y: yTop - 2, width: w, height: h + 4, rx: 5 * scale, fill: '#fff', stroke: spec.color, 'stroke-width': 2.5 }, g);
+    const right = svgEl('rect', { x: gap, y: yTop - 2, width: w, height: h + 4, rx: 5 * scale, fill: '#fff', stroke: spec.color, 'stroke-width': 2.5 }, g);
+    const gate = svgEl('rect', { x: -gap - 1, y: ymid - 7 * scale, width: 2 * gap + 2, height: 14 * scale, fill: spec.color, opacity: 0.9 }, g);
+    const ball = svgEl('circle', { cx: 0, cy: yBot - 6 * scale, r: 7 * scale, fill: '#374151', opacity: 0 }, g);
+    if (spec.gated) svgEl('text', { x: 0, y: yTop - 6 * scale, 'font-size': 9 * scale, 'text-anchor': 'middle', fill: spec.color, 'font-weight': 700, text: 'V' }, g);
+    if (spec.receptor) {
+      // binding site cups on the outside face
+      svgEl('path', { d: `M${-gap - w},${yTop - 2} l-4,-8 M${gap + w},${yTop - 2} l4,-8`, stroke: spec.color, 'stroke-width': 2.5, fill: 'none' }, g);
+    }
+    return { g, spec, left, right, gate, ball, x, yTop, yBot, state: 'closed' };
+  }
+  function setChannelState(ch, state) {
+    if (ch.state === state || !ch.gate) return;
+    ch.state = state;
+    if (state === 'open') { ch.gate.setAttribute('opacity', 0); ch.ball.setAttribute('opacity', 0); ch.left.setAttribute('fill', '#fff'); }
+    else if (state === 'inactivated') { ch.gate.setAttribute('opacity', 0); ch.ball.setAttribute('opacity', 1); ch.left.setAttribute('fill', '#fff'); }
+    else { ch.gate.setAttribute('opacity', 0.9); ch.ball.setAttribute('opacity', 0); }
+  }
+
+  // Ion pools (background) and flux particles.
+  function makeIonPool(parent, region, counts, opts) {
+    opts = opts || {};
+    const ions = [];
+    for (const ion in counts) {
+      for (let i = 0; i < counts[ion]; i++) {
+        const x = rand(region.x0 + 10, region.x1 - 10), y = rand(region.y0 + 10, region.y1 - 10);
+        const g = svgEl('g', { transform: `translate(${x},${y})` }, parent);
+        svgEl('circle', { r: opts.r || 8, fill: ION_COLOR[ion], opacity: 0.9 }, g);
+        svgEl('text', { y: 3, 'font-size': (opts.r || 8) * 1.05, 'text-anchor': 'middle', fill: '#fff', 'font-weight': 700, text: ION_LABEL[ion] }, g);
+        ions.push({ g, ion, x, y, vx: 0, vy: 0 });
       }
     }
-    return 'rgb(229,72,46)';
-  }
-  function fmtV(V) { return (V < 0 ? '−' : '+') + Math.abs(V).toFixed(1); }
-  // Cytosol fill: cream at rest, warms toward orange when depolarized, cools toward blue when hyperpolarized.
-  function insideFill(V) {
-    const base = [251, 243, 230];
-    let target = base, f = 0;
-    if (V > -69) { target = [240, 150, 40]; f = clamp((V + 70) / 100, 0, 0.75); }
-    else if (V < -71) { target = [120, 160, 230]; f = clamp((-70 - V) / 30, 0, 0.6); }
-    return `rgb(${Math.round(lerp(base[0], target[0], f))},${Math.round(lerp(base[1], target[1], f))},${Math.round(lerp(base[2], target[2], f))})`;
+    return {
+      ions,
+      update(dtReal) {
+        const k = dtReal / 16;
+        for (const p of ions) {
+          p.vx = p.vx * 0.9 + rand(-0.6, 0.6); p.vy = p.vy * 0.9 + rand(-0.6, 0.6);
+          p.x = clamp(p.x + p.vx * k, region.x0 + 8, region.x1 - 8); p.y = clamp(p.y + p.vy * k, region.y0 + 8, region.y1 - 8);
+          p.g.setAttribute('transform', `translate(${p.x.toFixed(1)},${p.y.toFixed(1)})`);
+        }
+      },
+    };
   }
 
+  function makeParticles(parent) {
+    const list = [];
+    return {
+      spawn(ion, x0, y0, x1, y1, duration, opts) {
+        opts = opts || {};
+        const g = svgEl('g', { transform: `translate(${x0},${y0})`, 'pointer-events': 'none' }, parent);
+        svgEl('circle', { r: opts.r || 8, fill: ION_COLOR[ion], stroke: '#fff', 'stroke-width': 1.5 }, g);
+        if (ION_LABEL[ion]) svgEl('text', { y: 3, 'font-size': 8.5, 'text-anchor': 'middle', fill: '#fff', 'font-weight': 700, text: ION_LABEL[ion] }, g);
+        list.push({ g, x0, y0, x1, y1, t: 0, duration: duration || 700, linger: opts.linger != null ? opts.linger : 500, wobble: opts.wobble || 0 });
+      },
+      update(dtReal) {
+        for (let i = list.length - 1; i >= 0; i--) {
+          const p = list[i]; p.t += dtReal;
+          const u = clamp(p.t / p.duration, 0, 1), e = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
+          const x = lerp(p.x0, p.x1, e) + (p.wobble ? Math.sin(p.t / 60) * p.wobble * (1 - u) : 0), y = lerp(p.y0, p.y1, e);
+          p.g.setAttribute('transform', `translate(${x.toFixed(1)},${y.toFixed(1)})`);
+          if (p.t > p.duration) {
+            const f = 1 - (p.t - p.duration) / p.linger;
+            p.g.setAttribute('opacity', clamp(f, 0, 1));
+            if (f <= 0) { p.g.remove(); list.splice(i, 1); }
+          }
+        }
+      },
+      clear() { for (const p of list) p.g.remove(); list.length = 0; },
+      get count() { return list.length; },
+    };
+  }
+
+  // A flux accumulator: turns current (nA) × simulated time into discrete particles.
+  function fluxCounter(scale) {
+    let acc = 0;
+    return (current_nA, dtSim) => {
+      acc += Math.abs(current_nA) * dtSim * scale;
+      let n = 0;
+      while (acc >= 1 && n < 6) { acc -= 1; n++; }
+      if (acc > 6) acc = 6;
+      return n;
+    };
+  }
+
+  function drawBilayer(parent, x0, x1, yTop, yBot, holes) {
+    // two rows of phospholipid heads with tails; `holes` = list of [xa, xb] to leave empty
+    const g = svgEl('g', {}, parent);
+    svgEl('rect', { x: x0, y: yTop, width: x1 - x0, height: yBot - yTop, fill: '#f0ead8' }, g);
+    const step = 14;
+    for (let x = x0 + 7; x < x1; x += step) {
+      if (holes.some(([a, b]) => x > a && x < b)) continue;
+      for (const [cy, dir] of [[yTop + 7, 1], [yBot - 7, -1]]) {
+        svgEl('circle', { cx: x, cy, r: 6, fill: '#c9b98f', stroke: '#8a7a50', 'stroke-width': 1 }, g);
+        svgEl('path', { d: `M${x - 3},${cy + dir * 6} l0,${dir * 12} M${x + 3},${cy + dir * 6} l0,${dir * 12}`, stroke: '#8a7a50', 'stroke-width': 1.5, fill: 'none' }, g);
+      }
+    }
+    return g;
+  }
+
+  function drawChargeRow(parent, x0, x1, y, sign, color) {
+    const g = svgEl('g', { 'font-size': 18, 'font-weight': 700, fill: color, 'text-anchor': 'middle', 'pointer-events': 'none' }, parent);
+    for (let x = x0 + 20; x < x1; x += 46) svgEl('text', { x, y, text: sign }, g);
+    return g;
+  }
+
+  // ---------------------------------------------------------------- narration helpers
+  const chip = (k) => `<span class="ion ${k.toLowerCase()}">${ION_LABEL[k]}</span>`;
+  const IN = '<span class="dir">IN</span>', OUT = '<span class="dir">OUT</span>';
+  const I = chip;
+  const FB_GRADIENT = 'Ions move down their concentration gradient (from where they are concentrated to where they are scarce) and toward the side whose charge attracts them.';
+  function spikeIn(events, name) { return events.some(e => e.type === 'spike' && e.name === name); }
+  function anySpike(events) { return events.some(e => e.type === 'spike'); }
+
+  const LOOP_HTML = `<div class="loop-diagram">
+      <div class="node" data-loop="depol">membrane depolarizes</div><div class="arrow">↓</div>
+      <div class="node" data-loop="open">voltage-gated Na⁺ channels open</div><div class="arrow">↓</div>
+      <div class="node" data-loop="in">Na⁺ rushes in</div><div class="arrow">↓ (and back to the top)</div>
+      <div class="node" data-loop="more">more depolarization → more Na⁺ channels open</div>
+    </div>`;
+
+  // Step keys inherited by later steps of the same scene (see gotoStep).
+  const STEP_KEYS = ['view', 'viewOpts', 'record', 'electrode', 'labels', 'showG', 'gComp', 'extra', 'speed', 'bands', 'historyMs', 'window'];
+
   // =========================================================================
-  // Shared state
+  // init(config): build the app for one page
   // =========================================================================
-  const sim = new NeuronSim.Neuron();
-  const app = {
-    speed: 0.01,          // simulated ms per real ms
-    paused: false,
-    view: null,           // current view object
-    viewName: null,
-    recordComp: 'soma',   // compartment shown on the trace
-    extraTraces: [],      // additional compartments to plot
-    showG: false,
-    history: [],          // {t, V, V2..., gNa, gK}
-    historyWindow: 60,    // ms visible
-    electrode: false,
-    labels: true,
-    time: 0,
-    lastFrame: null,
-    markers: [],          // {t, label}
-    showThreshold: false, // threshold line appears once the concept is introduced (scene 6)
-    userSpeed: null,      // speed chosen by the user via the menu; cleared on scene change
-    listeners: [],        // event listeners for sim events
+  function init(config) {
+    const sim = config.model;
+    const profile = config.profile;
+    const REST = profile.rest, THR = profile.threshold;
+    const setCaption = (text) => { $('#stage-caption').textContent = text == null ? '' : text; };
+
+    // Voltage → colour (blue = hyperpolarized, slate = rest, orange/red = depolarized), relative to rest.
+    const V_STOPS = [[REST - 25, [59, 111, 214]], [REST, [125, 138, 165]], [REST + 15, [190, 165, 110]], [REST + 50, [240, 160, 48]], [REST + 115, [229, 72, 46]]];
+    function vColor(V) {
+      V = clamp(V, REST - 25, REST + 115);
+      for (let i = 0; i < V_STOPS.length - 1; i++) {
+        const [v0, c0] = V_STOPS[i], [v1, c1] = V_STOPS[i + 1];
+        if (V <= v1) {
+          const t = (V - v0) / (v1 - v0);
+          return `rgb(${Math.round(lerp(c0[0], c1[0], t))},${Math.round(lerp(c0[1], c1[1], t))},${Math.round(lerp(c0[2], c1[2], t))})`;
+        }
+      }
+      return 'rgb(229,72,46)';
+    }
+    // Cytosol fill: cream at rest, warms toward orange when depolarized, cools toward blue when hyperpolarized.
+    function insideFill(V) {
+      const base = [251, 243, 230];
+      let target = base, f = 0;
+      if (V > REST + 1) { target = [240, 150, 40]; f = clamp((V - REST) / 100, 0, 0.75); }
+      else if (V < REST - 1) { target = [120, 160, 230]; f = clamp((REST - V) / 30, 0, 0.6); }
+      return `rgb(${Math.round(lerp(base[0], target[0], f))},${Math.round(lerp(base[1], target[1], f))},${Math.round(lerp(base[2], target[2], f))})`;
+    }
+
+    // =======================================================================
+    // Shared state
+    // =======================================================================
+    const app = {
+      speed: 0.01,          // simulated ms per real ms
+      paused: false,
+      view: null,           // current view object
+      viewName: null,
+      recordComp: profile.comp,   // compartment shown on the trace
+      extraTraces: [],      // additional compartments to plot
+      showG: false,
+      gComp: null,          // compartment for the conductance sub-plot (default: recordComp)
+      bands: [],            // extra sub-plots under the trace: {key, label, color, max, min}
+      history: [],          // {t, V:{name:mV}, gNa:{}, gK:{}, x:{}}
+      historyMs: 400,       // ms of history kept
+      historyWindow: 60,    // ms visible
+      electrode: false,
+      labels: true,
+      time: 0,
+      lastFrame: null,
+      markers: [],          // {t, label}
+      showThreshold: false, // threshold line appears once the concept is introduced (scene.showThreshold)
+      userSpeed: null,      // speed chosen by the user via the menu; cleared on scene change
+      listeners: [],        // event listeners for sim events
+    };
+    function fireEvent(ev) { for (const l of app.listeners) l(ev); }
+
+    const stage = $('#stage');
+    const panel = $('#panel');
+    const traceCanvas = $('#trace');
+    const views = {};
+    const runner = { scene: 0, step: 0, state: null, ctx: null, labMode: false };
+    let LESSON = [];
+
+    function mountView(name, opts) {
+      if (app.view && app.view.unmount) app.view.unmount();
+      stage.innerHTML = '';
+      app.viewName = name;
+      app.view = views[name](opts || {});
+      app.view.name = name;
+      if (app.view.mount) app.view.mount(stage);
+      return app.view;
+    }
+
+    // ---------------------------------------------------------------- whole-cell inset
+    function drawCell(parent, opts) { return config.drawCell(parent, opts || {}, kit); }
+    function drawInset(parent, region) {
+      const fr = Object.assign({ transform: 'translate(640,6) scale(0.27)', x: -10, y: -10, width: 960, height: 520 }, profile.insetFrame || {});
+      const g = svgEl('g', { transform: fr.transform }, parent);
+      svgEl('rect', { x: fr.x, y: fr.y, width: fr.width, height: fr.height, fill: 'rgba(255,255,255,.85)', stroke: '#d9d6cc', 'stroke-width': 4, rx: 20 }, g);
+      const d = drawCell(g, { inset: true });
+      const regions = profile.insetRegions || {};
+      const pos = regions[region] || regions.default || [0, 0, 0, 0];
+      svgEl('ellipse', { cx: pos[0], cy: pos[1], rx: pos[2], ry: pos[3], fill: 'none', stroke: '#2f6fd6', 'stroke-width': 8, 'stroke-dasharray': '18 12' }, g);
+      return { g, parts: d.parts, update: (o) => d.update(o || { hideLabels: true }) };
+    }
+
+    // Voltage ladder: where Vm is, and who is pulling it (Na⁺ up toward E_Na, K⁺ down toward E_K).
+    function drawLadder(parent, x, y) {
+      const g = svgEl('g', { transform: `translate(${x},${y})`, 'font-size': 11, fill: '#3a3f4a' }, parent);
+      const H = 170, yOf = (V) => H - (clamp(V, -100, 70) + 100) * (H / 170);
+      svgEl('text', { x: 0, y: -10, 'font-weight': 700, 'font-size': 12, text: 'Where is Vm being pulled?' }, g);
+      svgEl('rect', { x: 0, y: 0, width: 14, height: H, rx: 4, fill: '#e9e6dc', stroke: '#c9c4b4' }, g);
+      const ticks = {};
+      const tick = (V, label, color, key) => {
+        const t = svgEl('g', { 'data-tick': key || '' }, g);
+        const line = svgEl('line', { x1: -4, y1: yOf(V), x2: 18, y2: yOf(V), stroke: color, 'stroke-width': 1.5 }, t);
+        const text = svgEl('text', { x: 24, y: yOf(V) + 4, fill: color, text: label }, t);
+        ticks[key] = { V, t, line, text };
+        return t;
+      };
+      const move = (key, V, label) => {
+        const tk = ticks[key];
+        if (tk.V === V && tk.text.textContent === label) return;
+        tk.V = V; tk.line.setAttribute('y1', yOf(V)); tk.line.setAttribute('y2', yOf(V)); tk.text.setAttribute('y', yOf(V) + 4); tk.text.textContent = label;
+      };
+      const E0 = sim.E;
+      tick(E0.Na, `E_Na ${fmtE(E0.Na)}  (Na⁺ pulls up)`, ION_COLOR.Na, 'ena');
+      tick(0, '0 mV', '#6b7280', 'zero');
+      const thr = tick(THR, `threshold ${fmtE(THR)}`, '#d97706', 'thr');
+      tick(REST, `rest ${fmtE(REST)}`, '#2563eb', 'rest');
+      tick(E0.K, `E_K ${fmtE(E0.K)}  (K⁺ pulls down)`, ION_COLOR.K, 'ek');
+      const naArrow = svgEl('path', { d: '', stroke: ION_COLOR.Na, 'stroke-width': 5, fill: 'none', 'stroke-linecap': 'round' }, g);
+      const naHead = svgEl('path', { d: '', fill: ION_COLOR.Na }, g);
+      const kArrow = svgEl('path', { d: '', stroke: ION_COLOR.K, 'stroke-width': 5, fill: 'none', 'stroke-linecap': 'round' }, g);
+      const kHead = svgEl('path', { d: '', fill: ION_COLOR.K }, g);
+      const pointer = svgEl('path', { d: '', fill: '#1f2430' }, g);
+      const pline = svgEl('line', { x1: 0, y1: 0, x2: 14, y2: 0, stroke: '#1f2430', 'stroke-width': 3 }, g);
+      const ptext = svgEl('text', { x: -8, y: 0, 'text-anchor': 'end', 'font-weight': 700, 'font-size': 12, fill: '#1f2430', text: '' }, g);
+      return {
+        update(V, gNaPull, gKPull) {
+          const E = sim.E;
+          move('ena', E.Na, `E_Na ${fmtE(E.Na)}  (Na⁺ pulls up)`);
+          move('ek', E.K, `E_K ${fmtE(E.K)}  (K⁺ pulls down)`);
+          const y = yOf(V);
+          pline.setAttribute('y1', y); pline.setAttribute('y2', y);
+          pointer.setAttribute('d', `M-8,${y} l-7,-5 l0,10 z`);
+          ptext.setAttribute('y', y + 4); ptext.textContent = fmtV(V);
+          const na = Math.min(y - 8, gNaPull * 90), k = Math.min(H - y - 8, gKPull * 90);
+          naArrow.setAttribute('d', na > 3 ? `M7,${y - 2} L7,${y - na}` : '');
+          naHead.setAttribute('d', na > 3 ? `M7,${y - na - 7} l-6,8 l12,0 z` : '');
+          kArrow.setAttribute('d', k > 3 ? `M7,${y + 2} L7,${y + k}` : '');
+          kHead.setAttribute('d', k > 3 ? `M7,${y + k + 7} l-6,-8 l12,0 z` : '');
+          thr.setAttribute('opacity', app.showThreshold ? 1 : 0);
+        },
+      };
+    }
+
+    // Compact concentration / Nernst table.
+    function drawConcTable(parent, x, y) {
+      const lg = svgEl('g', { transform: `translate(${x},${y})`, 'font-size': 11, fill: '#3a3f4a' }, parent);
+      svgEl('text', { x: 0, y: 0, 'font-weight': 700, 'font-size': 12, text: 'Concentrations (mM)' }, lg);
+      svgEl('text', { x: 62, y: 18, 'font-weight': 700, text: 'out' }, lg); svgEl('text', { x: 106, y: 18, 'font-weight': 700, text: 'in' }, lg); svgEl('text', { x: 152, y: 18, 'font-weight': 700, text: 'E (mV)' }, lg);
+      const rows = [['Na', 'Na⁺'], ['K', 'K⁺'], ['Cl', 'Cl⁻'], ['Ca', 'Ca²⁺']].filter(([k]) => sim.conc[k]).map(([k, lab], i) => {
+        const yy = 36 + i * 17;
+        svgEl('circle', { cx: 7, cy: yy - 4, r: 6, fill: ION_COLOR[k] }, lg);
+        svgEl('text', { x: 18, y: yy, text: lab }, lg);
+        return { k, out: svgEl('text', { x: 62, y: yy }, lg), inn: svgEl('text', { x: 106, y: yy }, lg), e: svgEl('text', { x: 152, y: yy }, lg) };
+      });
+      svgEl('text', { x: 0, y: 112, 'font-size': 10, fill: '#6b7280', text: 'E = the voltage at which that ion stops moving' }, lg);
+      svgEl('text', { x: 0, y: 125, 'font-size': 10, fill: '#6b7280', text: '(its equilibrium potential). Drawings not to scale.' }, lg);
+      return {
+        update() {
+          const E = sim.E;
+          for (const r of rows) {
+            const c = sim.conc[r.k];
+            r.out.textContent = c.out < 1 ? String(c.out) : c.out.toFixed(0);
+            r.inn.textContent = c.in < 1 ? String(c.in) : c.in.toFixed(0);
+            r.e.textContent = fmtV(E[r.k]).replace('.0', '');
+          }
+        },
+      };
+    }
+
+    // ---------------------------------------------------------------- membrane strip (generic)
+    // opts: { comp, channels: ['K_leak', ...], inset, ions: {outside:{}, inside:{}}, caption }
+    views.membrane = function (opts) {
+      const X0 = 20, X1 = 600, Y_TOP = 232, Y_BOT = 288;
+      let svg, chans = [], pool, particles, chargePlus, chargeMinus, chargeFlipPlus, chargeFlipMinus, insideRect, inset, electrodeTip, pumpPhase = 0, ladder, table;
+      const counters = [], typeCount = {};
+      const comp = () => sim.byName[opts.comp || profile.comp];
+      const channelTypes = opts.channels || ['K_leak', 'Na_leak', 'pump'];
+      channelTypes.forEach(t => { typeCount[t] = (typeCount[t] || 0) + 1; });
+      const isManualComp = (c) => c.name === profile.comp;
+      function layout() {
+        const n = channelTypes.length, spanX0 = X0 + 70, spanX1 = X1 - 60;
+        return channelTypes.map((t, i) => n === 1 ? (spanX0 + spanX1) / 2 : lerp(spanX0, spanX1, i / (n - 1)));
+      }
+      // current through one drawn channel of a given type (nA; negative = inward)
+      function channelCurrent(t, c, V, E) {
+        const share = 1 / typeCount[t];
+        const spec = CH[t];
+        if (spec && spec.current) return spec.current(c, V, E, sim) * share;
+        if (t === 'K_leak') return c.gKLeak * (V - E.K) * share;
+        if (t === 'Na_leak') return c.gNaLeak * (V - E.Na) * share;
+        if (t === 'Na_v') return c.gNa * (V - E.Na) * share;
+        if (t === 'K_v') return c.gK * (V - E.K) * share;
+        if (t === 'Na_manual') return sim.manual.gNa * (V - E.Na);
+        if (t === 'K_manual') return sim.manual.gK * (V - E.K);
+        if (t === 'Cl_manual') return sim.manual.gCl * (V - E.Cl);
+        if (t === 'Ca_v') return sim.terminal ? sim.terminal.iCa : 0;
+        return 0;
+      }
+      function channelState(t, c) {
+        const spec = CH[t];
+        if (spec && spec.state) return spec.state(c, sim);
+        if (t === 'K_leak' || t === 'Na_leak') return 'open';
+        if (t === 'Na_v') return sim.naState(c);
+        if (t === 'K_v') return sim.kState(c);
+        if (t === 'Na_manual') return sim.manual.gNa > 0 ? 'open' : 'closed';
+        if (t === 'K_manual') return sim.manual.gK > 0 ? 'open' : 'closed';
+        if (t === 'Cl_manual') return sim.manual.gCl > 0 ? 'open' : 'closed';
+        if (t === 'Ca_v') return sim.terminal ? sim.caState(sim.terminal) : 'closed';
+        return 'closed';
+      }
+      return {
+        mount(el) {
+          svg = svgEl('svg', { viewBox: '0 0 900 520' });
+          el.appendChild(svg);
+          svgEl('rect', { x: 0, y: 0, width: 900, height: 520, fill: '#f6f5f0' }, svg);
+          svgEl('rect', { x: X0, y: 20, width: X1 - X0, height: Y_TOP - 20, fill: '#eef2fa', rx: 10 }, svg);
+          insideRect = svgEl('rect', { x: X0, y: Y_BOT, width: X1 - X0, height: 500 - Y_BOT, fill: '#fbf3e6', rx: 10 }, svg);
+          svgEl('text', { x: X0 + 10, y: 40, 'font-size': 13, fill: '#4a5468', 'font-weight': 600, text: 'OUTSIDE the cell' }, svg);
+          svgEl('text', { x: X0 + 10, y: 492, 'font-size': 13, fill: '#6b5a3a', 'font-weight': 600, text: 'INSIDE the cell' }, svg);
+          const xs = layout();
+          drawBilayer(svg, X0, X1, Y_TOP, Y_BOT, xs.map(x => [x - 28, x + 28]));
+          const chLayer = svgEl('g', {}, svg);
+          const dense = channelTypes.length > 5;
+          chans = channelTypes.map((t, i) => {
+            const ch = drawChannel(chLayer, xs[i], Y_TOP, Y_BOT, t);
+            const label = dense ? CH[t].label.replace('voltage-gated ', 'V-gated ').replace(' (yours)', '') : CH[t].label;
+            svgEl('text', { x: xs[i], y: Y_BOT + 22 + (dense && i % 2 ? 14 : 0), 'font-size': dense ? 10 : 11, 'text-anchor': 'middle', fill: '#4a4f5a', text: label }, chLayer);
+            counters.push(fluxCounter(t.endsWith('leak') ? 9 : (t === 'pump' ? 0 : 2.2)));
+            return ch;
+          });
+          chargePlus = drawChargeRow(svg, X0, X1, Y_TOP - 12, '+', '#b45309');
+          chargeMinus = drawChargeRow(svg, X0, X1, Y_BOT + 46, '−', '#1d4ed8');
+          chargeFlipPlus = drawChargeRow(svg, X0, X1, Y_BOT + 46, '+', '#b45309');
+          chargeFlipMinus = drawChargeRow(svg, X0, X1, Y_TOP - 12, '−', '#1d4ed8');
+          const ionLayer = svgEl('g', {}, svg);
+          const ions = opts.ions || {};
+          const out = Object.assign({ Na: 22, K: 3, Cl: 14, Ca: 6 }, ions.outside || {});
+          const inn = Object.assign({ K: 22, Na: 3, Cl: 2, A: 14 }, ions.inside || {});
+          pool = { outside: makeIonPool(ionLayer, { x0: X0, x1: X1, y0: 50, y1: Y_TOP - 22 }, out), inside: makeIonPool(ionLayer, { x0: X0, x1: X1, y0: Y_BOT + 56, y1: 480 }, inn) };
+          particles = makeParticles(svgEl('g', {}, svg));
+          electrodeTip = svgEl('g', { opacity: 0 }, svg);
+          svgEl('path', { d: `M${X1 - 26},${Y_BOT + 100} L${X1 - 50},24 L${X1 - 38},24 L${X1 - 18},${Y_BOT + 98} Z`, fill: '#dfe6f2', stroke: '#2a2f3a', 'stroke-width': 1.5 }, electrodeTip);
+          svgEl('text', { x: X1 - 54, y: 16, 'font-size': 12, fill: '#4a4f5a', 'text-anchor': 'end', text: 'recording electrode' }, electrodeTip);
+          inset = drawInset(svg, opts.inset || opts.comp || profile.comp);
+          ladder = drawLadder(svg, 668, 182);
+          table = drawConcTable(svg, 640, 388);
+          setCaption(opts.caption || '');
+        },
+        update(dtReal, dtSim) {
+          const c = comp(), V = c.V, E = sim.E;
+          insideRect.setAttribute('fill', insideFill(V));
+          const neg = clamp(V / REST, 0, 1), pos = clamp(V / 35, 0, 1);
+          chargePlus.setAttribute('opacity', neg); chargeMinus.setAttribute('opacity', neg);
+          chargeFlipPlus.setAttribute('opacity', pos); chargeFlipMinus.setAttribute('opacity', pos);
+          chans.forEach((ch, i) => {
+            const t = channelTypes[i];
+            if (t === 'pump') {
+              if (sim.pumpOn && !app.paused) {
+                pumpPhase += dtReal / 1400;
+                if (pumpPhase >= 1) {
+                  pumpPhase = 0;
+                  for (let k = 0; k < 3; k++) particles.spawn('Na', ch.x + rand(-8, 8), Y_BOT + 40 + k * 10, ch.x + rand(-40, 40), Y_TOP - 40 - k * 8, 1100, { linger: 300 });
+                  for (let k = 0; k < 2; k++) particles.spawn('K', ch.x + rand(-8, 8), Y_TOP - 40 - k * 10, ch.x + rand(-40, 40), Y_BOT + 40 + k * 8, 1100, { linger: 300 });
+                }
+              }
+              return;
+            }
+            const state = channelState(t, c);
+            setChannelState(ch, state);
+            if (state === 'open' && !app.paused) {
+              const I = channelCurrent(t, c, V, E);
+              const n = Math.min(3, counters[i](I, dtSim));
+              for (let k = 0; k < n; k++) {
+                const ion = ch.spec.ion, jitter = rand(-6, 6), dur = rand(650, 1000);
+                if (I < 0) particles.spawn(ion, ch.x + jitter, Y_TOP - 30 - rand(0, 40), ch.x + rand(-80, 80), Y_BOT + 50 + rand(0, 60), dur);
+                else particles.spawn(ion, ch.x + jitter, Y_BOT + 30 + rand(0, 40), ch.x + rand(-80, 80), Y_TOP - 50 - rand(0, 60), dur);
+              }
+            }
+          });
+          if (!app.paused) { pool.outside.update(dtReal); pool.inside.update(dtReal); }
+          particles.update(dtReal);
+          // ladder: pulls are conductance shares
+          const manual = isManualComp(c) ? sim.manual : { gNa: 0, gK: 0, gCl: 0 };
+          const gNaTot = c.gNa + manual.gNa + c.gNaLeak;
+          const gKTot = c.gK + manual.gK + c.gKLeak;
+          const gAll = gNaTot + gKTot + (c.gL - c.gKLeak - c.gNaLeak) + manual.gCl + 1e-9;
+          ladder.update(V, gNaTot / gAll, gKTot / gAll);
+          table.update();
+          electrodeTip.setAttribute('opacity', app.electrode ? 1 : 0);
+          inset.update({ hideLabels: true });
+        },
+        narrate() {
+          const c = comp(), V = c.V, d = c.dVdt, na = sim.naState(c), k = sim.kState(c), E = sim.E;
+          const hasNaV = channelTypes.includes('Na_v');
+          if (sim.manual.gNa > 0) return `You opened ${chip('Na')} channels → Na⁺ flows ${IN} (high outside, and the negative inside attracts it) → the inside gains positive charge → <b>Vm rises</b> toward E_Na.`;
+          if (sim.manual.gK > 0) return `You opened extra ${chip('K')} channels → K⁺ flows ${OUT} (high inside) → the inside loses positive charge → <b>Vm falls</b> toward E_K.`;
+          if (sim.manual.gCl > 0) return `You opened ${chip('Cl')} channels → Cl⁻ flows ${IN} → Vm is pulled toward E_Cl and <b>held near rest</b>.`;
+          if (hasNaV && na === 'open' && d > 5 && V < 30) return `Voltage-gated ${chip('Na')} channels <b>OPEN</b> → Na⁺ rushes ${IN} → Vm shoots up toward E_Na (${fmtE(E.Na)}). Each bit of depolarization opens more Na⁺ channels.`;
+          if (hasNaV && V > 0) return `<b>At the peak (${fmtV(V)} mV):</b> ${chip('Na')} channels are <b>inactivating</b> (plugs swing in) and the slower ${chip('K')} channels are opening. Na⁺ entry stops; K⁺ exit begins. Vm never reaches E_Na.`;
+          if (hasNaV && (na === 'inactivated' || k === 'open') && d < -5) return `${chip('Na')} channels <b>INACTIVATED</b> (plugged, no more Na⁺ can enter). ${chip('K')} channels <b>OPEN</b> → K⁺ flows ${OUT} → Vm falls toward E_K (${fmtE(E.K)}).`;
+          if (hasNaV && k === 'open' && V < REST - 2) return `<b>Undershoot:</b> ${chip('K')} channels are still open, so Vm sits below rest, close to E_K. ${chip('Na')} channels are recovering from inactivation.`;
+          if (hasNaV && na === 'inactivated' && V > REST + 10) return `${chip('Na')} channels are inactivated; ${chip('K')} channels are opening. Na⁺ entry has stopped, K⁺ exit begins.`;
+          if (d > 1 && V > REST + 2) return `Positive charge is entering (from the rest of the cell) → <b>depolarizing</b>: Vm = ${fmtV(V)} mV.`;
+          if (d < -1 && V < REST + 4) return `Positive charge is leaving → <b>repolarizing</b> toward rest.`;
+          if (V < REST - 2) return `Below rest: more ${chip('K')} is leaving than usual; Vm will drift back to ${fmtE(REST)} as K⁺ channels close.`;
+          return `<b>At rest (≈ ${fmtE(REST)} mV):</b> ${chip('K')} trickles ${OUT} through leak channels (that is what makes the inside negative); a little ${chip('Na')} leaks ${IN}; the pump quietly restores the gradients.`;
+        },
+        channels: () => chans,
+      };
+    };
+
+    // =======================================================================
+    // Voltage trace
+    // =======================================================================
+    const TRACE_COLORS = profile.traceColors || {};
+    const traceTitle = (comp) => profile.traceTitle ? profile.traceTitle(comp) : `Membrane potential recorded inside the ${comp}`;
+    function recordSample() {
+      const s = { t: sim.t, V: {}, gNa: {}, gK: {}, x: sim.sampleExtras ? sim.sampleExtras() : {} };
+      for (const c of sim.comps) { s.V[c.name] = c.V; s.gNa[c.name] = c.gNa; s.gK[c.name] = c.gK; }
+      if (profile.extraVoltages) Object.assign(s.V, profile.extraVoltages(sim));
+      app.history.push(s);
+      const tmin = sim.t - app.historyMs;
+      while (app.history.length && app.history[0].t < tmin) app.history.shift();
+    }
+    function gCompName() {
+      let gc = app.gComp || app.recordComp;
+      const c = sim.byName[gc];
+      if (!c || !(c.gNaMax > 0)) gc = profile.apComp;
+      return gc;
+    }
+    function drawTrace() {
+      const dpr = window.devicePixelRatio || 1;
+      const w = traceCanvas.clientWidth, h = traceCanvas.clientHeight;
+      if (traceCanvas.width !== Math.round(w * dpr) || traceCanvas.height !== Math.round(h * dpr)) { traceCanvas.width = Math.round(w * dpr); traceCanvas.height = Math.round(h * dpr); }
+      const ctx = traceCanvas.getContext('2d');
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+      const padL = 74, padR = 14, padT = 8, padB = 20;
+      const vmin = -100, vmax = 50;
+      const BAND_H = 50;
+      const gBand = app.showG ? 62 : 0, bandsH = app.bands.length * BAND_H, plotBottom = h - padB - gBand - bandsH;
+      const W = app.historyWindow, t1 = Math.max(sim.t, W), t0 = t1 - W;
+      const X = (t) => padL + (t - t0) / W * (w - padL - padR);
+      const Y = (v) => padT + (vmax - v) / (vmax - vmin) * (plotBottom - padT);
+      // grid
+      ctx.font = '11px system-ui, sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      const grid = [
+        { v: 50, lab: '+50', color: '#9ca3af', dash: [] },
+        { v: 0, lab: '0', color: '#6b7280', dash: [] },
+        { v: THR, lab: 'threshold', color: '#d97706', dash: [4, 4], thr: true },
+        { v: REST, lab: `rest ${fmtE(REST)}`, color: '#2563eb', dash: [2, 4] },
+        { v: -100, lab: '−100', color: '#9ca3af', dash: [] },
+      ];
+      for (const { v, lab, color, dash, thr } of grid) {
+        if (thr && !app.showThreshold) continue;
+        ctx.strokeStyle = color; ctx.setLineDash(dash); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(padL, Y(v)); ctx.lineTo(w - padR, Y(v)); ctx.stroke();
+        ctx.fillStyle = color; ctx.fillText(lab, padL - 4, Y(v));
+      }
+      ctx.setLineDash([]);
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillStyle = '#6b7280';
+      const tickMs = W <= 100 ? 10 : (W <= 400 ? 50 : (W <= 1000 ? 100 : 200));
+      for (let t = Math.ceil(t0 / tickMs) * tickMs; t <= t1 + 1e-6; t += tickMs) { ctx.fillText(t.toFixed(0), X(t), h - padB + 4); ctx.strokeStyle = '#eee'; ctx.beginPath(); ctx.moveTo(X(t), padT); ctx.lineTo(X(t), plotBottom); ctx.stroke(); }
+      ctx.textAlign = 'left'; ctx.fillText('time (ms)', 4, h - padB + 4);
+      // conductance sub-plot: how many Na⁺ / K⁺ channels are open
+      if (app.showG) {
+        const gc = gCompName();
+        const gmax = Math.max(sim.byName[gc] ? sim.byName[gc].gNaMax : 0, 1e-9);
+        const top = plotBottom + 10, bh = gBand - 16, base = top + bh;
+        ctx.strokeStyle = '#d1d5db'; ctx.beginPath(); ctx.moveTo(padL, base); ctx.lineTo(w - padR, base); ctx.stroke();
+        ctx.fillStyle = '#6b7280'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.fillText('open', padL - 4, top + 4); ctx.fillText('channels', padL - 4, top + 16); ctx.fillText('none', padL - 4, base);
+        for (const [key, color] of [['gNa', '#e8772e'], ['gK', '#8e5cf0']]) {
+          ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.beginPath(); let first = true;
+          for (const s of app.history) { if (s.t < t0 || s[key][gc] == null) continue; const y = base - clamp(s[key][gc] / gmax, 0, 1) * bh; if (first) { ctx.moveTo(X(s.t), y); first = false; } else ctx.lineTo(X(s.t), y); }
+          ctx.stroke();
+        }
+      }
+      // extra bands: model-specific scalar series recorded in s.x[key]
+      app.bands.forEach((b, j) => {
+        const top = plotBottom + gBand + 10 + j * BAND_H, bh = BAND_H - 16, base = top + bh;
+        const lo = b.min || 0, hi = b.max == null ? 1 : b.max;
+        ctx.strokeStyle = '#d1d5db'; ctx.beginPath(); ctx.moveTo(padL, base); ctx.lineTo(w - padR, base); ctx.stroke();
+        ctx.fillStyle = '#6b7280'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+        const lines = String(b.label || b.key).split('\n');
+        lines.forEach((ln, i) => ctx.fillText(ln, padL - 4, top + 4 + i * 12));
+        ctx.strokeStyle = b.color || '#1f2430'; ctx.lineWidth = 2; ctx.beginPath(); let first = true;
+        for (const s of app.history) { const v = s.x && s.x[b.key]; if (s.t < t0 || v == null) continue; const y = base - clamp((v - lo) / (hi - lo || 1), 0, 1) * bh; if (first) { ctx.moveTo(X(s.t), y); first = false; } else ctx.lineTo(X(s.t), y); }
+        ctx.stroke();
+      });
+      // traces
+      const series = [[app.recordComp, TRACE_COLORS[app.recordComp] || '#1f2430', 2.2]].concat(app.extraTraces.map(c => [c, TRACE_COLORS[c] || '#0f766e', 1.6]));
+      for (const [comp, color, lw] of series) {
+        ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.beginPath(); let first = true;
+        for (const s of app.history) { if (s.t < t0 || s.V[comp] == null) continue; const x = X(s.t), y = Y(clamp(s.V[comp], vmin, vmax)); if (first) { ctx.moveTo(x, y); first = false; } else ctx.lineTo(x, y); }
+        ctx.stroke();
+      }
+      // markers
+      ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+      for (const m of app.markers) { if (m.t < t0) continue; ctx.strokeStyle = '#9ca3af'; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(X(m.t), padT); ctx.lineTo(X(m.t), plotBottom); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle = '#374151'; ctx.fillText(m.label, X(m.t) + 3, padT + 2); }
+      // legend
+      const legend = $('#trace-legend');
+      legend.innerHTML = series.map(([comp, color]) => `<span><i style="background:${color}"></i>${comp}</span>`).join('')
+        + (app.showG ? `<span><i style="background:#e8772e"></i>gNa</span><span><i style="background:#8e5cf0"></i>gK</span>` : '')
+        + app.bands.map(b => `<span><i style="background:${b.color || '#1f2430'}"></i>${String(b.label || b.key).split('\n')[0]}</span>`).join('');
+    }
+    function applyTraceLayout() {
+      traceCanvas.classList.toggle('with-g', app.showG);
+      traceCanvas.classList.toggle('with-bands', app.bands.length > 0);
+      traceCanvas.style.setProperty('--bands', String(app.bands.length));
+    }
+
+    // =======================================================================
+    // Side panel / lesson runner
+    // =======================================================================
+    const ctx = {
+      sim, app, profile,
+      view: () => app.view,
+      complete() { if (runner.state && !runner.state.done) { runner.state.done = true; refreshNav(); } },
+      status(msg, ok) { const s = panel.querySelector('.status'); if (s) { s.innerHTML = msg; s.classList.toggle('ok', !!ok); } },
+      pause() { setPaused(true); },
+      resume() { setPaused(false); },
+      next() { gotoStep(runner.scene, runner.step + 1); },
+      mark(label) { app.markers.push({ t: sim.t, label }); },
+      stepState: () => runner.state,
+      refresh() { renderPanel(); },
+    };
+
+    function setPaused(p) {
+      app.paused = p;
+      $('#btn-pause').textContent = p ? 'Resume' : 'Pause';
+      $('#paused-badge').style.display = p ? 'block' : 'none';
+    }
+    function setSpeed(s) { app.speed = s; const sel = $('#speed'); sel.value = String(s); if (sel.value !== String(s)) { const o = document.createElement('option'); o.value = String(s); o.textContent = `1 s = ${(s * 1000) % 1 === 0 ? (s * 1000).toFixed(0) : (s * 1000).toFixed(1)} ms`; sel.appendChild(o); sel.value = String(s); } }
+
+    function currentStep() { return LESSON[runner.scene].steps[runner.step]; }
+
+    function gotoStep(si, ki) {
+      if (si >= LESSON.length) si = LESSON.length - 1;
+      if (ki >= LESSON[si].steps.length) { if (si + 1 < LESSON.length) { si++; ki = 0; } else { ki = LESSON[si].steps.length - 1; } }
+      if (ki < 0) { if (si > 0) { si--; ki = LESSON[si].steps.length - 1; } else ki = 0; }
+      runner.labMode = false;
+      const sceneChanged = si !== runner.scene || runner.state == null;
+      runner.scene = si; runner.step = ki;
+      const scene = LESSON[si], step = scene.steps[ki];
+      runner.state = { done: !step.waitFor, answered: !step.question, attempts: 0, data: {} };
+      // Steps inherit view configuration from earlier steps of the same scene, so jumping
+      // into the middle of a scene (or stepping back into it) shows the right picture.
+      const eff = {};
+      for (let j = 0; j <= ki; j++) for (const k of STEP_KEYS) if (scene.steps[j][k] != null) eff[k] = scene.steps[j][k];
+      const needView = eff.view && (eff.view !== app.viewName || step.remount || sceneChanged || (step.viewOpts && step.view));
+      if (needView) mountView(eff.view, eff.viewOpts || {});
+      else if (eff.viewOpts && eff.viewOpts.caption != null) setCaption(eff.viewOpts.caption);
+      if (sceneChanged) app.userSpeed = null;
+      if (app.userSpeed == null) setSpeed(eff.speed || scene.speed || 0.01);
+      app.showThreshold = !!scene.showThreshold;
+      setPaused(!!step.pause);
+      if (eff.record) app.recordComp = eff.record;
+      app.extraTraces = eff.extra || [];
+      app.showG = !!eff.showG; $('#show-g').checked = app.showG;
+      app.gComp = eff.gComp || null;
+      app.bands = eff.bands || scene.bands || [];
+      app.historyMs = eff.historyMs || scene.historyMs || 400;
+      app.historyWindow = eff.window || scene.window || 60;
+      applyTraceLayout();
+      if (eff.electrode != null) app.electrode = eff.electrode;
+      if (eff.labels != null) app.labels = eff.labels;
+      if (step.reset) { sim.reset(); app.history = []; app.markers = []; }
+      if (step.enter) step.enter(ctx);
+      renderPanel();
+      renderProgress();
+      $('#trace-title').textContent = traceTitle(app.recordComp);
+    }
+
+    function renderProgress() {
+      const p = $('#progress'); p.innerHTML = '';
+      LESSON.forEach((s, i) => {
+        const b = document.createElement('button');
+        b.textContent = i + 1; b.title = s.title;
+        b.className = runner.labMode ? '' : (i < runner.scene ? 'done' : i === runner.scene ? 'current' : '');
+        b.addEventListener('click', () => gotoStep(i, 0));
+        p.appendChild(b);
+      });
+    }
+
+    function renderPanel() {
+      const scene = LESSON[runner.scene], step = currentStep(), st = runner.state;
+      panel.innerHTML = '';
+      panel.appendChild(htmlEl('div', { class: 'scene-label' }, `Scene ${runner.scene + 1} of ${LESSON.length} · ${scene.title}`));
+      panel.appendChild(htmlEl('h2', {}, step.title || scene.title));
+      const text = typeof step.text === 'function' ? step.text(ctx) : step.text;
+      if (text) panel.appendChild(htmlEl('div', { class: 'text' }, text));
+      if (step.question) panel.appendChild(renderQuestion(step.question, st));
+      if (step.actions && step.actions.length) {
+        const a = htmlEl('div', { class: 'actions' });
+        for (const act of step.actions) {
+          const b = htmlEl('button', { class: act.cls || '' }, act.label);
+          if (act.hold) {
+            const down = (e) => { e.preventDefault(); act.down(ctx); b.classList.add('held'); };
+            const up = () => { act.up(ctx); b.classList.remove('held'); };
+            b.addEventListener('pointerdown', down); b.addEventListener('pointerup', up); b.addEventListener('pointerleave', up); b.addEventListener('pointercancel', up);
+          } else b.addEventListener('click', () => act.run(ctx));
+          if (act.disabled && act.disabled(ctx)) b.disabled = true;
+          a.appendChild(b);
+        }
+        panel.appendChild(a);
+      }
+      panel.appendChild(htmlEl('div', { class: 'status' }, step.status ? (typeof step.status === 'function' ? step.status(ctx) : step.status) : ''));
+      if (step.extraHtml) panel.appendChild(htmlEl('div', { class: 'extra' }, typeof step.extraHtml === 'function' ? step.extraHtml(ctx) : step.extraHtml));
+      const nav = htmlEl('div', { class: 'nav' });
+      const back = htmlEl('button', {}, '← Back'); back.addEventListener('click', () => gotoStep(runner.scene, runner.step - 1)); if (runner.scene === 0 && runner.step === 0) back.disabled = true;
+      const hint = htmlEl('span', { class: 'hint' }, '');
+      const cont = htmlEl('button', { class: 'primary', id: 'btn-continue' }, step.continueLabel || 'Continue →');
+      cont.addEventListener('click', () => { if (step.onContinue) step.onContinue(ctx); if (step.continueTo) step.continueTo(ctx); else gotoStep(runner.scene, runner.step + 1); });
+      nav.appendChild(back); nav.appendChild(hint); nav.appendChild(cont);
+      panel.appendChild(nav);
+      refreshNav();
+    }
+
+    function refreshNav() {
+      const st = runner.state, step = currentStep(), b = $('#btn-continue'), hint = panel.querySelector('.nav .hint');
+      if (!b) return;
+      const ok = st.answered && st.done;
+      b.disabled = !ok;
+      if (hint) hint.textContent = ok ? '' : (!st.answered ? 'Answer the question to continue' : (step.waitHint || 'Complete the activity to continue'));
+    }
+
+    function renderQuestion(q, st) {
+      const box = htmlEl('div', { class: 'question' });
+      box.appendChild(htmlEl('div', { class: 'prompt' }, q.prompt));
+      const opts = htmlEl('div', { class: 'options' });
+      const fb = htmlEl('div', { class: 'feedback', style: 'display:none' });
+      q.options.forEach((o, i) => {
+        const b = htmlEl('button', {}, o.t);
+        b.addEventListener('click', () => {
+          st.attempts++;
+          Array.from(opts.children).forEach(c => c.classList.remove('wrong'));
+          if (o.ok) {
+            b.classList.add('correct');
+            Array.from(opts.children).forEach(c => { c.disabled = true; });
+            fb.className = 'feedback good'; fb.innerHTML = '<b>Right.</b> ' + (o.fb || q.explain || ''); fb.style.display = 'block';
+            st.answered = true;
+            if (q.onCorrect) q.onCorrect(ctx);
+            refreshNav();
+          } else {
+            b.classList.add('wrong');
+            fb.className = 'feedback bad'; fb.innerHTML = '<b>Not quite.</b> ' + (o.fb || 'Think about the concentration gradient and the charge of the ion.'); fb.style.display = 'block';
+          }
+        });
+        opts.appendChild(b);
+      });
+      box.appendChild(opts); box.appendChild(fb);
+      if (st.answered && q.explain) { fb.className = 'feedback good'; fb.innerHTML = '<b>Right.</b> ' + q.explain; fb.style.display = 'block'; Array.from(opts.children).forEach(c => { c.disabled = true; }); }
+      return box;
+    }
+
+    // =======================================================================
+    // Free-play lab (generic shell; config.lab(kit) renders the controls)
+    // =======================================================================
+    function enterLab() {
+      runner.labMode = true;
+      runner.state = { done: true, answered: true };
+      renderProgress();
+      sim.reset(); app.history = []; app.markers = [];
+      app.showThreshold = true; app.userSpeed = null;
+      app.gComp = null; app.bands = []; app.historyMs = 400; app.historyWindow = 60;
+      applyTraceLayout();
+      config.lab(kit);
+      $('#trace-title').textContent = traceTitle(app.recordComp);
+    }
+    // "← Back to lesson" navigation row for the lab panel.
+    function labNav() {
+      const nav = htmlEl('div', { class: 'nav' });
+      const back = htmlEl('button', {}, '← Back to lesson'); back.addEventListener('click', () => gotoStep(runner.scene, runner.step));
+      nav.appendChild(back);
+      return nav;
+    }
+
+    // =======================================================================
+    // Lesson helpers exposed through the kit
+    // =======================================================================
+    // A brief current pulse into the stimulated compartment (model.pulse stops it by itself).
+    const stimPulse = (nA, ms) => sim.pulse(profile.stimComp, nA == null ? profile.stimPulse.nA : nA, ms == null ? profile.stimPulse.ms : ms);
+    // Samples recorded since this step began (or since the last re-arm).
+    const since = (c) => { const d = c.stepState().data; if (d.t0 == null) d.t0 = sim.t; return app.history.filter(s => s.t >= d.t0); };
+    const refire = { label: 'Fire again', cls: 'na', run: (c) => { setPaused(false); stimPulse(); c.stepState().data.armed = true; c.stepState().data.t0 = sim.t; } };
+    function loopHighlight(c) {
+      const h = sim.byName[profile.apComp];
+      const set = (k, on) => { const e = panel.querySelector(`[data-loop="${k}"]`); if (e) e.classList.toggle('hot', !!on); };
+      set('depol', h.dVdt > 5 && h.V < 0);
+      set('open', sim.naState(h) === 'open');
+      set('in', h.iNa < -0.5);
+      set('more', h.dVdt > 50 && h.V < 20);
+    }
+
+    const kit = {
+      // state
+      sim, app, runner, profile, panel, stage, views, config,
+      get lesson() { return LESSON; },
+      // control
+      setPaused, setSpeed, mountView, gotoStep, enterLab, renderProgress, setCaption, labNav,
+      stimPulse, refire, since, spikeIn, anySpike, I, FB_GRADIENT, fmtV, fmtE, chip, IN, OUT, LOOP_HTML, loopHighlight,
+      // drawing
+      svgEl, setAttrs, htmlEl, $, clamp, lerp, rand, ION_COLOR, ION_LABEL, CH, vColor, insideFill,
+      drawChannel, setChannelState, makeIonPool, makeParticles, fluxCounter, drawBilayer, drawChargeRow,
+      drawInset, drawLadder, drawConcTable, drawCell,
+    };
+
+    // =======================================================================
+    // Main loop
+    // =======================================================================
+    function frame(ts) {
+      if (app.lastFrame == null) app.lastFrame = ts;
+      const dtReal = Math.min(50, ts - app.lastFrame); app.lastFrame = ts;
+      let dtSim = 0;
+      if (!app.paused) {
+        dtSim = dtReal * app.speed;
+        let remaining = dtSim;
+        while (remaining > 1e-9) { const h = Math.min(0.1, remaining); sim.advance(h); remaining -= h; recordSample(); }
+      }
+      const events = sim.takeEvents();
+      if (app.view && app.view.update) app.view.update(dtReal, dtSim, events);
+      if (!runner.labMode) {
+        const step = currentStep();
+        if (step.tick) step.tick(ctx, events, dtSim);
+        if (step.waitFor && !runner.state.done && step.waitFor(ctx, events)) { runner.state.done = true; if (step.onDone) step.onDone(ctx); refreshNav(); }
+        if (step.status && typeof step.status === 'function') { const s = panel.querySelector('.status'); if (s) { const html = step.status(ctx); if (s.innerHTML !== html) s.innerHTML = html; } }
+      }
+      for (const e of events) fireEvent(e);
+      if (app.view && app.view.narrate) { const html = app.view.narrate(); if (html !== app._lastNarration) { app._lastNarration = html; $('#narrator').innerHTML = html; } }
+      else if (app._lastNarration !== '') { app._lastNarration = ''; $('#narrator').innerHTML = ''; }
+      drawTrace();
+      const rc = sim.byName[app.recordComp];
+      const V = rc ? rc.V : (profile.probeV ? profile.probeV(sim, app.recordComp) : undefined);
+      $('#vm-value').textContent = fmtV(V == null ? REST : V);
+      $('#vm-label').textContent = 'Vm (' + app.recordComp + ')';
+      $('#sim-clock').textContent = `t = ${sim.t.toFixed(1)} ms`;
+      requestAnimationFrame(frame);
+    }
+
+    // =======================================================================
+    // Wiring
+    // =======================================================================
+    $('#speed').addEventListener('change', (e) => { app.speed = parseFloat(e.target.value); app.userSpeed = app.speed; });
+    $('#btn-pause').addEventListener('click', () => setPaused(!app.paused));
+    $('#btn-lab').addEventListener('click', enterLab);
+    $('#show-g').addEventListener('change', (e) => { app.showG = e.target.checked; applyTraceLayout(); });
+    document.addEventListener('keydown', (e) => { if (e.code === 'Space' && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLButtonElement)) { e.preventDefault(); setPaused(!app.paused); } });
+    $('#vm-value').textContent = fmtV(REST);
+    $('#vm-label').textContent = 'Vm (' + profile.comp + ')';
+    $('#trace-title').textContent = traceTitle(profile.comp);
+
+    // =======================================================================
+    // Page content, then start
+    // =======================================================================
+    if (config.views) Object.assign(views, config.views(kit));
+    LESSON = config.lesson(kit);
+    const handle = { sim, app, profile, kit, gotoStep: (s, k) => gotoStep(s, k), runner: () => runner, enterLab: () => enterLab(), mountView: (n, o) => mountView(n, o), lesson: () => LESSON };
+    window.__simapp = handle;
+    gotoStep(0, 0);
+    requestAnimationFrame(frame);
+    return handle;
+  }
+
+  window.SimApp = { init, helpers: { svgEl, setAttrs, htmlEl, $, clamp, lerp, rand, fmtV, fmtE, ION_COLOR, ION_LABEL, CH } };
+})();
+
+</script>
+<script>
+/*
+ * SharedScenes: lesson scenes that every excitable cell re-stages (see docs/APP_API.md).
+ *
+ *   SharedScenes.restingMembrane(profile, kit, opts)    → scene object
+ *   SharedScenes.recordingElectrode(profile, kit, opts) → scene object
+ *   SharedScenes.actionPotential(profile, kit, opts)    → scene object
+ *
+ * Each builder returns a scene ({ id, title, speed, steps: [...] }) exactly as a lesson array
+ * holds it. Only what differs between cells is parametrized: numbers come from the profile
+ * (rest, threshold, the recorded compartment, the manual conductances, the stimulus pulse)
+ * and from the model's equilibrium potentials; words come from profile.cellWord and
+ * profile.regionWord; `opts` can append steps, replace steps and override any string by key.
+ * Called with the neuron profile and no opts, the scenes are the neuron lesson's originals.
+ *
+ * opts: {
+ *   extraSteps:   [step, ...]        appended after the built-in steps
+ *   replaceSteps: { index: step }    replaces the built-in step at that index (0-based)
+ *   copy:         { key: string }    overrides a string; keys are '<step>.title', '<step>.text',
+ *                                    '<step>.prompt', '<step>.opt<i>', '<step>.fb<i>',
+ *                                    '<step>.status', '<step>.statusDone', '<step>.caption',
+ *                                    '<step>.waitHint' (step keys are listed in each builder)
+ *   channelsForRest: [...]           channel types drawn in the first resting-membrane step
+ *   insetRegion:  'name'             inset highlight region (default: the recorded compartment)
+ * }
+ * Classic script (no modules) so the pages open from file://.
+ */
+(function () {
+  'use strict';
+
+  function finish(steps, opts) {
+    opts = opts || {};
+    if (opts.replaceSteps) for (const i in opts.replaceSteps) steps[i] = opts.replaceSteps[i];
+    if (opts.extraSteps) steps.push(...opts.extraSteps);
+    return steps;
+  }
+  const copyOf = (opts) => { const copy = (opts && opts.copy) || {}; return (k, d) => (copy[k] != null ? copy[k] : d); };
+
+  // ------------------------------------------------------------- resting membrane
+  // step keys: solutions, pump, kLeak, naOpen, naObserve, kObserve
+  function restingMembrane(profile, kit, opts) {
+    const { sim, runner, I, FB_GRADIENT, fmtV, fmtE } = kit;
+    const c = copyOf(opts);
+    const REST = profile.rest, E = sim.E, comp = () => sim.byName[profile.comp];
+    const region = (opts && opts.insetRegion) || profile.comp;
+    const channels = (opts && opts.channelsForRest) || ['K_leak', 'Na_leak', 'pump'];
+    const G = profile.manualG;
+    const steps = [
+      {
+        view: 'membrane', viewOpts: { comp: profile.comp, inset: region, channels, caption: c('solutions.caption', `Zooming into the membrane of the ${profile.regionWord}.`) }, reset: true, record: profile.comp, electrode: false,
+        enter: () => { sim.naBlock = 1; }, // voltage-gated Na⁺ channels are not part of the story yet
+        title: c('solutions.title', 'Two very different solutions'),
+        text: c('solutions.text', `<p>The membrane separates two solutions. <b>Outside</b>: lots of ${I('Na')}, ${I('Cl')} and ${I('Ca')}. <b>Inside</b>: lots of ${I('K')} and large negatively charged molecules (proteins, shown as A⁻) that cannot leave.</p>
+                 <p>The inside is about <b>${Math.abs(REST)} mV more negative</b> than the outside: the resting membrane potential, Vm ≈ ${fmtE(REST)} mV. Notice the + and − charges lined up along the membrane.</p>`),
+        question: { prompt: c('solutions.prompt', 'At rest, which ion is much more concentrated inside the cell than outside?'), options: [
+          { t: c('solutions.opt0', 'K⁺ (potassium)'), ok: true, fb: c('solutions.fb0', 'K⁺ is about 140 mM inside and only 4 mM outside. Everything else in the list is higher outside.') },
+          { t: c('solutions.opt1', 'Na⁺ (sodium)'), fb: c('solutions.fb1', 'Na⁺ is about 145 mM outside and only 12 mM inside — the other way round.') },
+          { t: c('solutions.opt2', 'Ca²⁺ (calcium)'), fb: c('solutions.fb2', 'Free Ca²⁺ inside is astonishingly low (about 0.0001 mM) versus 2 mM outside: a 20,000-fold gradient.') },
+          { t: c('solutions.opt3', 'Cl⁻ (chloride)'), fb: c('solutions.fb3', 'Cl⁻ is higher outside (about 110 mM) than inside (about 6 mM).') },
+        ] },
+      },
+      {
+        view: 'membrane', title: c('pump.title', 'Who does what: pump vs. permeability'),
+        text: c('pump.text', `<p>The ${'Na⁺/K⁺ pump'} uses ATP to move 3 ${I('Na')} out and 2 ${I('K')} in on each cycle. Watch it work.</p>
+                 <p>Two jobs are easy to mix up:</p>
+                 <p>• The <b>pump maintains the concentration gradients</b>, working slowly in the background.<br>
+                    • The <b>resting potential is set mainly by which ions the membrane lets through</b>. At rest the membrane is far more permeable to K⁺ (through K⁺ leak channels) than to anything else.</p>`),
+        question: { prompt: c('pump.prompt', 'Which statement is correct?'), options: [
+          { t: c('pump.opt0', `The pump maintains the gradients; the ${fmtE(REST)} mV comes mainly from the membrane being selectively permeable to K⁺.`), ok: true, fb: c('pump.fb0', 'If you switched the pump off, Vm would barely change for a while, because the gradients are still there. (You can try this in the Lab.)') },
+          { t: c('pump.opt1', `The pump directly generates the ${fmtE(REST)} mV every moment; without it the voltage would vanish instantly.`), fb: c('pump.fb1', 'The pump does contribute a little charge separation (3 out, 2 in), but the gradients it built are what matter. Vm would fade only slowly as the gradients ran down.') },
+          { t: c('pump.opt2', 'Na⁺ leaking in is what makes the inside negative.'), fb: c('pump.fb2', 'Na⁺ carries positive charge in, which makes the inside less negative, not more.') },
+        ] },
+      },
+      {
+        view: 'membrane', title: c('kLeak.title', 'Predict: K⁺ leak channels'),
+        text: c('kLeak.text', `<p>K⁺ leak channels are open all the time. ${I('K')} is concentrated inside.</p>`),
+        question: { prompt: c('kLeak.prompt', 'Which way does K⁺ tend to move through an open K⁺ channel at rest?'), options: [
+          { t: c('kLeak.opt0', 'Out of the cell'), ok: true, fb: c('kLeak.fb0', `Down its gradient: from 140 mM inside toward 4 mM outside. Each K⁺ that leaves carries positive charge out, leaving the inside more negative. That is the main source of the resting potential. (It stops short of the K⁺ equilibrium potential of about ${fmtE(E.K)} mV because a little Na⁺ leaks in.)`) },
+          { t: c('kLeak.opt1', 'Into the cell'), fb: c('kLeak.fb1', `K⁺ is far more concentrated inside, so the gradient pushes it out. (The negative inside pulls it back — at ${fmtE(E.K)} mV the two would balance exactly.)`) },
+          { t: c('kLeak.opt2', 'It does not move'), fb: c('kLeak.fb2', 'The channel is open and there is a steep gradient, so K⁺ definitely moves. Which way?') },
+        ] },
+      },
+      {
+        view: 'membrane', viewOpts: { comp: profile.comp, inset: region, channels: ['K_leak', 'Na_leak', 'pump', 'Na_manual'], caption: c('naOpen.caption', 'A Na⁺ channel has been added. Predict first, then open it.') }, remount: true,
+        title: c('naOpen.title', 'Predict: a Na⁺ channel opens'),
+        text: c('naOpen.text', `<p>Suppose a ${I('Na')} channel in this membrane suddenly opens.</p>`),
+        question: { prompt: c('naOpen.prompt', 'Which way will Na⁺ move?'), options: [
+          { t: c('naOpen.opt0', 'Into the cell'), ok: true, fb: c('naOpen.fb0', 'Both forces agree: Na⁺ is 145 mM outside vs 12 mM inside, and the inside is negative, which attracts a positive ion.') },
+          { t: c('naOpen.opt1', 'Out of the cell'), fb: c('naOpen.fb1', FB_GRADIENT + ' Na⁺ is concentrated outside and the inside is negative.') },
+          { t: c('naOpen.opt2', 'Neither'), fb: c('naOpen.fb2', 'An open channel plus a gradient means movement. Na⁺ has both a concentration gradient and an electrical pull in the same direction.') },
+        ] },
+      },
+      {
+        view: 'membrane', title: c('naObserve.title', 'Predict, then observe'),
+        text: c('naObserve.text', `<p>Positive ${I('Na')} is about to enter the cell.</p>`),
+        question: { prompt: c('naObserve.prompt', 'What will happen to the membrane potential?'), options: [
+          { t: c('naObserve.opt0', 'It will become more positive (depolarize)'), ok: true, fb: c('naObserve.fb0', 'Now test it: hold the button to open Na⁺ channels and watch the voltage trace.') },
+          { t: c('naObserve.opt1', 'It will become more negative'), fb: c('naObserve.fb1', 'Positive charge is entering the inside. Would that make the inside more or less negative?') },
+          { t: c('naObserve.opt2', `It will stay at ${fmtE(REST)} mV`), fb: c('naObserve.fb2', 'Adding positive charge to one side of the membrane must change the voltage across it.') },
+        ] },
+        actions: [{ label: 'Hold to open Na⁺ channels', cls: 'na', hold: true, down: () => { sim.manual.gNa = G.gNa; }, up: () => { sim.manual.gNa = 0; } }],
+        waitFor: () => comp().V > REST + 7, waitHint: c('naObserve.waitHint', 'Hold the button and watch Vm rise'),
+        status: () => runner.state.done ? c('naObserve.statusDone', `<b>Observed:</b> Na⁺ entered and Vm rose (watch the ladder: Na⁺ pulls Vm up toward ${fmtE(sim.E.Na)}). Let go and it drifts back as K⁺ leaks out again.`) : 'Vm is ' + fmtV(comp().V) + ' mV — hold the button.',
+      },
+      {
+        view: 'membrane', viewOpts: { comp: profile.comp, inset: region, channels: ['K_leak', 'Na_leak', 'pump', 'K_manual'], caption: c('kObserve.caption', 'Now a K⁺ channel. Predict first.') }, remount: true,
+        title: c('kObserve.title', 'Predict: extra K⁺ channels open'),
+        text: c('kObserve.text', `<p>Now imagine <b>extra</b> ${I('K')} channels open, on top of the leak.</p>`),
+        question: { prompt: c('kObserve.prompt', 'What will happen to Vm?'), options: [
+          { t: c('kObserve.opt0', 'It becomes more negative (hyperpolarizes)'), ok: true, fb: c('kObserve.fb0', `More K⁺ leaves, taking positive charge out. Vm moves toward the K⁺ equilibrium potential (about ${fmtE(E.K)} mV). Try it.`) },
+          { t: c('kObserve.opt1', 'It becomes more positive'), fb: c('kObserve.fb1', 'K⁺ is a positive ion leaving the cell. Which way does that push the inside charge?') },
+          { t: c('kObserve.opt2', 'Nothing changes'), fb: c('kObserve.fb2', 'More open channels means more K⁺ crossing, so the balance shifts.') },
+        ] },
+        actions: [{ label: 'Hold to open K⁺ channels', cls: 'k', hold: true, down: () => { sim.manual.gK = G.gK; }, up: () => { sim.manual.gK = 0; } }],
+        waitFor: () => comp().V < REST - 3, waitHint: c('kObserve.waitHint', 'Hold the button and watch Vm fall'),
+        status: () => runner.state.done ? c('kObserve.statusDone', '<b>Observed:</b> K⁺ left and Vm became more negative. Remember this: <b>Na⁺ in = up, K⁺ out = down</b>. The whole story of the action potential follows from it.') : 'Vm is ' + fmtV(comp().V) + ' mV',
+      },
+    ];
+    return { id: 'rest', title: c('scene.title', 'The resting membrane'), speed: 0.01, steps: finish(steps, opts) };
+  }
+
+  // ------------------------------------------------------------- recording electrode
+  // step keys: electrode
+  function recordingElectrode(profile, kit, opts) {
+    const c = copyOf(opts);
+    const REST = profile.rest, { fmtE } = kit;
+    const steps = [
+      {
+        view: profile.defaultView, viewOpts: { caption: c('electrode.caption', `A microelectrode is lowered into the ${profile.regionWord}; a reference electrode sits outside.`) }, reset: true, electrode: true, labels: true, record: profile.comp, remount: true,
+        title: c('electrode.title', 'Put in an electrode'),
+        text: c('electrode.text', `<p>Watch the fine glass <b>microelectrode</b> slide into the ${profile.regionWord}. Its voltage is compared with a <b>reference electrode</b> in the fluid outside.</p>
+                 <p>From now on the graph at the bottom is live: everything you see happen in the ${profile.cellWord} will show up on this trace, and vice versa.</p>`),
+        question: { prompt: c('electrode.prompt', `The trace reads about ${fmtE(REST)} mV. What does that mean?`), options: [
+          { t: c('electrode.opt0', `The inside of the cell is ${Math.abs(REST)} mV more negative than the outside`), ok: true, fb: c('electrode.fb0', 'Membrane potential is always inside relative to outside. Depolarization means moving up toward 0; hyperpolarization means moving further down.') },
+          { t: c('electrode.opt1', `The outside is ${Math.abs(REST)} mV more negative than the inside`), fb: c('electrode.fb1', 'By convention the outside is the reference (0 mV), and the inside measured against it is negative.') },
+          { t: c('electrode.opt2', 'The cell is switched off'), fb: c('electrode.fb2', `A resting ${profile.cellWord} is not off; it is charged and ready, like a stretched spring.`) },
+        ] },
+      },
+    ];
+    return { id: 'electrode', title: c('scene.title', 'Recording from inside'), speed: 0.01, steps: finish(steps, opts) };
+  }
+
+  // ------------------------------------------------------------- building the action potential
+  // step keys: rise, rising, peakApproach, peak, fallPredict, falling, undershoot, built
+  function actionPotential(profile, kit, opts) {
+    const { sim, runner, setPaused, stimPulse, refire, since, I, fmtV, fmtE } = kit;
+    const c = copyOf(opts);
+    const REST = profile.rest, E = sim.E, AP = profile.apComp, ap = () => sim.byName[AP];
+    const region = (opts && opts.insetRegion) || AP;
+    const vm = () => `Vm (${AP}) = ${fmtV(ap().V)} mV`;
+    const steps = [
+      {
+        view: 'membrane', viewOpts: { comp: AP, inset: region, channels: ['Na_v', 'K_v'], ions: { outside: { Ca: 0 } }, caption: c('rise.caption', 'Building the action potential curve one phase at a time.') }, reset: true, record: AP, electrode: true, showG: true, remount: true,
+        title: c('rise.title', 'Phase 1: rising'),
+        text: c('rise.text', `<p>Instead of memorizing the famous curve, we will build it from what the channels do. The lower band of the trace shows the Na⁺ conductance (<span style="color:#e8772e">orange</span>) and K⁺ conductance (<span style="color:#8e5cf0">purple</span>), i.e. how many of each channel are open.</p>
+                 <p>Trigger an action potential. The simulation will pause during the rising phase.</p>`),
+        actions: [{ label: 'Trigger', cls: 'na', run: (cx) => { setPaused(false); stimPulse(); cx.stepState().data.armed = true; } }],
+        tick: (cx) => { const d = cx.stepState().data; if (d.armed && !runner.state.done && ap().V > -30 && ap().dVdt > 0) { cx.complete(); setPaused(true); cx.mark('rise'); } },
+        waitFor: () => false, waitHint: c('rise.waitHint', 'Trigger the action potential'),
+        status: () => runner.state.done ? c('rise.statusDone', '<b>Paused mid-rise.</b> gNa is large; K⁺ channels are only starting to open.') : vm(),
+      },
+      {
+        view: 'membrane', title: c('rising.title', 'Rising phase'), pause: true,
+        text: c('rising.text', `<p>Paused. The Na⁺ conductance is huge and ${I('Na')} is pouring in.</p>`),
+        question: { prompt: c('rising.prompt', 'Where is Vm heading?'), options: [
+          { t: c('rising.opt0', `Up toward the Na⁺ equilibrium potential (${fmtE(E.Na)} mV)`), ok: true, fb: c('rising.fb0', 'With Na⁺ channels dominating, Vm is pulled toward ENa. It will not quite get there, because of what happens next. Continue and the simulation will pause again at the peak.') },
+          { t: c('rising.opt1', `Back down to ${fmtE(REST)} mV`), fb: c('rising.fb1', 'While Na⁺ is entering, the inside keeps getting more positive.') },
+          { t: c('rising.opt2', 'It stays at 0 mV'), fb: c('rising.fb2', 'Nothing special happens at 0 mV. The relevant landmark is the equilibrium potential of the ion that dominates: Na⁺.') },
+        ] },
+        onContinue: () => { setPaused(false); },
+      },
+      {
+        view: 'membrane', title: c('peakApproach.title', 'Approaching the peak'),
+        text: c('peakApproach.text', `<p>Watch the two conductances. The Na⁺ channels begin to <b>inactivate</b> (a plug swings into the pore), and the slower K⁺ channels finally open. The simulation pauses at the peak.</p>`),
+        enter: (cx) => { cx.stepState().data.t0 = sim.t; },
+        actions: [refire],
+        tick: (cx) => {
+          if (runner.state.done) return;
+          const h = ap();
+          if (h.V > 10 && h.dVdt < 0) { cx.complete(); setPaused(true); cx.mark('peak'); return; }
+          const hist = since(cx);
+          if (hist.some(s => s.V[AP] > 10) && h.V < REST + 10) { cx.complete(); cx.stepState().data.missed = true; }
+        },
+        waitFor: () => false, waitHint: c('peakApproach.waitHint', 'Wait for the peak (or fire again)'),
+        status: (cx) => runner.state.done ? (cx.stepState().data.missed ? c('peakApproach.statusMissed', 'The peak went by. Press <b>Fire again</b> to catch it, or continue.') : `<b>Paused at the peak:</b> ${fmtV(ap().V)} mV. Na⁺ channels are inactivating; K⁺ channels are open.`) : vm(),
+      },
+      {
+        view: 'membrane', title: c('peak.title', 'Phase 2: at the peak'), pause: true,
+        text: c('peak.text', `<p>Paused at the peak. Na⁺ channels are inactivated and no longer pass Na⁺. The voltage-gated K⁺ channels are now wide open. ${I('K')} is far more concentrated inside, and the inside is now <b>positive</b>.</p>`),
+        question: { prompt: c('peak.prompt', 'Which way does K⁺ move now?'), options: [
+          { t: c('peak.opt0', 'Out of the cell'), ok: true, fb: c('peak.fb0', 'Both the concentration gradient and the electrical force (positive inside repelling a positive ion) now push K⁺ out.') },
+          { t: c('peak.opt1', 'Into the cell'), fb: c('peak.fb1', 'K⁺ is 140 mM inside, 4 mM outside, and the inside is now positive. Every force points outward.') },
+        ] },
+      },
+      {
+        view: 'membrane', title: c('fallPredict.title', 'Predict the falling phase'), pause: true,
+        question: { prompt: c('fallPredict.prompt', 'Positive charge is leaving the cell. What happens to Vm?'), options: [
+          { t: c('fallPredict.opt0', 'It falls back toward negative values (repolarization)'), ok: true, fb: c('fallPredict.fb0', 'K⁺ out = down. Continue and watch the trace fall; the simulation will pause once more when Vm dips below rest.') },
+          { t: c('fallPredict.opt1', 'It keeps rising'), fb: c('fallPredict.fb1', 'Losing positive charge makes the inside less positive.') },
+        ] },
+        onContinue: () => { setPaused(false); },
+      },
+      {
+        view: 'membrane', title: c('falling.title', 'Phase 3: falling'),
+        text: c('falling.text', `<p>K⁺ leaves, Vm falls. Watch where it stops.</p>`),
+        enter: (cx) => { cx.stepState().data.t0 = sim.t; },
+        actions: [refire],
+        tick: (cx) => {
+          if (runner.state.done) return;
+          const h = ap();
+          if (h.V < REST - 6 && Math.abs(h.dVdt) < 30) { cx.complete(); setPaused(true); cx.mark('undershoot'); return; }
+          const hist = since(cx);
+          if (hist.some(s => s.V[AP] < REST - 4) && h.V > REST - 2) { cx.complete(); cx.stepState().data.missed = true; }
+        },
+        waitFor: () => false, waitHint: c('falling.waitHint', 'Wait for the trace to fall (or fire again)'),
+        status: (cx) => runner.state.done ? (cx.stepState().data.missed ? c('falling.statusMissed', 'The undershoot went by. Press <b>Fire again</b> to see it, or continue.') : `<b>Paused at the undershoot:</b> ${fmtV(ap().V)} mV, below the resting potential.`) : vm(),
+      },
+      {
+        view: 'membrane', title: c('undershoot.title', 'Phase 4: the undershoot'), pause: true,
+        text: c('undershoot.text', `<p>Vm has dropped <b>below</b> ${fmtE(REST)} mV.</p>`),
+        question: { prompt: c('undershoot.prompt', 'Why does the voltage overshoot below the resting potential?'), options: [
+          { t: c('undershoot.opt0', `The voltage-gated K⁺ channels are slow to close, so the membrane is briefly even more K⁺-permeable than at rest and Vm approaches EK (about ${fmtE(E.K)} mV)`), ok: true, fb: c('undershoot.fb0', `As those K⁺ channels close, Vm relaxes back to ${fmtE(REST)} mV. Continue and watch it recover. Note the Na⁺ channels: still inactivated for a while.`) },
+          { t: c('undershoot.opt1', 'Na⁺ is still entering'), fb: c('undershoot.fb1', 'Na⁺ entering would make Vm more positive, not more negative. And the Na⁺ channels are inactivated.') },
+          { t: c('undershoot.opt2', 'The pump has pumped all the Na⁺ back out'), fb: c('undershoot.fb2', 'The pump is far too slow to act within a millisecond. Only a tiny fraction of the ions crossed anyway; the gradients are essentially unchanged.') },
+        ] },
+        onContinue: () => { setPaused(false); },
+      },
+      {
+        view: 'membrane', title: c('built.title', 'You built the curve'),
+        text: c('built.text', `<p>Rising (Na⁺ in) → peak (Na⁺ inactivates, K⁺ opens) → falling (K⁺ out) → undershoot (K⁺ still open) → rest. Every phase is a consequence of which channels are open. Fire again as often as you like and watch the ladder.</p>`),
+        actions: [refire],
+        question: { prompt: c('built.prompt', 'Right after an action potential the membrane cannot fire again for a moment (the refractory period). Why?'), options: [
+          { t: c('built.opt0', 'The Na⁺ channels are inactivated and must return to the closed state before they can open again'), ok: true, fb: c('built.fb0', `The refractory period also limits how fast a ${profile.cellWord} can fire, and, as we will see next, it is why the action potential travels in one direction only.`) },
+          { t: c('built.opt1', 'The cell has run out of Na⁺ outside'), fb: c('built.fb1', 'Only a tiny fraction of the ions moved. The gradients are practically unchanged.') },
+          { t: c('built.opt2', 'The K⁺ channels are inactivated'), fb: c('built.fb2', 'The delayed K⁺ channels simply close; it is the Na⁺ channels that have an inactivated state (the plug).') },
+        ] },
+        waitFor: () => ap().V > REST - 2 && ap().h > 0.4, waitHint: c('built.waitHint', 'Wait for the membrane to recover'),
+      },
+    ];
+    return { id: 'ap', title: c('scene.title', 'Building the action potential'), speed: 0.003, steps: finish(steps, opts) };
+  }
+
+  window.SharedScenes = { restingMembrane, recordingElectrode, actionPotential };
+})();
+
+</script>
+<script>
+/*
+ * NeuronLesson: everything neuron-specific for index.html (see docs/APP_API.md).
+ *
+ *   window.NeuronLesson = { profile, drawCell, views, lesson, lab }
+ *
+ * The profile names the neuron's landmarks and words; drawCell draws the whole neuron (used
+ * full-size, by the zoom slides and as the inset); views adds the zoom, neuron, synapse and axon
+ * views to SimApp's registry; lesson assembles the ten scenes from SharedScenes and the
+ * neuron-specific ones (docs/NEURON_MODULE.md); lab renders the free-play controls.
+ * Classic script (no modules) so the page opens from file://.
+ */
+(function () {
+  'use strict';
+
+  const profile = {
+    id: 'neuron',
+    cellWord: 'neuron',
+    regionWord: 'cell body',
+    rest: -70,
+    threshold: -55,
+    comp: 'soma',          // manual channels live here; default recording site
+    apComp: 'hillock',     // the action-potential scene records here
+    stimComp: 'soma',
+    stimPulse: { nA: 0.45, ms: 3 },
+    manualG: { gNa: 0.0007, gK: 0.006, gCl: 0.01 },   // "hold to open" conductances (µS) on `comp`
+    defaultView: 'neuron',
+    traceColors: { soma: '#1f2430', hillock: '#b45309', axon6: '#0f766e', terminal: '#7c3aed', next: '#db2777', dendrite: '#4b5563' },
+    traceTitle: (comp) => `Membrane potential recorded inside the ${comp}`,
+    probeV: (sim, name) => name === 'next' ? sim.next.V : undefined,
+    extraVoltages: (sim) => ({ next: sim.next.V }),
+    insetRegions: { dendrite: [165, 200, 130, 150], soma: [300, 260, 85, 75], hillock: [382, 260, 45, 40], axon: [600, 260, 200, 35], terminal: [850, 260, 70, 70], synapse: [130, 200, 80, 80], default: [300, 260, 80, 70] },
   };
-  window.__neuronsim = { sim, app, gotoStep: (s, k) => gotoStep(s, k), runner: () => runner, enterLab: () => enterLab(), mountView: (n, o) => mountView(n, o), lesson: () => LESSON };
 
-  function fireEvent(ev) { for (const l of app.listeners) l(ev); }
+  // Kit members used below; filled in by bind(kit) before any drawing or lesson code runs.
+  let sim, app, runner, panel, svgEl, setAttrs, htmlEl, $, clamp, lerp, rand, ION_COLOR, ION_LABEL, CH, vColor, insideFill,
+    drawChannel, setChannelState, makeIonPool, makeParticles, fluxCounter, drawBilayer, drawInset, chip, IN, OUT, I, FB_GRADIENT,
+    fmtV, spikeIn, setPaused, setSpeed, mountView, enterLab, stimPulse, refire, since, LOOP_HTML, loopHighlight, labNav;
+  let boundKit = null;
+  function bind(kit) {
+    if (boundKit === kit) return;
+    boundKit = kit;
+    ({ sim, app, runner, panel, svgEl, setAttrs, htmlEl, $, clamp, lerp, rand, ION_COLOR, ION_LABEL, CH, vColor, insideFill,
+      drawChannel, setChannelState, makeIonPool, makeParticles, fluxCounter, drawBilayer, drawInset, chip, IN, OUT, I, FB_GRADIENT,
+      fmtV, spikeIn, setPaused, setSpeed, mountView, enterLab, stimPulse, refire, since, LOOP_HTML, loopHighlight, labNav } = kit);
+  }
 
   // =========================================================================
-  // Whole-neuron drawing (used full-size and as an inset)
+  // Whole-neuron drawing (used full-size, in the zoom slides and as an inset)
   // =========================================================================
   const NEURON = {
     soma: { cx: 300, cy: 260, rx: 58, ry: 50 },
@@ -820,21 +1917,23 @@
     parts.labels.setAttribute('opacity', app.labels && !opts.hideLabels ? 1 : 0);
   }
 
-  // =========================================================================
-  // Views
-  // =========================================================================
-  const stage = $('#stage');
-  const views = {};
-
-  function mountView(name, opts) {
-    if (app.view && app.view.unmount) app.view.unmount();
-    stage.innerHTML = '';
-    app.viewName = name;
-    app.view = views[name](opts || {});
-    app.view.name = name;
-    if (app.view.mount) app.view.mount(stage);
-    return app.view;
+  // config.drawCell: the whole cell as an SVG group plus a colour updater.
+  function drawCell(parent, opts, kit) {
+    bind(kit);
+    opts = opts || {};
+    const d = drawNeuron(parent, opts);
+    if (opts.inset) {
+      d.parts.labels.setAttribute('opacity', 0);
+      d.parts.electrode.setAttribute('opacity', 0);
+      d.parts.next.setAttribute('opacity', 0.5);
+    }
+    return { g: d.g, parts: d.parts, update: (o) => updateNeuronColors(d.parts, o) };
   }
+
+  // =========================================================================
+  // Views (merged into SimApp's registry; `membrane` is generic and lives in app.js)
+  // =========================================================================
+  const views = {};
 
   // ---------------------------------------------------------------- zoom intro
   views.zoom = function () {
@@ -1000,357 +2099,6 @@
     };
   };
 
-  // ---------------------------------------------------------------- shared: channels & ions
-  const CH = {
-    Na_leak: { color: ION_COLOR.Na, label: 'Na⁺ leak', ion: 'Na', dir: -1 },
-    K_leak: { color: ION_COLOR.K, label: 'K⁺ leak', ion: 'K', dir: 1 },
-    Na_v: { color: ION_COLOR.Na, label: 'voltage-gated Na⁺', ion: 'Na', dir: -1, gated: true },
-    K_v: { color: ION_COLOR.K, label: 'voltage-gated K⁺', ion: 'K', dir: 1, gated: true },
-    Ca_v: { color: ION_COLOR.Ca, label: 'voltage-gated Ca²⁺', ion: 'Ca', dir: -1, gated: true },
-    Na_manual: { color: ION_COLOR.Na, label: 'Na⁺ channel (yours)', ion: 'Na', dir: -1 },
-    K_manual: { color: ION_COLOR.K, label: 'K⁺ channel (yours)', ion: 'K', dir: 1 },
-    Cl_manual: { color: ION_COLOR.Cl, label: 'Cl⁻ channel (yours)', ion: 'Cl', dir: -1 },
-    AMPA: { color: ION_COLOR.Na, label: 'excitatory receptor (cation channel)', ion: 'Na', dir: -1, receptor: true },
-    GABA: { color: ION_COLOR.Cl, label: 'inhibitory receptor (Cl⁻ channel)', ion: 'Cl', dir: -1, receptor: true },
-    pump: { color: '#6b7280', label: 'Na⁺/K⁺ pump (ATP)' },
-  };
-
-  function drawChannel(parent, x, yTop, yBot, type, scale) {
-    scale = scale || 1;
-    const spec = CH[type];
-    const g = svgEl('g', { transform: `translate(${x},0)` }, parent);
-    const w = 16 * scale, gap = 6 * scale, h = yBot - yTop, ymid = (yTop + yBot) / 2;
-    if (type === 'pump') {
-      svgEl('rect', { x: -26 * scale, y: yTop - 2, width: 52 * scale, height: h + 4, rx: 8 * scale, fill: '#e5e7eb', stroke: '#374151', 'stroke-width': 2 }, g);
-      svgEl('text', { x: 0, y: ymid + 4 * scale, 'font-size': 11 * scale, 'font-weight': 700, 'text-anchor': 'middle', fill: '#374151', text: 'ATP' }, g);
-      const na = svgEl('g', {}, g), k = svgEl('g', {}, g);
-      return { g, spec, pumpNa: na, pumpK: k, x, yTop, yBot };
-    }
-    const left = svgEl('rect', { x: -gap - w, y: yTop - 2, width: w, height: h + 4, rx: 5 * scale, fill: '#fff', stroke: spec.color, 'stroke-width': 2.5 }, g);
-    const right = svgEl('rect', { x: gap, y: yTop - 2, width: w, height: h + 4, rx: 5 * scale, fill: '#fff', stroke: spec.color, 'stroke-width': 2.5 }, g);
-    const gate = svgEl('rect', { x: -gap - 1, y: ymid - 7 * scale, width: 2 * gap + 2, height: 14 * scale, fill: spec.color, opacity: 0.9 }, g);
-    const ball = svgEl('circle', { cx: 0, cy: yBot - 6 * scale, r: 7 * scale, fill: '#374151', opacity: 0 }, g);
-    if (spec.gated) svgEl('text', { x: 0, y: yTop - 6 * scale, 'font-size': 9 * scale, 'text-anchor': 'middle', fill: spec.color, 'font-weight': 700, text: 'V' }, g);
-    if (spec.receptor) {
-      // binding site cups on the outside face
-      svgEl('path', { d: `M${-gap - w},${yTop - 2} l-4,-8 M${gap + w},${yTop - 2} l4,-8`, stroke: spec.color, 'stroke-width': 2.5, fill: 'none' }, g);
-    }
-    return { g, spec, left, right, gate, ball, x, yTop, yBot, state: 'closed' };
-  }
-  function setChannelState(ch, state) {
-    if (ch.state === state || !ch.gate) return;
-    ch.state = state;
-    if (state === 'open') { ch.gate.setAttribute('opacity', 0); ch.ball.setAttribute('opacity', 0); ch.left.setAttribute('fill', '#fff'); }
-    else if (state === 'inactivated') { ch.gate.setAttribute('opacity', 0); ch.ball.setAttribute('opacity', 1); ch.left.setAttribute('fill', '#fff'); }
-    else { ch.gate.setAttribute('opacity', 0.9); ch.ball.setAttribute('opacity', 0); }
-  }
-
-  // Ion pools (background) and flux particles.
-  function makeIonPool(parent, region, counts, opts) {
-    opts = opts || {};
-    const ions = [];
-    for (const ion in counts) {
-      for (let i = 0; i < counts[ion]; i++) {
-        const x = rand(region.x0 + 10, region.x1 - 10), y = rand(region.y0 + 10, region.y1 - 10);
-        const g = svgEl('g', { transform: `translate(${x},${y})` }, parent);
-        svgEl('circle', { r: opts.r || 8, fill: ION_COLOR[ion], opacity: 0.9 }, g);
-        svgEl('text', { y: 3, 'font-size': (opts.r || 8) * 1.05, 'text-anchor': 'middle', fill: '#fff', 'font-weight': 700, text: ION_LABEL[ion] }, g);
-        ions.push({ g, ion, x, y, vx: 0, vy: 0 });
-      }
-    }
-    return {
-      ions,
-      update(dtReal) {
-        const k = dtReal / 16;
-        for (const p of ions) {
-          p.vx = p.vx * 0.9 + rand(-0.6, 0.6); p.vy = p.vy * 0.9 + rand(-0.6, 0.6);
-          p.x = clamp(p.x + p.vx * k, region.x0 + 8, region.x1 - 8); p.y = clamp(p.y + p.vy * k, region.y0 + 8, region.y1 - 8);
-          p.g.setAttribute('transform', `translate(${p.x.toFixed(1)},${p.y.toFixed(1)})`);
-        }
-      },
-    };
-  }
-
-  function makeParticles(parent) {
-    const list = [];
-    return {
-      spawn(ion, x0, y0, x1, y1, duration, opts) {
-        opts = opts || {};
-        const g = svgEl('g', { transform: `translate(${x0},${y0})`, 'pointer-events': 'none' }, parent);
-        svgEl('circle', { r: opts.r || 8, fill: ION_COLOR[ion], stroke: '#fff', 'stroke-width': 1.5 }, g);
-        if (ION_LABEL[ion]) svgEl('text', { y: 3, 'font-size': 8.5, 'text-anchor': 'middle', fill: '#fff', 'font-weight': 700, text: ION_LABEL[ion] }, g);
-        list.push({ g, x0, y0, x1, y1, t: 0, duration: duration || 700, linger: opts.linger != null ? opts.linger : 500, wobble: opts.wobble || 0 });
-      },
-      update(dtReal) {
-        for (let i = list.length - 1; i >= 0; i--) {
-          const p = list[i]; p.t += dtReal;
-          const u = clamp(p.t / p.duration, 0, 1), e = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
-          const x = lerp(p.x0, p.x1, e) + (p.wobble ? Math.sin(p.t / 60) * p.wobble * (1 - u) : 0), y = lerp(p.y0, p.y1, e);
-          p.g.setAttribute('transform', `translate(${x.toFixed(1)},${y.toFixed(1)})`);
-          if (p.t > p.duration) {
-            const f = 1 - (p.t - p.duration) / p.linger;
-            p.g.setAttribute('opacity', clamp(f, 0, 1));
-            if (f <= 0) { p.g.remove(); list.splice(i, 1); }
-          }
-        }
-      },
-      clear() { for (const p of list) p.g.remove(); list.length = 0; },
-      get count() { return list.length; },
-    };
-  }
-
-  // A flux accumulator: turns current (nA) × simulated time into discrete particles.
-  function fluxCounter(scale) {
-    let acc = 0;
-    return (current_nA, dtSim) => {
-      acc += Math.abs(current_nA) * dtSim * scale;
-      let n = 0;
-      while (acc >= 1 && n < 6) { acc -= 1; n++; }
-      if (acc > 6) acc = 6;
-      return n;
-    };
-  }
-
-  function drawBilayer(parent, x0, x1, yTop, yBot, holes) {
-    // two rows of phospholipid heads with tails; `holes` = list of [xa, xb] to leave empty
-    const g = svgEl('g', {}, parent);
-    svgEl('rect', { x: x0, y: yTop, width: x1 - x0, height: yBot - yTop, fill: '#f0ead8' }, g);
-    const step = 14;
-    for (let x = x0 + 7; x < x1; x += step) {
-      if (holes.some(([a, b]) => x > a && x < b)) continue;
-      for (const [cy, dir] of [[yTop + 7, 1], [yBot - 7, -1]]) {
-        svgEl('circle', { cx: x, cy, r: 6, fill: '#c9b98f', stroke: '#8a7a50', 'stroke-width': 1 }, g);
-        svgEl('path', { d: `M${x - 3},${cy + dir * 6} l0,${dir * 12} M${x + 3},${cy + dir * 6} l0,${dir * 12}`, stroke: '#8a7a50', 'stroke-width': 1.5, fill: 'none' }, g);
-      }
-    }
-    return g;
-  }
-
-  function drawChargeRow(parent, x0, x1, y, sign, color) {
-    const g = svgEl('g', { 'font-size': 18, 'font-weight': 700, fill: color, 'text-anchor': 'middle', 'pointer-events': 'none' }, parent);
-    for (let x = x0 + 20; x < x1; x += 46) svgEl('text', { x, y, text: sign }, g);
-    return g;
-  }
-
-  function drawInset(parent, region) {
-    const g = svgEl('g', { transform: 'translate(640,6) scale(0.27)' }, parent);
-    svgEl('rect', { x: -10, y: -10, width: 960, height: 520, fill: 'rgba(255,255,255,.85)', stroke: '#d9d6cc', 'stroke-width': 4, rx: 20 }, g);
-    const d = drawNeuron(g);
-    d.parts.labels.setAttribute('opacity', 0);
-    d.parts.electrode.setAttribute('opacity', 0);
-    d.parts.next.setAttribute('opacity', 0.5);
-    const pos = { dendrite: [165, 200, 130, 150], soma: [300, 260, 85, 75], hillock: [382, 260, 45, 40], axon: [600, 260, 200, 35], terminal: [850, 260, 70, 70], synapse: [130, 200, 80, 80] }[region] || [300, 260, 80, 70];
-    svgEl('ellipse', { cx: pos[0], cy: pos[1], rx: pos[2], ry: pos[3], fill: 'none', stroke: '#2f6fd6', 'stroke-width': 8, 'stroke-dasharray': '18 12' }, g);
-    return { g, parts: d.parts };
-  }
-
-  // ---------------------------------------------------------------- shared: narration helpers
-  const chip = (k) => `<span class="ion ${k.toLowerCase()}">${ION_LABEL[k]}</span>`;
-  const IN = '<span class="dir">IN</span>', OUT = '<span class="dir">OUT</span>';
-
-  // Voltage ladder: where Vm is, and who is pulling it (Na⁺ up toward E_Na, K⁺ down toward E_K).
-  function drawLadder(parent, x, y) {
-    const g = svgEl('g', { transform: `translate(${x},${y})`, 'font-size': 11, fill: '#3a3f4a' }, parent);
-    const H = 170, yOf = (V) => H - (clamp(V, -100, 70) + 100) * (H / 170);
-    svgEl('text', { x: 0, y: -10, 'font-weight': 700, 'font-size': 12, text: 'Where is Vm being pulled?' }, g);
-    svgEl('rect', { x: 0, y: 0, width: 14, height: H, rx: 4, fill: '#e9e6dc', stroke: '#c9c4b4' }, g);
-    const ticks = [];
-    const tick = (V, label, color, key) => {
-      const t = svgEl('g', { 'data-tick': key || '' }, g);
-      svgEl('line', { x1: -4, y1: yOf(V), x2: 18, y2: yOf(V), stroke: color, 'stroke-width': 1.5 }, t);
-      svgEl('text', { x: 24, y: yOf(V) + 4, fill: color, text: label }, t);
-      ticks.push({ V, t, key });
-      return t;
-    };
-    tick(67, 'E_Na +67  (Na⁺ pulls up)', ION_COLOR.Na, 'ena');
-    tick(0, '0 mV', '#6b7280', 'zero');
-    const thr = tick(-55, 'threshold −55', '#d97706', 'thr');
-    tick(-70, 'rest −70', '#2563eb', 'rest');
-    tick(-95, 'E_K −95  (K⁺ pulls down)', ION_COLOR.K, 'ek');
-    const naArrow = svgEl('path', { d: '', stroke: ION_COLOR.Na, 'stroke-width': 5, fill: 'none', 'stroke-linecap': 'round' }, g);
-    const naHead = svgEl('path', { d: '', fill: ION_COLOR.Na }, g);
-    const kArrow = svgEl('path', { d: '', stroke: ION_COLOR.K, 'stroke-width': 5, fill: 'none', 'stroke-linecap': 'round' }, g);
-    const kHead = svgEl('path', { d: '', fill: ION_COLOR.K }, g);
-    const pointer = svgEl('path', { d: '', fill: '#1f2430' }, g);
-    const pline = svgEl('line', { x1: 0, y1: 0, x2: 14, y2: 0, stroke: '#1f2430', 'stroke-width': 3 }, g);
-    const ptext = svgEl('text', { x: -8, y: 0, 'text-anchor': 'end', 'font-weight': 700, 'font-size': 12, fill: '#1f2430', text: '' }, g);
-    return {
-      update(V, gNaPull, gKPull) {
-        const y = yOf(V);
-        pline.setAttribute('y1', y); pline.setAttribute('y2', y);
-        pointer.setAttribute('d', `M-8,${y} l-7,-5 l0,10 z`);
-        ptext.setAttribute('y', y + 4); ptext.textContent = fmtV(V);
-        const na = Math.min(y - 8, gNaPull * 90), k = Math.min(H - y - 8, gKPull * 90);
-        naArrow.setAttribute('d', na > 3 ? `M7,${y - 2} L7,${y - na}` : '');
-        naHead.setAttribute('d', na > 3 ? `M7,${y - na - 7} l-6,8 l12,0 z` : '');
-        kArrow.setAttribute('d', k > 3 ? `M7,${y + 2} L7,${y + k}` : '');
-        kHead.setAttribute('d', k > 3 ? `M7,${y + k + 7} l-6,-8 l12,0 z` : '');
-        thr.setAttribute('opacity', app.showThreshold ? 1 : 0);
-      },
-    };
-  }
-
-  // Compact concentration / Nernst table.
-  function drawConcTable(parent, x, y) {
-    const lg = svgEl('g', { transform: `translate(${x},${y})`, 'font-size': 11, fill: '#3a3f4a' }, parent);
-    svgEl('text', { x: 0, y: 0, 'font-weight': 700, 'font-size': 12, text: 'Concentrations (mM)' }, lg);
-    svgEl('text', { x: 62, y: 18, 'font-weight': 700, text: 'out' }, lg); svgEl('text', { x: 106, y: 18, 'font-weight': 700, text: 'in' }, lg); svgEl('text', { x: 152, y: 18, 'font-weight': 700, text: 'E (mV)' }, lg);
-    const rows = [['Na', 'Na⁺'], ['K', 'K⁺'], ['Cl', 'Cl⁻'], ['Ca', 'Ca²⁺']].map(([k, lab], i) => {
-      const yy = 36 + i * 17;
-      svgEl('circle', { cx: 7, cy: yy - 4, r: 6, fill: ION_COLOR[k] }, lg);
-      svgEl('text', { x: 18, y: yy, text: lab }, lg);
-      return { k, out: svgEl('text', { x: 62, y: yy }, lg), inn: svgEl('text', { x: 106, y: yy }, lg), e: svgEl('text', { x: 152, y: yy }, lg) };
-    });
-    svgEl('text', { x: 0, y: 112, 'font-size': 10, fill: '#6b7280', text: 'E = the voltage at which that ion stops moving' }, lg);
-    svgEl('text', { x: 0, y: 125, 'font-size': 10, fill: '#6b7280', text: '(its equilibrium potential). Drawings not to scale.' }, lg);
-    return {
-      update() {
-        const E = sim.E;
-        for (const r of rows) {
-          const c = sim.conc[r.k];
-          r.out.textContent = c.out < 1 ? String(c.out) : c.out.toFixed(0);
-          r.inn.textContent = c.in < 1 ? String(c.in) : c.in.toFixed(0);
-          r.e.textContent = fmtV(E[r.k]).replace('.0', '');
-        }
-      },
-    };
-  }
-
-  // ---------------------------------------------------------------- membrane strip
-  // opts: { comp: 'soma', channels: ['K_leak', ...], inset: 'soma', ions: {outside:{}, inside:{}}, caption }
-  views.membrane = function (opts) {
-    const X0 = 20, X1 = 600, Y_TOP = 232, Y_BOT = 288;
-    let svg, chans = [], pool, particles, chargePlus, chargeMinus, chargeFlipPlus, chargeFlipMinus, insideRect, insetParts, electrodeTip, pumpPhase = 0, ladder, table;
-    const counters = [], typeCount = {};
-    const comp = () => sim.byName[opts.comp || 'soma'];
-    const channelTypes = opts.channels || ['K_leak', 'Na_leak', 'pump'];
-    channelTypes.forEach(t => { typeCount[t] = (typeCount[t] || 0) + 1; });
-    function layout() {
-      const n = channelTypes.length, spanX0 = X0 + 70, spanX1 = X1 - 60;
-      return channelTypes.map((t, i) => n === 1 ? (spanX0 + spanX1) / 2 : lerp(spanX0, spanX1, i / (n - 1)));
-    }
-    // current through one drawn channel of a given type (nA; negative = inward)
-    function channelCurrent(t, c, V, E) {
-      const share = 1 / typeCount[t];
-      if (t === 'K_leak') return 0.75 * c.gL * (V - E.K) * share;
-      if (t === 'Na_leak') return 0.06 * c.gL * (V - E.Na) * share;
-      if (t === 'Na_v') return c.gNa * (V - E.Na) * share;
-      if (t === 'K_v') return c.gK * (V - E.K) * share;
-      if (t === 'Na_manual') return sim.manual.gNa * (V - E.Na);
-      if (t === 'K_manual') return sim.manual.gK * (V - E.K);
-      if (t === 'Cl_manual') return sim.manual.gCl * (V - E.Cl);
-      if (t === 'Ca_v') return sim.terminal.iCa;
-      return 0;
-    }
-    function channelState(t, c) {
-      if (t === 'K_leak' || t === 'Na_leak') return 'open';
-      if (t === 'Na_v') return sim.naState(c);
-      if (t === 'K_v') return sim.kState(c);
-      if (t === 'Na_manual') return sim.manual.gNa > 0 ? 'open' : 'closed';
-      if (t === 'K_manual') return sim.manual.gK > 0 ? 'open' : 'closed';
-      if (t === 'Cl_manual') return sim.manual.gCl > 0 ? 'open' : 'closed';
-      if (t === 'Ca_v') return sim.caState(sim.terminal);
-      return 'closed';
-    }
-    return {
-      mount(el) {
-        svg = svgEl('svg', { viewBox: '0 0 900 520' });
-        el.appendChild(svg);
-        svgEl('rect', { x: 0, y: 0, width: 900, height: 520, fill: '#f6f5f0' }, svg);
-        svgEl('rect', { x: X0, y: 20, width: X1 - X0, height: Y_TOP - 20, fill: '#eef2fa', rx: 10 }, svg);
-        insideRect = svgEl('rect', { x: X0, y: Y_BOT, width: X1 - X0, height: 500 - Y_BOT, fill: '#fbf3e6', rx: 10 }, svg);
-        svgEl('text', { x: X0 + 10, y: 40, 'font-size': 13, fill: '#4a5468', 'font-weight': 600, text: 'OUTSIDE the cell' }, svg);
-        svgEl('text', { x: X0 + 10, y: 492, 'font-size': 13, fill: '#6b5a3a', 'font-weight': 600, text: 'INSIDE the cell' }, svg);
-        const xs = layout();
-        drawBilayer(svg, X0, X1, Y_TOP, Y_BOT, xs.map(x => [x - 28, x + 28]));
-        const chLayer = svgEl('g', {}, svg);
-        const dense = channelTypes.length > 5;
-        chans = channelTypes.map((t, i) => {
-          const ch = drawChannel(chLayer, xs[i], Y_TOP, Y_BOT, t);
-          const label = dense ? CH[t].label.replace('voltage-gated ', 'V-gated ').replace(' (yours)', '') : CH[t].label;
-          svgEl('text', { x: xs[i], y: Y_BOT + 22 + (dense && i % 2 ? 14 : 0), 'font-size': dense ? 10 : 11, 'text-anchor': 'middle', fill: '#4a4f5a', text: label }, chLayer);
-          counters.push(fluxCounter(t.endsWith('leak') ? 9 : (t === 'pump' ? 0 : 2.2)));
-          return ch;
-        });
-        chargePlus = drawChargeRow(svg, X0, X1, Y_TOP - 12, '+', '#b45309');
-        chargeMinus = drawChargeRow(svg, X0, X1, Y_BOT + 46, '−', '#1d4ed8');
-        chargeFlipPlus = drawChargeRow(svg, X0, X1, Y_BOT + 46, '+', '#b45309');
-        chargeFlipMinus = drawChargeRow(svg, X0, X1, Y_TOP - 12, '−', '#1d4ed8');
-        const ionLayer = svgEl('g', {}, svg);
-        const ions = opts.ions || {};
-        const out = Object.assign({ Na: 22, K: 3, Cl: 14, Ca: 6 }, ions.outside || {});
-        const inn = Object.assign({ K: 22, Na: 3, Cl: 2, A: 14 }, ions.inside || {});
-        pool = { outside: makeIonPool(ionLayer, { x0: X0, x1: X1, y0: 50, y1: Y_TOP - 22 }, out), inside: makeIonPool(ionLayer, { x0: X0, x1: X1, y0: Y_BOT + 56, y1: 480 }, inn) };
-        particles = makeParticles(svgEl('g', {}, svg));
-        electrodeTip = svgEl('g', { opacity: 0 }, svg);
-        svgEl('path', { d: `M${X1 - 26},${Y_BOT + 100} L${X1 - 50},24 L${X1 - 38},24 L${X1 - 18},${Y_BOT + 98} Z`, fill: '#dfe6f2', stroke: '#2a2f3a', 'stroke-width': 1.5 }, electrodeTip);
-        svgEl('text', { x: X1 - 54, y: 16, 'font-size': 12, fill: '#4a4f5a', 'text-anchor': 'end', text: 'recording electrode' }, electrodeTip);
-        insetParts = drawInset(svg, opts.inset || opts.comp || 'soma').parts;
-        ladder = drawLadder(svg, 668, 182);
-        table = drawConcTable(svg, 640, 388);
-        $('#stage-caption').textContent = opts.caption || '';
-      },
-      update(dtReal, dtSim) {
-        const c = comp(), V = c.V, E = sim.E;
-        insideRect.setAttribute('fill', insideFill(V));
-        const neg = clamp(-V / 70, 0, 1), pos = clamp(V / 35, 0, 1);
-        chargePlus.setAttribute('opacity', neg); chargeMinus.setAttribute('opacity', neg);
-        chargeFlipPlus.setAttribute('opacity', pos); chargeFlipMinus.setAttribute('opacity', pos);
-        chans.forEach((ch, i) => {
-          const t = channelTypes[i];
-          if (t === 'pump') {
-            if (sim.pumpOn && !app.paused) {
-              pumpPhase += dtReal / 1400;
-              if (pumpPhase >= 1) {
-                pumpPhase = 0;
-                for (let k = 0; k < 3; k++) particles.spawn('Na', ch.x + rand(-8, 8), Y_BOT + 40 + k * 10, ch.x + rand(-40, 40), Y_TOP - 40 - k * 8, 1100, { linger: 300 });
-                for (let k = 0; k < 2; k++) particles.spawn('K', ch.x + rand(-8, 8), Y_TOP - 40 - k * 10, ch.x + rand(-40, 40), Y_BOT + 40 + k * 8, 1100, { linger: 300 });
-              }
-            }
-            return;
-          }
-          const state = channelState(t, c);
-          setChannelState(ch, state);
-          if (state === 'open' && !app.paused) {
-            const I = channelCurrent(t, c, V, E);
-            const n = Math.min(3, counters[i](I, dtSim));
-            for (let k = 0; k < n; k++) {
-              const ion = ch.spec.ion, jitter = rand(-6, 6), dur = rand(650, 1000);
-              if (I < 0) particles.spawn(ion, ch.x + jitter, Y_TOP - 30 - rand(0, 40), ch.x + rand(-80, 80), Y_BOT + 50 + rand(0, 60), dur);
-              else particles.spawn(ion, ch.x + jitter, Y_BOT + 30 + rand(0, 40), ch.x + rand(-80, 80), Y_TOP - 50 - rand(0, 60), dur);
-            }
-          }
-        });
-        if (!app.paused) { pool.outside.update(dtReal); pool.inside.update(dtReal); }
-        particles.update(dtReal);
-        // ladder: pulls are conductance shares
-        const gNaTot = c.gNa + (c.kind === 'soma' ? sim.manual.gNa : 0) + 0.06 * c.gL;
-        const gKTot = c.gK + (c.kind === 'soma' ? sim.manual.gK : 0) + 0.75 * c.gL;
-        const gAll = gNaTot + gKTot + 0.19 * c.gL + (c.kind === 'soma' ? sim.manual.gCl : 0) + 1e-9;
-        ladder.update(V, gNaTot / gAll, gKTot / gAll);
-        table.update();
-        electrodeTip.setAttribute('opacity', app.electrode ? 1 : 0);
-        updateNeuronColors(insetParts, { hideLabels: true });
-      },
-      narrate() {
-        const c = comp(), V = c.V, d = c.dVdt, na = sim.naState(c), k = sim.kState(c);
-        const hasNaV = channelTypes.includes('Na_v');
-        if (sim.manual.gNa > 0) return `You opened ${chip('Na')} channels → Na⁺ flows ${IN} (high outside, and the negative inside attracts it) → the inside gains positive charge → <b>Vm rises</b> toward E_Na.`;
-        if (sim.manual.gK > 0) return `You opened extra ${chip('K')} channels → K⁺ flows ${OUT} (high inside) → the inside loses positive charge → <b>Vm falls</b> toward E_K.`;
-        if (sim.manual.gCl > 0) return `You opened ${chip('Cl')} channels → Cl⁻ flows ${IN} → Vm is pulled toward E_Cl and <b>held near rest</b>.`;
-        if (hasNaV && na === 'open' && d > 5 && V < 30) return `Voltage-gated ${chip('Na')} channels <b>OPEN</b> → Na⁺ rushes ${IN} → Vm shoots up toward E_Na (+67). Each bit of depolarization opens more Na⁺ channels.`;
-        if (hasNaV && V > 0) return `<b>At the peak (${fmtV(V)} mV):</b> ${chip('Na')} channels are <b>inactivating</b> (plugs swing in) and the slower ${chip('K')} channels are opening. Na⁺ entry stops; K⁺ exit begins. Vm never reaches E_Na.`;
-        if (hasNaV && (na === 'inactivated' || k === 'open') && d < -5) return `${chip('Na')} channels <b>INACTIVATED</b> (plugged, no more Na⁺ can enter). ${chip('K')} channels <b>OPEN</b> → K⁺ flows ${OUT} → Vm falls toward E_K (−95).`;
-        if (hasNaV && k === 'open' && V < -72) return `<b>Undershoot:</b> ${chip('K')} channels are still open, so Vm sits below rest, close to E_K. ${chip('Na')} channels are recovering from inactivation.`;
-        if (hasNaV && na === 'inactivated' && V > -60) return `${chip('Na')} channels are inactivated; ${chip('K')} channels are opening. Na⁺ entry has stopped, K⁺ exit begins.`;
-        if (d > 1 && V > -68) return `Positive charge is entering (from the rest of the cell) → <b>depolarizing</b>: Vm = ${fmtV(V)} mV.`;
-        if (d < -1 && V < -66) return `Positive charge is leaving → <b>repolarizing</b> toward rest.`;
-        if (V < -72) return `Below rest: more ${chip('K')} is leaving than usual; Vm will drift back to −70 as K⁺ channels close.`;
-        return `<b>At rest (≈ −70 mV):</b> ${chip('K')} trickles ${OUT} through leak channels (that is what makes the inside negative); a little ${chip('Na')} leaks ${IN}; the pump quietly restores the gradients.`;
-      },
-      channels: () => chans,
-    };
-  };
 
   // ---------------------------------------------------------------- synapse (pre terminal + cleft + post membrane)
   // opts: { input: 'A' | 'C' | 'output', caption }
@@ -1427,7 +2175,7 @@
           svgEl('circle', { cx: 7, cy: y - 4, r: 6, fill: ION_COLOR[k] }, lg);
           svgEl('text', { x: 20, y, text: lab }, lg);
         });
-        insetParts = drawInset(svg, isOutput ? 'terminal' : 'synapse').parts;
+        insetParts = drawInset(svg, isOutput ? 'terminal' : 'synapse');
         $('#stage-caption').textContent = opts.caption || '';
         this._buildVesicles();
       },
@@ -1513,7 +2261,7 @@
           for (const key in pool) pool[key].update(dtReal);
         }
         particles.update(dtReal);
-        updateNeuronColors(insetParts, { hideLabels: true });
+        insetParts.update({ hideLabels: true });
       },
       narrate() {
         const term = preTerm(), rec = receptor(), Vp = preV();
@@ -1574,7 +2322,7 @@
         svgEl('text', { x: X0 - 4, y: 424, 'font-size': 10, 'text-anchor': 'end', fill: '#6b7280', text: '0' }, pg);
         svgEl('text', { x: X0 - 4, y: 384, 'font-size': 10, 'text-anchor': 'end', fill: '#6b7280', text: '+40' }, pg);
         profile = svgEl('polyline', { fill: 'none', stroke: '#1f2430', 'stroke-width': 2.5 }, pg);
-        insetParts = drawInset(svg, 'axon').parts;
+        insetParts = drawInset(svg, 'axon');
         $('#stage-caption').textContent = opts.caption || '';
       },
       update(dtReal, dtSim) {
@@ -1598,7 +2346,7 @@
         }
         profile.setAttribute('points', pts.join(' '));
         particles.update(dtReal);
-        updateNeuronColors(insetParts, { hideLabels: true });
+        insetParts.update({ hideLabels: true });
       },
       narrate() {
         const cs = comps(), n = cs.length;
@@ -1614,373 +2362,14 @@
     };
   };
 
-  // =========================================================================
-  // Voltage trace
-  // =========================================================================
-  const traceCanvas = $('#trace');
-  const TRACE_COLORS = { soma: '#1f2430', hillock: '#b45309', axon6: '#0f766e', terminal: '#7c3aed', next: '#db2777', dendrite: '#4b5563' };
-  function recordSample() {
-    const s = { t: sim.t, V: {}, gNa: {}, gK: {} };
-    for (const c of sim.comps) s.V[c.name] = c.V;
-    s.V.next = sim.next.V;
-    s.gNa.soma = sim.soma.gNa; s.gK.soma = sim.soma.gK; s.gNa.hillock = sim.hillock.gNa; s.gK.hillock = sim.hillock.gK;
-    s.gNa.terminal = sim.term.gNa; s.gK.terminal = sim.term.gK;
-    app.history.push(s);
-    const tmin = sim.t - 400;
-    while (app.history.length && app.history[0].t < tmin) app.history.shift();
-  }
-  function drawTrace() {
-    const dpr = window.devicePixelRatio || 1;
-    const w = traceCanvas.clientWidth, h = traceCanvas.clientHeight;
-    if (traceCanvas.width !== Math.round(w * dpr) || traceCanvas.height !== Math.round(h * dpr)) { traceCanvas.width = Math.round(w * dpr); traceCanvas.height = Math.round(h * dpr); }
-    const ctx = traceCanvas.getContext('2d');
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, w, h);
-    const padL = 74, padR = 14, padT = 8, padB = 20;
-    const vmin = -100, vmax = 50;
-    const gBand = app.showG ? 62 : 0, plotBottom = h - padB - gBand;
-    const W = app.historyWindow, t1 = Math.max(sim.t, W), t0 = t1 - W;
-    const X = (t) => padL + (t - t0) / W * (w - padL - padR);
-    const Y = (v) => padT + (vmax - v) / (vmax - vmin) * (plotBottom - padT);
-    // grid
-    ctx.font = '11px system-ui, sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-    for (const [v, lab, color, dash] of [[50, '+50', '#9ca3af', []], [0, '0', '#6b7280', []], [-55, 'threshold', '#d97706', [4, 4]], [-70, 'rest −70', '#2563eb', [2, 4]], [-100, '−100', '#9ca3af', []]]) {
-      if (v === -55 && !app.showThreshold) continue;
-      ctx.strokeStyle = color; ctx.setLineDash(dash); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(padL, Y(v)); ctx.lineTo(w - padR, Y(v)); ctx.stroke();
-      ctx.fillStyle = color; ctx.fillText(lab, padL - 4, Y(v));
-    }
-    ctx.setLineDash([]);
-    ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillStyle = '#6b7280';
-    for (let t = Math.ceil(t0 / 10) * 10; t <= t1 + 1e-6; t += 10) { ctx.fillText(t.toFixed(0), X(t), h - padB + 4); ctx.strokeStyle = '#eee'; ctx.beginPath(); ctx.moveTo(X(t), padT); ctx.lineTo(X(t), plotBottom); ctx.stroke(); }
-    ctx.textAlign = 'left'; ctx.fillText('time (ms)', 4, h - padB + 4);
-    // conductance sub-plot: how many Na⁺ / K⁺ channels are open
-    if (app.showG) {
-      const gc = (app.recordComp === 'soma' || app.recordComp === 'hillock' || app.recordComp === 'terminal') ? app.recordComp : 'hillock';
-      const gmax = Math.max(sim.byName[gc].gNaMax, 1e-9);
-      const top = plotBottom + 10, bh = gBand - 16, base = top + bh;
-      ctx.strokeStyle = '#d1d5db'; ctx.beginPath(); ctx.moveTo(padL, base); ctx.lineTo(w - padR, base); ctx.stroke();
-      ctx.fillStyle = '#6b7280'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.fillText('open', padL - 4, top + 4); ctx.fillText('channels', padL - 4, top + 16); ctx.fillText('none', padL - 4, base);
-      for (const [key, color] of [['gNa', '#e8772e'], ['gK', '#8e5cf0']]) {
-        ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.beginPath(); let first = true;
-        for (const s of app.history) { if (s.t < t0) continue; const y = base - clamp(s[key][gc] / gmax, 0, 1) * bh; if (first) { ctx.moveTo(X(s.t), y); first = false; } else ctx.lineTo(X(s.t), y); }
-        ctx.stroke();
-      }
-    }
-    // traces
-    const series = [[app.recordComp, TRACE_COLORS[app.recordComp] || '#1f2430', 2.2]].concat(app.extraTraces.map(c => [c, TRACE_COLORS[c] || '#0f766e', 1.6]));
-    for (const [comp, color, lw] of series) {
-      ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.beginPath(); let first = true;
-      for (const s of app.history) { if (s.t < t0 || s.V[comp] == null) continue; const x = X(s.t), y = Y(clamp(s.V[comp], vmin, vmax)); if (first) { ctx.moveTo(x, y); first = false; } else ctx.lineTo(x, y); }
-      ctx.stroke();
-    }
-    // markers
-    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-    for (const m of app.markers) { if (m.t < t0) continue; ctx.strokeStyle = '#9ca3af'; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(X(m.t), padT); ctx.lineTo(X(m.t), plotBottom); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle = '#374151'; ctx.fillText(m.label, X(m.t) + 3, padT + 2); }
-    // legend
-    const legend = $('#trace-legend');
-    legend.innerHTML = series.map(([comp, color]) => `<span><i style="background:${color}"></i>${comp}</span>`).join('') + (app.showG ? `<span><i style="background:#e8772e"></i>gNa</span><span><i style="background:#8e5cf0"></i>gK</span>` : '');
-  }
-
-  // =========================================================================
-  // Side panel / lesson runner
-  // =========================================================================
-  const panel = $('#panel');
-  const runner = { scene: 0, step: 0, state: null, ctx: null, labMode: false };
-
-  const ctx = {
-    sim, app,
-    view: () => app.view,
-    complete() { if (runner.state && !runner.state.done) { runner.state.done = true; refreshNav(); } },
-    status(msg, ok) { const s = panel.querySelector('.status'); if (s) { s.innerHTML = msg; s.classList.toggle('ok', !!ok); } },
-    pause() { setPaused(true); },
-    resume() { setPaused(false); },
-    next() { gotoStep(runner.scene, runner.step + 1); },
-    mark(label) { app.markers.push({ t: sim.t, label }); },
-    stepState: () => runner.state,
-    refresh() { renderPanel(); },
-  };
-
-  function setPaused(p) {
-    app.paused = p;
-    $('#btn-pause').textContent = p ? 'Resume' : 'Pause';
-    $('#paused-badge').style.display = p ? 'block' : 'none';
-  }
-  function setSpeed(s) { app.speed = s; const sel = $('#speed'); sel.value = String(s); if (sel.value !== String(s)) { const o = document.createElement('option'); o.value = String(s); o.textContent = `1 s = ${(s * 1000) % 1 === 0 ? (s * 1000).toFixed(0) : (s * 1000).toFixed(1)} ms`; sel.appendChild(o); sel.value = String(s); } }
-
-  function currentStep() { return LESSON[runner.scene].steps[runner.step]; }
-
-  function gotoStep(si, ki) {
-    if (si >= LESSON.length) si = LESSON.length - 1;
-    if (ki >= LESSON[si].steps.length) { if (si + 1 < LESSON.length) { si++; ki = 0; } else { ki = LESSON[si].steps.length - 1; } }
-    if (ki < 0) { if (si > 0) { si--; ki = LESSON[si].steps.length - 1; } else ki = 0; }
-    runner.labMode = false;
-    const sceneChanged = si !== runner.scene || runner.state == null;
-    runner.scene = si; runner.step = ki;
-    const scene = LESSON[si], step = scene.steps[ki];
-    runner.state = { done: !step.waitFor, answered: !step.question, attempts: 0, data: {} };
-    // Steps inherit view configuration from earlier steps of the same scene, so jumping
-    // into the middle of a scene (or stepping back into it) shows the right picture.
-    const eff = {};
-    for (let j = 0; j <= ki; j++) for (const k of ['view', 'viewOpts', 'record', 'electrode', 'labels', 'showG', 'extra', 'speed']) if (scene.steps[j][k] != null) eff[k] = scene.steps[j][k];
-    const needView = eff.view && (eff.view !== app.viewName || step.remount || sceneChanged || (step.viewOpts && step.view));
-    if (needView) mountView(eff.view, eff.viewOpts || {});
-    else if (eff.viewOpts && eff.viewOpts.caption != null) $('#stage-caption').textContent = eff.viewOpts.caption;
-    if (sceneChanged) app.userSpeed = null;
-    if (app.userSpeed == null) setSpeed(eff.speed || scene.speed || 0.01);
-    app.showThreshold = si >= 5;
-    setPaused(!!step.pause);
-    if (eff.record) app.recordComp = eff.record;
-    app.extraTraces = eff.extra || [];
-    app.showG = !!eff.showG; $('#show-g').checked = app.showG; traceCanvas.classList.toggle('with-g', app.showG);
-    if (eff.electrode != null) app.electrode = eff.electrode;
-    if (eff.labels != null) app.labels = eff.labels;
-    if (step.reset) { sim.reset(); app.history = []; app.markers = []; app.stimEnd = null; }
-    if (step.enter) step.enter(ctx);
-    renderPanel();
-    renderProgress();
-    $('#trace-title').textContent = `Membrane potential recorded inside the ${app.recordComp}`;
-  }
-
-  function renderProgress() {
-    const p = $('#progress'); p.innerHTML = '';
-    LESSON.forEach((s, i) => {
-      const b = document.createElement('button');
-      b.textContent = i + 1; b.title = s.title;
-      b.className = runner.labMode ? '' : (i < runner.scene ? 'done' : i === runner.scene ? 'current' : '');
-      b.addEventListener('click', () => gotoStep(i, 0));
-      p.appendChild(b);
-    });
-  }
-
-  function renderPanel() {
-    const scene = LESSON[runner.scene], step = currentStep(), st = runner.state;
-    panel.innerHTML = '';
-    panel.appendChild(htmlEl('div', { class: 'scene-label' }, `Scene ${runner.scene + 1} of ${LESSON.length} · ${scene.title}`));
-    panel.appendChild(htmlEl('h2', {}, step.title || scene.title));
-    const text = typeof step.text === 'function' ? step.text(ctx) : step.text;
-    if (text) panel.appendChild(htmlEl('div', { class: 'text' }, text));
-    if (step.question) panel.appendChild(renderQuestion(step.question, st));
-    if (step.actions && step.actions.length) {
-      const a = htmlEl('div', { class: 'actions' });
-      for (const act of step.actions) {
-        const b = htmlEl('button', { class: act.cls || '' }, act.label);
-        if (act.hold) {
-          const down = (e) => { e.preventDefault(); act.down(ctx); b.classList.add('held'); };
-          const up = () => { act.up(ctx); b.classList.remove('held'); };
-          b.addEventListener('pointerdown', down); b.addEventListener('pointerup', up); b.addEventListener('pointerleave', up); b.addEventListener('pointercancel', up);
-        } else b.addEventListener('click', () => act.run(ctx));
-        if (act.disabled && act.disabled(ctx)) b.disabled = true;
-        a.appendChild(b);
-      }
-      panel.appendChild(a);
-    }
-    panel.appendChild(htmlEl('div', { class: 'status' }, step.status ? (typeof step.status === 'function' ? step.status(ctx) : step.status) : ''));
-    if (step.extraHtml) panel.appendChild(htmlEl('div', { class: 'extra' }, typeof step.extraHtml === 'function' ? step.extraHtml(ctx) : step.extraHtml));
-    const nav = htmlEl('div', { class: 'nav' });
-    const back = htmlEl('button', {}, '← Back'); back.addEventListener('click', () => gotoStep(runner.scene, runner.step - 1)); if (runner.scene === 0 && runner.step === 0) back.disabled = true;
-    const hint = htmlEl('span', { class: 'hint' }, '');
-    const cont = htmlEl('button', { class: 'primary', id: 'btn-continue' }, step.continueLabel || 'Continue →');
-    cont.addEventListener('click', () => { if (step.onContinue) step.onContinue(ctx); if (step.continueTo) step.continueTo(ctx); else gotoStep(runner.scene, runner.step + 1); });
-    nav.appendChild(back); nav.appendChild(hint); nav.appendChild(cont);
-    panel.appendChild(nav);
-    refreshNav();
-  }
-
-  function refreshNav() {
-    const st = runner.state, step = currentStep(), b = $('#btn-continue'), hint = panel.querySelector('.nav .hint');
-    if (!b) return;
-    const ok = st.answered && st.done;
-    b.disabled = !ok;
-    if (hint) hint.textContent = ok ? '' : (!st.answered ? 'Answer the question to continue' : (step.waitHint || 'Complete the activity to continue'));
-  }
-
-  function renderQuestion(q, st) {
-    const box = htmlEl('div', { class: 'question' });
-    box.appendChild(htmlEl('div', { class: 'prompt' }, q.prompt));
-    const opts = htmlEl('div', { class: 'options' });
-    const fb = htmlEl('div', { class: 'feedback', style: 'display:none' });
-    q.options.forEach((o, i) => {
-      const b = htmlEl('button', {}, o.t);
-      b.addEventListener('click', () => {
-        st.attempts++;
-        Array.from(opts.children).forEach(c => c.classList.remove('wrong'));
-        if (o.ok) {
-          b.classList.add('correct');
-          Array.from(opts.children).forEach(c => { c.disabled = true; });
-          fb.className = 'feedback good'; fb.innerHTML = '<b>Right.</b> ' + (o.fb || q.explain || ''); fb.style.display = 'block';
-          st.answered = true;
-          if (q.onCorrect) q.onCorrect(ctx);
-          refreshNav();
-        } else {
-          b.classList.add('wrong');
-          fb.className = 'feedback bad'; fb.innerHTML = '<b>Not quite.</b> ' + (o.fb || 'Think about the concentration gradient and the charge of the ion.'); fb.style.display = 'block';
-        }
-      });
-      opts.appendChild(b);
-    });
-    box.appendChild(opts); box.appendChild(fb);
-    if (st.answered && q.explain) { fb.className = 'feedback good'; fb.innerHTML = '<b>Right.</b> ' + q.explain; fb.style.display = 'block'; Array.from(opts.children).forEach(c => { c.disabled = true; }); }
-    return box;
-  }
-
-  // =========================================================================
-  // Free-play lab
-  // =========================================================================
-  function enterLab() {
-    runner.labMode = true;
-    runner.state = { done: true, answered: true };
-    renderProgress();
-    sim.reset(); app.history = []; app.markers = [];
-    app.electrode = true; app.labels = true; app.recordComp = 'soma'; app.extraTraces = ['terminal', 'next']; app.showThreshold = true; app.userSpeed = null;
-    setSpeed(0.005); setPaused(false);
-    mountView('neuron', { caption: 'Lab: click an input bouton to fire it, or use the controls.' });
-    renderLab();
-  }
-  function renderLab() {
-    panel.innerHTML = '';
-    panel.appendChild(htmlEl('div', { class: 'scene-label' }, 'Free-play lab'));
-    panel.appendChild(htmlEl('h2', {}, 'Experiment with the neuron'));
-    panel.appendChild(htmlEl('div', { class: 'text' }, '<p>Everything here is the same simulation the lesson used. Change one thing at a time and watch the trace.</p>'));
-    const lab = htmlEl('div', { class: 'lab' });
-    const row = (label, input, valEl) => { const r = htmlEl('div', { class: 'row' }); r.appendChild(htmlEl('label', {}, label)); r.appendChild(input); if (valEl) r.appendChild(valEl); lab.appendChild(r); return r; };
-    const slider = (label, min, max, step, get, set, fmt) => {
-      const inp = htmlEl('input', { type: 'range', min, max, step }); inp.value = get();
-      const val = htmlEl('span', { class: 'val' }, fmt(get()));
-      inp.addEventListener('input', () => { set(parseFloat(inp.value)); val.textContent = fmt(parseFloat(inp.value)); });
-      row(label, inp, val);
-      return inp;
-    };
-    lab.appendChild(htmlEl('h3', {}, 'View'));
-    const sel = htmlEl('select');
-    [['neuron', 'Whole neuron'], ['membrane-soma', 'Membrane (soma)'], ['membrane-hillock', 'Membrane (axon hillock)'], ['synapse-A', 'Synapse: input A (excitatory)'], ['synapse-C', 'Synapse: input C (inhibitory)'], ['axon', 'Axon propagation'], ['synapse-output', 'Our terminal → next neuron']].forEach(([v, t]) => { const o = htmlEl('option', { value: v }, t); sel.appendChild(o); });
-    sel.addEventListener('change', () => {
-      const v = sel.value;
-      if (v === 'neuron') mountView('neuron', { caption: 'Lab' });
-      else if (v.startsWith('membrane-')) { const c = v.split('-')[1]; mountView('membrane', { comp: c, inset: c, channels: c === 'soma' ? ['K_leak', 'Na_leak', 'pump', 'Na_v', 'K_v', 'Na_manual', 'K_manual', 'Cl_manual'] : ['Na_v', 'K_v', 'Na_v', 'K_v', 'Na_v', 'K_leak'], caption: 'Lab: membrane of the ' + c }); app.recordComp = c; }
-      else if (v.startsWith('synapse-')) { const i = v.split('-')[1]; mountView('synapse', { input: i, caption: 'Lab: synapse' }); app.recordComp = i === 'output' ? 'terminal' : (i === 'C' ? 'soma' : 'dendrite'); }
-      else if (v === 'axon') { mountView('axon', { caption: 'Lab: axon' }); app.recordComp = 'hillock'; app.extraTraces = ['axon6', 'terminal']; }
-      $('#trace-title').textContent = `Membrane potential recorded inside the ${app.recordComp}`;
-    });
-    row('Show', sel);
-    lab.appendChild(htmlEl('h3', {}, 'Inputs'));
-    const fireRow = htmlEl('div', { class: 'actions' });
-    for (const id of ['A', 'B', 'C']) { const b = htmlEl('button', { class: id === 'C' ? 'cl' : 'na' }, `Fire ${id}`); b.addEventListener('click', () => sim.fireInput(id)); fireRow.appendChild(b); }
-    lab.appendChild(fireRow);
-    for (const id of ['A', 'B', 'C']) {
-      const cb = htmlEl('input', { type: 'checkbox' }); cb.addEventListener('change', () => { sim.input(id).autoFire = cb.checked; sim.input(id).lastAuto = -1e9; });
-      row(`Input ${id} fires repeatedly`, cb);
-    }
-    slider('Repeat interval (ms)', 4, 40, 1, () => 20, (v) => sim.inputs.forEach(i => { i.autoInterval = v; }), (v) => v + ' ms');
-    slider('Excitatory synapse strength', 0, 3, 0.05, () => 1, (v) => sim.inputs.forEach(i => { if (i.type === 'excitatory') i.receptor.gmax = 0.004 * v; }), (v) => '×' + v.toFixed(2));
-    slider('Inhibitory synapse strength', 0, 3, 0.05, () => 1, (v) => { sim.input('C').receptor.gmax = 0.012 * v; }, (v) => '×' + v.toFixed(2));
-    lab.appendChild(htmlEl('h3', {}, 'Current injection (electrode)'));
-    slider('Current into soma (nA)', -0.3, 0.6, 0.01, () => 0, (v) => sim.setStim('soma', v), (v) => v.toFixed(2) + ' nA');
-    lab.appendChild(htmlEl('h3', {}, 'Open channels yourself (soma)'));
-    const manual = htmlEl('div', { class: 'actions' });
-    for (const [key, cls, label, g] of [['gNa', 'na', 'Hold: open Na⁺ channels', 0.0015], ['gK', 'k', 'Hold: open K⁺ channels', 0.006], ['gCl', 'cl', 'Hold: open Cl⁻ channels', 0.01]]) {
-      const b = htmlEl('button', { class: cls }, label);
-      const down = (e) => { e.preventDefault(); sim.manual[key] = g; b.classList.add('held'); }, up = () => { sim.manual[key] = 0; b.classList.remove('held'); };
-      b.addEventListener('pointerdown', down); b.addEventListener('pointerup', up); b.addEventListener('pointerleave', up);
-      manual.appendChild(b);
-    }
-    lab.appendChild(manual);
-    lab.appendChild(htmlEl('h3', {}, 'Drugs and conditions'));
-    slider('Block voltage-gated Na⁺ channels (TTX)', 0, 100, 1, () => 0, (v) => { sim.naBlock = v / 100; }, (v) => v + '%');
-    slider('Block voltage-gated K⁺ channels (TEA)', 0, 100, 1, () => 0, (v) => { sim.kBlock = v / 100; }, (v) => v + '%');
-    slider('Block terminal Ca²⁺ channels', 0, 100, 1, () => 0, (v) => { sim.terminal.caBlock = v / 100; }, (v) => v + '%');
-    slider('Block receptors of input A (antagonist)', 0, 100, 1, () => 0, (v) => { sim.input('A').receptor.block = v / 100; }, (v) => v + '%');
-    slider('Extracellular K⁺ (mM)', 2, 30, 0.5, () => 4, (v) => { sim.conc.K.out = v; }, (v) => v.toFixed(1) + ' mM');
-    slider('Extracellular Na⁺ (mM)', 20, 200, 5, () => 145, (v) => { sim.conc.Na.out = v; }, (v) => v.toFixed(0) + ' mM');
-    const pump = htmlEl('input', { type: 'checkbox' }); pump.checked = true;
-    pump.addEventListener('change', () => { sim.pumpOn = pump.checked; sim.pumpRundownRate = pump.checked ? 0 : 0.02; });
-    row('Na⁺/K⁺ pump running (off = gradients slowly run down, accelerated)', pump);
-    lab.appendChild(htmlEl('h3', {}, 'Recording'));
-    const rec = htmlEl('select');
-    ['dendrite', 'soma', 'hillock', 'axon6', 'terminal', 'next'].forEach(n => rec.appendChild(htmlEl('option', { value: n }, n)));
-    rec.value = app.recordComp; rec.addEventListener('change', () => { app.recordComp = rec.value; $('#trace-title').textContent = `Membrane potential recorded inside the ${app.recordComp}`; });
-    row('Electrode in', rec);
-    const resetB = htmlEl('button', {}, 'Reset neuron'); resetB.addEventListener('click', () => { sim.reset(); app.history = []; app.markers = []; renderLab(); });
-    lab.appendChild(resetB);
-    panel.appendChild(lab);
-    const nav = htmlEl('div', { class: 'nav' });
-    const back = htmlEl('button', {}, '← Back to lesson'); back.addEventListener('click', () => gotoStep(runner.scene, runner.step));
-    nav.appendChild(back); panel.appendChild(nav);
-  }
-
-  // =========================================================================
-  // Main loop
-  // =========================================================================
-  function frame(ts) {
-    if (app.lastFrame == null) app.lastFrame = ts;
-    const dtReal = Math.min(50, ts - app.lastFrame); app.lastFrame = ts;
-    let dtSim = 0;
-    if (!app.paused) {
-      dtSim = dtReal * app.speed;
-      let remaining = dtSim;
-      while (remaining > 1e-9) { const h = Math.min(0.1, remaining); sim.advance(h); remaining -= h; recordSample(); }
-    }
-    if (app.stimEnd != null && sim.t >= app.stimEnd) { sim.setStim('soma', 0); app.stimEnd = null; }
-    const events = sim.takeEvents();
-    if (app.view && app.view.update) app.view.update(dtReal, dtSim, events);
-    if (!runner.labMode) {
-      const step = currentStep();
-      if (step.tick) step.tick(ctx, events, dtSim);
-      if (step.waitFor && !runner.state.done && step.waitFor(ctx, events)) { runner.state.done = true; if (step.onDone) step.onDone(ctx); refreshNav(); }
-      if (step.status && typeof step.status === 'function') { const s = panel.querySelector('.status'); if (s) { const html = step.status(ctx); if (s.innerHTML !== html) s.innerHTML = html; } }
-    }
-    for (const e of events) fireEvent(e);
-    if (app.view && app.view.narrate) { const html = app.view.narrate(); if (html !== app._lastNarration) { app._lastNarration = html; $('#narrator').innerHTML = html; } }
-    else if (app._lastNarration !== '') { app._lastNarration = ''; $('#narrator').innerHTML = ''; }
-    drawTrace();
-    const rc = app.recordComp === 'next' ? { V: sim.next.V } : sim.byName[app.recordComp];
-    $('#vm-value').textContent = fmtV(rc.V);
-    $('#vm-label').textContent = 'Vm (' + app.recordComp + ')';
-    $('#sim-clock').textContent = `t = ${sim.t.toFixed(1)} ms`;
-    requestAnimationFrame(frame);
-  }
-
-  // =========================================================================
-  // Wiring
-  // =========================================================================
-  $('#speed').addEventListener('change', (e) => { app.speed = parseFloat(e.target.value); app.userSpeed = app.speed; });
-  $('#btn-pause').addEventListener('click', () => setPaused(!app.paused));
-  $('#btn-lab').addEventListener('click', enterLab);
-  $('#show-g').addEventListener('change', (e) => { app.showG = e.target.checked; traceCanvas.classList.toggle('with-g', app.showG); });
-  document.addEventListener('keydown', (e) => { if (e.code === 'Space' && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLButtonElement)) { e.preventDefault(); setPaused(!app.paused); } });
 
   // =========================================================================
   // Lesson content (see docs/NEURON_MODULE.md)
   // =========================================================================
-  const I = (k) => `<span class="ion ${k.toLowerCase()}">${ION_LABEL[k]}</span>`;
-  const FB_GRADIENT = 'Ions move down their concentration gradient (from where they are concentrated to where they are scarce) and toward the side whose charge attracts them.';
-
-  function spikeIn(events, name) { return events.some(e => e.type === 'spike' && e.name === name); }
-  function anySpike(events) { return events.some(e => e.type === 'spike'); }
-
-  // A brief current pulse into the soma. The end time lives on `app` so it survives step changes.
-  const stimPulse = (c, nA, ms) => { sim.setStim('soma', nA); app.stimEnd = sim.t + ms; };
-  const stimTick = () => {};
-
-  // Did the recorded compartment pass through a state since this step began?
-  const since = (c) => { const d = c.stepState().data; if (d.t0 == null) d.t0 = sim.t; return app.history.filter(s => s.t >= d.t0); };
-  const refire = { label: 'Fire again', cls: 'na', run: (c) => { setPaused(false); stimPulse(c, 0.45, 3); c.stepState().data.armed = true; c.stepState().data.t0 = sim.t; } };
-
-  const LOOP_HTML = `<div class="loop-diagram">
-      <div class="node" data-loop="depol">membrane depolarizes</div><div class="arrow">↓</div>
-      <div class="node" data-loop="open">voltage-gated Na⁺ channels open</div><div class="arrow">↓</div>
-      <div class="node" data-loop="in">Na⁺ rushes in</div><div class="arrow">↓ (and back to the top)</div>
-      <div class="node" data-loop="more">more depolarization → more Na⁺ channels open</div>
-    </div>`;
-  function loopHighlight(c) {
-    const h = sim.hillock;
-    const set = (k, on) => { const e = panel.querySelector(`[data-loop="${k}"]`); if (e) e.classList.toggle('hot', !!on); };
-    set('depol', h.dVdt > 5 && h.V < 0);
-    set('open', sim.naState(h) === 'open');
-    set('in', h.iNa < -0.5);
-    set('more', h.dVdt > 50 && h.V < 20);
-  }
-
-  const LESSON = [
+  function lesson(kit) {
+    bind(kit);
+    const S = window.SharedScenes;
+    return [
     // ------------------------------------------------------------- 1. where are we
     {
       id: 'zoom', title: 'Where are we?', speed: 0.01,
@@ -2027,97 +2416,9 @@
       })(),
     },
     // ------------------------------------------------------------- 3. resting membrane
-    {
-      id: 'rest', title: 'The resting membrane', speed: 0.01,
-      steps: [
-        {
-          view: 'membrane', viewOpts: { comp: 'soma', inset: 'soma', channels: ['K_leak', 'Na_leak', 'pump'], caption: 'Zooming into the membrane of the cell body.' }, reset: true, record: 'soma', electrode: false,
-          enter: () => { sim.naBlock = 1; }, // voltage-gated Na⁺ channels are not part of the story yet
-          title: 'Two very different solutions',
-          text: `<p>The membrane separates two solutions. <b>Outside</b>: lots of ${I('Na')}, ${I('Cl')} and ${I('Ca')}. <b>Inside</b>: lots of ${I('K')} and large negatively charged molecules (proteins, shown as A⁻) that cannot leave.</p>
-                 <p>The inside is about <b>70 mV more negative</b> than the outside: the resting membrane potential, Vm ≈ −70 mV. Notice the + and − charges lined up along the membrane.</p>`,
-          question: { prompt: 'At rest, which ion is much more concentrated inside the cell than outside?', options: [
-            { t: 'K⁺ (potassium)', ok: true, fb: 'K⁺ is about 140 mM inside and only 4 mM outside. Everything else in the list is higher outside.' },
-            { t: 'Na⁺ (sodium)', fb: 'Na⁺ is about 145 mM outside and only 12 mM inside — the other way round.' },
-            { t: 'Ca²⁺ (calcium)', fb: 'Free Ca²⁺ inside is astonishingly low (about 0.0001 mM) versus 2 mM outside: a 20,000-fold gradient.' },
-            { t: 'Cl⁻ (chloride)', fb: 'Cl⁻ is higher outside (about 110 mM) than inside (about 6 mM).' },
-          ] },
-        },
-        {
-          view: 'membrane', title: 'Who does what: pump vs. permeability',
-          text: `<p>The ${'Na⁺/K⁺ pump'} uses ATP to move 3 ${I('Na')} out and 2 ${I('K')} in on each cycle. Watch it work.</p>
-                 <p>Two jobs are easy to mix up:</p>
-                 <p>• The <b>pump maintains the concentration gradients</b>, working slowly in the background.<br>
-                    • The <b>resting potential is set mainly by which ions the membrane lets through</b>. At rest the membrane is far more permeable to K⁺ (through K⁺ leak channels) than to anything else.</p>`,
-          question: { prompt: 'Which statement is correct?', options: [
-            { t: 'The pump maintains the gradients; the −70 mV comes mainly from the membrane being selectively permeable to K⁺.', ok: true, fb: 'If you switched the pump off, Vm would barely change for a while, because the gradients are still there. (You can try this in the Lab.)' },
-            { t: 'The pump directly generates the −70 mV every moment; without it the voltage would vanish instantly.', fb: 'The pump does contribute a little charge separation (3 out, 2 in), but the gradients it built are what matter. Vm would fade only slowly as the gradients ran down.' },
-            { t: 'Na⁺ leaking in is what makes the inside negative.', fb: 'Na⁺ carries positive charge in, which makes the inside less negative, not more.' },
-          ] },
-        },
-        {
-          view: 'membrane', title: 'Predict: K⁺ leak channels',
-          text: `<p>K⁺ leak channels are open all the time. ${I('K')} is concentrated inside.</p>`,
-          question: { prompt: 'Which way does K⁺ tend to move through an open K⁺ channel at rest?', options: [
-            { t: 'Out of the cell', ok: true, fb: 'Down its gradient: from 140 mM inside toward 4 mM outside. Each K⁺ that leaves carries positive charge out, leaving the inside more negative. That is the main source of the resting potential. (It stops short of the K⁺ equilibrium potential of about −95 mV because a little Na⁺ leaks in.)' },
-            { t: 'Into the cell', fb: 'K⁺ is far more concentrated inside, so the gradient pushes it out. (The negative inside pulls it back — at −95 mV the two would balance exactly.)' },
-            { t: 'It does not move', fb: 'The channel is open and there is a steep gradient, so K⁺ definitely moves. Which way?' },
-          ] },
-        },
-        {
-          view: 'membrane', viewOpts: { comp: 'soma', inset: 'soma', channels: ['K_leak', 'Na_leak', 'pump', 'Na_manual'], caption: 'A Na⁺ channel has been added. Predict first, then open it.' }, remount: true,
-          title: 'Predict: a Na⁺ channel opens',
-          text: `<p>Suppose a ${I('Na')} channel in this membrane suddenly opens.</p>`,
-          question: { prompt: 'Which way will Na⁺ move?', options: [
-            { t: 'Into the cell', ok: true, fb: 'Both forces agree: Na⁺ is 145 mM outside vs 12 mM inside, and the inside is negative, which attracts a positive ion.' },
-            { t: 'Out of the cell', fb: FB_GRADIENT + ' Na⁺ is concentrated outside and the inside is negative.' },
-            { t: 'Neither', fb: 'An open channel plus a gradient means movement. Na⁺ has both a concentration gradient and an electrical pull in the same direction.' },
-          ] },
-        },
-        {
-          view: 'membrane', title: 'Predict, then observe',
-          text: `<p>Positive ${I('Na')} is about to enter the cell.</p>`,
-          question: { prompt: 'What will happen to the membrane potential?', options: [
-            { t: 'It will become more positive (depolarize)', ok: true, fb: 'Now test it: hold the button to open Na⁺ channels and watch the voltage trace.' },
-            { t: 'It will become more negative', fb: 'Positive charge is entering the inside. Would that make the inside more or less negative?' },
-            { t: 'It will stay at −70 mV', fb: 'Adding positive charge to one side of the membrane must change the voltage across it.' },
-          ] },
-          actions: [{ label: 'Hold to open Na⁺ channels', cls: 'na', hold: true, down: () => { sim.manual.gNa = 0.0007; }, up: () => { sim.manual.gNa = 0; } }],
-          waitFor: (c) => sim.soma.V > -63, waitHint: 'Hold the button and watch Vm rise',
-          status: (c) => runner.state.done ? '<b>Observed:</b> Na⁺ entered and Vm rose (watch the ladder: Na⁺ pulls Vm up toward +67). Let go and it drifts back as K⁺ leaks out again.' : 'Vm is ' + fmtV(sim.soma.V) + ' mV — hold the button.',
-        },
-        {
-          view: 'membrane', viewOpts: { comp: 'soma', inset: 'soma', channels: ['K_leak', 'Na_leak', 'pump', 'K_manual'], caption: 'Now a K⁺ channel. Predict first.' }, remount: true,
-          title: 'Predict: extra K⁺ channels open',
-          text: `<p>Now imagine <b>extra</b> ${I('K')} channels open, on top of the leak.</p>`,
-          question: { prompt: 'What will happen to Vm?', options: [
-            { t: 'It becomes more negative (hyperpolarizes)', ok: true, fb: 'More K⁺ leaves, taking positive charge out. Vm moves toward the K⁺ equilibrium potential (about −95 mV). Try it.' },
-            { t: 'It becomes more positive', fb: 'K⁺ is a positive ion leaving the cell. Which way does that push the inside charge?' },
-            { t: 'Nothing changes', fb: 'More open channels means more K⁺ crossing, so the balance shifts.' },
-          ] },
-          actions: [{ label: 'Hold to open K⁺ channels', cls: 'k', hold: true, down: () => { sim.manual.gK = 0.006; }, up: () => { sim.manual.gK = 0; } }],
-          waitFor: () => sim.soma.V < -73, waitHint: 'Hold the button and watch Vm fall',
-          status: (c) => runner.state.done ? '<b>Observed:</b> K⁺ left and Vm became more negative. Remember this: <b>Na⁺ in = up, K⁺ out = down</b>. The whole story of the action potential follows from it.' : 'Vm is ' + fmtV(sim.soma.V) + ' mV',
-        },
-      ],
-    },
+    S.restingMembrane(profile, kit),
     // ------------------------------------------------------------- 4. electrode
-    {
-      id: 'electrode', title: 'Recording from inside', speed: 0.01,
-      steps: [
-        {
-          view: 'neuron', viewOpts: { caption: 'A microelectrode is lowered into the cell body; a reference electrode sits outside.' }, reset: true, electrode: true, labels: true, record: 'soma', remount: true,
-          title: 'Put in an electrode',
-          text: `<p>Watch the fine glass <b>microelectrode</b> slide into the cell body. Its voltage is compared with a <b>reference electrode</b> in the fluid outside.</p>
-                 <p>From now on the graph at the bottom is live: everything you see happen in the neuron will show up on this trace, and vice versa.</p>`,
-          question: { prompt: 'The trace reads about −70 mV. What does that mean?', options: [
-            { t: 'The inside of the cell is 70 mV more negative than the outside', ok: true, fb: 'Membrane potential is always inside relative to outside. Depolarization means moving up toward 0; hyperpolarization means moving further down.' },
-            { t: 'The outside is 70 mV more negative than the inside', fb: 'By convention the outside is the reference (0 mV), and the inside measured against it is negative.' },
-            { t: 'The cell is switched off', fb: 'A resting neuron is not off; it is charged and ready, like a stretched spring.' },
-          ] },
-        },
-      ],
-    },
+    S.recordingElectrode(profile, kit),
     // ------------------------------------------------------------- 5. receiving a signal
     {
       id: 'synapse', title: 'Receiving a signal', speed: 0.002,
@@ -2167,7 +2468,7 @@
     },
     // ------------------------------------------------------------- 6. integration
     {
-      id: 'integrate', title: 'Adding up the inputs', speed: 0.004,
+      id: 'integrate', title: 'Adding up the inputs', speed: 0.004, showThreshold: true,
       steps: [
         {
           view: 'neuron', viewOpts: { caption: 'Click the input boutons (A, B, C) or use the buttons. Watch the trace.' }, reset: true, record: 'soma', electrode: true, labels: true, remount: true,
@@ -2219,7 +2520,7 @@
     },
     // ------------------------------------------------------------- 7. axon hillock
     {
-      id: 'hillock', title: 'The axon hillock decides', speed: 0.003,
+      id: 'hillock', title: 'The axon hillock decides', speed: 0.003, showThreshold: true,
       steps: [
         {
           view: 'membrane', viewOpts: { comp: 'hillock', inset: 'hillock', channels: ['Na_v', 'K_v', 'Na_v', 'K_v', 'Na_v'], ions: { outside: { Ca: 0 } }, caption: 'The membrane of the axon hillock, packed with voltage-gated channels.' }, reset: true, record: 'hillock', electrode: true, remount: true,
@@ -2239,8 +2540,8 @@
             { t: 'Stay closed until the cell reaches 0 mV', fb: 'Their sensors respond well before 0 mV: around −55 mV a significant fraction open, and that is enough to start the chain reaction.' },
             { t: 'Close more tightly', fb: 'Depolarization is exactly what opens them.' },
           ] },
-          actions: [{ label: 'Depolarize the cell to threshold', cls: 'na', run: (c) => { setPaused(false); stimPulse(c, 0.45, 3); } }],
-          tick: (c) => { stimTick(c); if (!runner.state.done && sim.hillock.V > -56) { c.complete(); setPaused(true); } },
+          actions: [{ label: 'Depolarize the cell to threshold', cls: 'na', run: (c) => { setPaused(false); stimPulse(); } }],
+          tick: (c) => { if (!runner.state.done && sim.hillock.V > -56) { c.complete(); setPaused(true); } },
           waitFor: () => false, waitHint: 'Depolarize the cell',
           status: (c) => runner.state.done ? '<b>Paused at threshold.</b> Vm (hillock) = ' + fmtV(sim.hillock.V) + ' mV. Some Na⁺ channels have just opened.' : `Vm (hillock) = ${fmtV(sim.hillock.V)} mV`,
         },
@@ -2268,109 +2569,17 @@
       ],
     },
     // ------------------------------------------------------------- 8. build the AP graph
-    {
-      id: 'ap', title: 'Building the action potential', speed: 0.003,
-      steps: [
-        {
-          view: 'membrane', viewOpts: { comp: 'hillock', inset: 'hillock', channels: ['Na_v', 'K_v'], ions: { outside: { Ca: 0 } }, caption: 'Building the action potential curve one phase at a time.' }, reset: true, record: 'hillock', electrode: true, showG: true, remount: true,
-          title: 'Phase 1: rising',
-          text: `<p>Instead of memorizing the famous curve, we will build it from what the channels do. The lower band of the trace shows the Na⁺ conductance (<span style="color:#e8772e">orange</span>) and K⁺ conductance (<span style="color:#8e5cf0">purple</span>), i.e. how many of each channel are open.</p>
-                 <p>Trigger an action potential. The simulation will pause during the rising phase.</p>`,
-          actions: [{ label: 'Trigger', cls: 'na', run: (c) => { setPaused(false); stimPulse(c, 0.45, 3); c.stepState().data.armed = true; } }],
-          tick: (c) => { const d = c.stepState().data; if (d.armed && !runner.state.done && sim.hillock.V > -30 && sim.hillock.dVdt > 0) { c.complete(); setPaused(true); c.mark('rise'); } },
-          waitFor: () => false, waitHint: 'Trigger the action potential',
-          status: (c) => runner.state.done ? '<b>Paused mid-rise.</b> gNa is large; K⁺ channels are only starting to open.' : `Vm (hillock) = ${fmtV(sim.hillock.V)} mV`,
-        },
-        {
-          view: 'membrane', title: 'Rising phase', pause: true,
-          text: `<p>Paused. The Na⁺ conductance is huge and ${I('Na')} is pouring in.</p>`,
-          question: { prompt: 'Where is Vm heading?', options: [
-            { t: 'Up toward the Na⁺ equilibrium potential (+67 mV)', ok: true, fb: 'With Na⁺ channels dominating, Vm is pulled toward ENa. It will not quite get there, because of what happens next. Continue and the simulation will pause again at the peak.' },
-            { t: 'Back down to −70 mV', fb: 'While Na⁺ is entering, the inside keeps getting more positive.' },
-            { t: 'It stays at 0 mV', fb: 'Nothing special happens at 0 mV. The relevant landmark is the equilibrium potential of the ion that dominates: Na⁺.' },
-          ] },
-          onContinue: (c) => { setPaused(false); },
-        },
-        {
-          view: 'membrane', title: 'Approaching the peak',
-          text: `<p>Watch the two conductances. The Na⁺ channels begin to <b>inactivate</b> (a plug swings into the pore), and the slower K⁺ channels finally open. The simulation pauses at the peak.</p>`,
-          enter: (c) => { c.stepState().data.t0 = sim.t; },
-          actions: [refire],
-          tick: (c) => {
-            if (runner.state.done) return;
-            const h = sim.hillock;
-            if (h.V > 10 && h.dVdt < 0) { c.complete(); setPaused(true); c.mark('peak'); return; }
-            const hist = since(c);
-            if (hist.some(s => s.V.hillock > 10) && h.V < -60) { c.complete(); c.stepState().data.missed = true; }
-          },
-          waitFor: () => false, waitHint: 'Wait for the peak (or fire again)',
-          status: (c) => runner.state.done ? (c.stepState().data.missed ? 'The peak went by. Press <b>Fire again</b> to catch it, or continue.' : `<b>Paused at the peak:</b> ${fmtV(sim.hillock.V)} mV. Na⁺ channels are inactivating; K⁺ channels are open.`) : `Vm (hillock) = ${fmtV(sim.hillock.V)} mV`,
-        },
-        {
-          view: 'membrane', title: 'Phase 2: at the peak', pause: true,
-          text: `<p>Paused at the peak. Na⁺ channels are inactivated and no longer pass Na⁺. The voltage-gated K⁺ channels are now wide open. ${I('K')} is far more concentrated inside, and the inside is now <b>positive</b>.</p>`,
-          question: { prompt: 'Which way does K⁺ move now?', options: [
-            { t: 'Out of the cell', ok: true, fb: 'Both the concentration gradient and the electrical force (positive inside repelling a positive ion) now push K⁺ out.' },
-            { t: 'Into the cell', fb: 'K⁺ is 140 mM inside, 4 mM outside, and the inside is now positive. Every force points outward.' },
-          ] },
-        },
-        {
-          view: 'membrane', title: 'Predict the falling phase', pause: true,
-          question: { prompt: 'Positive charge is leaving the cell. What happens to Vm?', options: [
-            { t: 'It falls back toward negative values (repolarization)', ok: true, fb: 'K⁺ out = down. Continue and watch the trace fall; the simulation will pause once more when Vm dips below rest.' },
-            { t: 'It keeps rising', fb: 'Losing positive charge makes the inside less positive.' },
-          ] },
-          onContinue: (c) => { setPaused(false); },
-        },
-        {
-          view: 'membrane', title: 'Phase 3: falling',
-          text: `<p>K⁺ leaves, Vm falls. Watch where it stops.</p>`,
-          enter: (c) => { c.stepState().data.t0 = sim.t; },
-          actions: [refire],
-          tick: (c) => {
-            if (runner.state.done) return;
-            const h = sim.hillock;
-            if (h.V < -76 && Math.abs(h.dVdt) < 30) { c.complete(); setPaused(true); c.mark('undershoot'); return; }
-            const hist = since(c);
-            if (hist.some(s => s.V.hillock < -74) && h.V > -72) { c.complete(); c.stepState().data.missed = true; }
-          },
-          waitFor: () => false, waitHint: 'Wait for the trace to fall (or fire again)',
-          status: (c) => runner.state.done ? (c.stepState().data.missed ? 'The undershoot went by. Press <b>Fire again</b> to see it, or continue.' : `<b>Paused at the undershoot:</b> ${fmtV(sim.hillock.V)} mV, below the resting potential.`) : `Vm (hillock) = ${fmtV(sim.hillock.V)} mV`,
-        },
-        {
-          view: 'membrane', title: 'Phase 4: the undershoot', pause: true,
-          text: `<p>Vm has dropped <b>below</b> −70 mV.</p>`,
-          question: { prompt: 'Why does the voltage overshoot below the resting potential?', options: [
-            { t: 'The voltage-gated K⁺ channels are slow to close, so the membrane is briefly even more K⁺-permeable than at rest and Vm approaches EK (about −95 mV)', ok: true, fb: 'As those K⁺ channels close, Vm relaxes back to −70 mV. Continue and watch it recover. Note the Na⁺ channels: still inactivated for a while.' },
-            { t: 'Na⁺ is still entering', fb: 'Na⁺ entering would make Vm more positive, not more negative. And the Na⁺ channels are inactivated.' },
-            { t: 'The pump has pumped all the Na⁺ back out', fb: 'The pump is far too slow to act within a millisecond. Only a tiny fraction of the ions crossed anyway; the gradients are essentially unchanged.' },
-          ] },
-          onContinue: (c) => { setPaused(false); },
-        },
-        {
-          view: 'membrane', title: 'You built the curve',
-          text: `<p>Rising (Na⁺ in) → peak (Na⁺ inactivates, K⁺ opens) → falling (K⁺ out) → undershoot (K⁺ still open) → rest. Every phase is a consequence of which channels are open. Fire again as often as you like and watch the ladder.</p>`,
-          actions: [refire],
-          question: { prompt: 'Right after an action potential the membrane cannot fire again for a moment (the refractory period). Why?', options: [
-            { t: 'The Na⁺ channels are inactivated and must return to the closed state before they can open again', ok: true, fb: 'The refractory period also limits how fast a neuron can fire, and, as we will see next, it is why the action potential travels in one direction only.' },
-            { t: 'The cell has run out of Na⁺ outside', fb: 'Only a tiny fraction of the ions moved. The gradients are practically unchanged.' },
-            { t: 'The K⁺ channels are inactivated', fb: 'The delayed K⁺ channels simply close; it is the Na⁺ channels that have an inactivated state (the plug).' },
-          ] },
-          waitFor: () => sim.hillock.V > -72 && sim.hillock.h > 0.4, waitHint: 'Wait for the membrane to recover',
-        },
-      ],
-    },
+    Object.assign(S.actionPotential(profile, kit), { showThreshold: true }),
     // ------------------------------------------------------------- 9. propagation
     {
-      id: 'propagate', title: 'Down the axon', speed: 0.003,
+      id: 'propagate', title: 'Down the axon', speed: 0.003, showThreshold: true,
       steps: [
         {
           view: 'axon', viewOpts: { caption: 'The axon, unrolled: hillock on the left, terminal on the right.' }, reset: true, record: 'hillock', extra: ['axon6', 'terminal'], electrode: true, showG: false, remount: true,
           title: 'The action potential travels',
           text: `<p>Here is the axon laid out as a series of segments, each with its own voltage-gated Na⁺ and K⁺ channels. Three electrodes record from the hillock, the middle of the axon and the terminal.</p>
                  <p>When one segment fires, its inward Na⁺ current spreads as a <b>local current</b> along the inside of the axon and depolarizes the next segment.</p>`,
-          actions: [{ label: 'Fire the neuron', cls: 'na', run: (c) => { stimPulse(c, 0.45, 3); } }],
-          tick: (c) => stimTick(c),
+          actions: [{ label: 'Fire the neuron', cls: 'na', run: (c) => { stimPulse(); } }],
           waitFor: (c, ev) => spikeIn(ev, 'terminal'), waitHint: 'Fire the neuron and watch the wave travel',
           status: (c) => runner.state.done ? '<b>Observed:</b> the wave reached the terminal. Look at the three traces: the same full-size action potential, delayed at each electrode.' : 'Watch the channels change state from left to right.',
         },
@@ -2385,8 +2594,7 @@
         {
           view: 'axon', title: 'Why only forward?',
           text: `<p>Fire it again and watch the channels <b>behind</b> the wave.</p>`,
-          actions: [{ label: 'Fire the neuron', cls: 'na', run: (c) => { stimPulse(c, 0.45, 3); } }],
-          tick: (c) => stimTick(c),
+          actions: [{ label: 'Fire the neuron', cls: 'na', run: (c) => { stimPulse(); } }],
           question: { prompt: 'The segment that just fired is also depolarized by its neighbour. Why doesn\'t the action potential travel backward?', options: [
             { t: 'Behind the wave, the Na⁺ channels are inactivated (refractory) and cannot reopen', ok: true, fb: 'The inactivated channels (plug in the pore) leave the wave only one way to go. In myelinated axons the same idea applies, but the wave jumps between nodes; a topic for later.' },
             { t: 'The axon has a valve that lets current flow one way', fb: 'There is no valve. Current spreads both ways; what differs is the state of the channels on either side.' },
@@ -2397,7 +2605,7 @@
     },
     // ------------------------------------------------------------- 10. terminal
     {
-      id: 'terminal', title: 'Passing it on', speed: 0.003,
+      id: 'terminal', title: 'Passing it on', speed: 0.003, showThreshold: true,
       steps: [
         {
           view: 'synapse', viewOpts: { input: 'output', caption: 'Our own terminal, facing the next neuron.' }, reset: true, record: 'terminal', extra: ['next'], electrode: true, remount: true,
@@ -2408,8 +2616,7 @@
             { t: 'Ligand-gated receptor channels', fb: 'Those sit on the receiving side and need transmitter to open. We are on the sending side, and nothing has been released yet.' },
             { t: 'K⁺ leak channels', fb: 'Leak channels are always open and do not respond to voltage.' },
           ] },
-          actions: [{ label: 'Send an action potential', cls: 'ca', run: (c) => { stimPulse(c, 0.45, 3); } }],
-          tick: (c) => stimTick(c),
+          actions: [{ label: 'Send an action potential', cls: 'ca', run: (c) => { stimPulse(); } }],
           waitFor: (c, ev) => ev.some(e => e.type === 'release' && e.input === 'output'), waitHint: 'Send an action potential and watch the terminal',
           status: (c) => runner.state.done ? '<b>Observed:</b> Ca²⁺ entered, vesicles fused, transmitter crossed the cleft and the next neuron produced an EPSP (pink trace).' : `Vm (terminal) = ${fmtV(sim.term.V)} mV`,
         },
@@ -2429,15 +2636,96 @@
         },
       ],
     },
-  ];
+    ];
+  }
 
   // =========================================================================
-  // Start
+  // Free-play lab (config.lab: the generic shell in app.js resets the sim and calls this)
   // =========================================================================
-  gotoStep(0, 0);
-  requestAnimationFrame(frame);
+  function lab(kit) {
+    bind(kit);
+    app.electrode = true; app.labels = true; app.recordComp = 'soma'; app.extraTraces = ['terminal', 'next'];
+    setSpeed(0.005); setPaused(false);
+    mountView('neuron', { caption: 'Lab: click an input bouton to fire it, or use the controls.' });
+    renderLab();
+  }
+  function renderLab() {
+    panel.innerHTML = '';
+    panel.appendChild(htmlEl('div', { class: 'scene-label' }, 'Free-play lab'));
+    panel.appendChild(htmlEl('h2', {}, 'Experiment with the neuron'));
+    panel.appendChild(htmlEl('div', { class: 'text' }, '<p>Everything here is the same simulation the lesson used. Change one thing at a time and watch the trace.</p>'));
+    const lab = htmlEl('div', { class: 'lab' });
+    const row = (label, input, valEl) => { const r = htmlEl('div', { class: 'row' }); r.appendChild(htmlEl('label', {}, label)); r.appendChild(input); if (valEl) r.appendChild(valEl); lab.appendChild(r); return r; };
+    const slider = (label, min, max, step, get, set, fmt) => {
+      const inp = htmlEl('input', { type: 'range', min, max, step }); inp.value = get();
+      const val = htmlEl('span', { class: 'val' }, fmt(get()));
+      inp.addEventListener('input', () => { set(parseFloat(inp.value)); val.textContent = fmt(parseFloat(inp.value)); });
+      row(label, inp, val);
+      return inp;
+    };
+    lab.appendChild(htmlEl('h3', {}, 'View'));
+    const sel = htmlEl('select');
+    [['neuron', 'Whole neuron'], ['membrane-soma', 'Membrane (soma)'], ['membrane-hillock', 'Membrane (axon hillock)'], ['synapse-A', 'Synapse: input A (excitatory)'], ['synapse-C', 'Synapse: input C (inhibitory)'], ['axon', 'Axon propagation'], ['synapse-output', 'Our terminal → next neuron']].forEach(([v, t]) => { const o = htmlEl('option', { value: v }, t); sel.appendChild(o); });
+    sel.addEventListener('change', () => {
+      const v = sel.value;
+      if (v === 'neuron') mountView('neuron', { caption: 'Lab' });
+      else if (v.startsWith('membrane-')) { const c = v.split('-')[1]; mountView('membrane', { comp: c, inset: c, channels: c === 'soma' ? ['K_leak', 'Na_leak', 'pump', 'Na_v', 'K_v', 'Na_manual', 'K_manual', 'Cl_manual'] : ['Na_v', 'K_v', 'Na_v', 'K_v', 'Na_v', 'K_leak'], caption: 'Lab: membrane of the ' + c }); app.recordComp = c; }
+      else if (v.startsWith('synapse-')) { const i = v.split('-')[1]; mountView('synapse', { input: i, caption: 'Lab: synapse' }); app.recordComp = i === 'output' ? 'terminal' : (i === 'C' ? 'soma' : 'dendrite'); }
+      else if (v === 'axon') { mountView('axon', { caption: 'Lab: axon' }); app.recordComp = 'hillock'; app.extraTraces = ['axon6', 'terminal']; }
+      $('#trace-title').textContent = profile.traceTitle(app.recordComp);
+    });
+    row('Show', sel);
+    lab.appendChild(htmlEl('h3', {}, 'Inputs'));
+    const fireRow = htmlEl('div', { class: 'actions' });
+    for (const id of ['A', 'B', 'C']) { const b = htmlEl('button', { class: id === 'C' ? 'cl' : 'na' }, `Fire ${id}`); b.addEventListener('click', () => sim.fireInput(id)); fireRow.appendChild(b); }
+    lab.appendChild(fireRow);
+    for (const id of ['A', 'B', 'C']) {
+      const cb = htmlEl('input', { type: 'checkbox' }); cb.addEventListener('change', () => { sim.input(id).autoFire = cb.checked; sim.input(id).lastAuto = -1e9; });
+      row(`Input ${id} fires repeatedly`, cb);
+    }
+    slider('Repeat interval (ms)', 4, 40, 1, () => 20, (v) => sim.inputs.forEach(i => { i.autoInterval = v; }), (v) => v + ' ms');
+    slider('Excitatory synapse strength', 0, 3, 0.05, () => 1, (v) => sim.inputs.forEach(i => { if (i.type === 'excitatory') i.receptor.gmax = 0.004 * v; }), (v) => '×' + v.toFixed(2));
+    slider('Inhibitory synapse strength', 0, 3, 0.05, () => 1, (v) => { sim.input('C').receptor.gmax = 0.012 * v; }, (v) => '×' + v.toFixed(2));
+    lab.appendChild(htmlEl('h3', {}, 'Current injection (electrode)'));
+    slider('Current into soma (nA)', -0.3, 0.6, 0.01, () => 0, (v) => sim.setStim('soma', v), (v) => v.toFixed(2) + ' nA');
+    lab.appendChild(htmlEl('h3', {}, 'Open channels yourself (soma)'));
+    const manual = htmlEl('div', { class: 'actions' });
+    for (const [key, cls, label, g] of [['gNa', 'na', 'Hold: open Na⁺ channels', 0.0015], ['gK', 'k', 'Hold: open K⁺ channels', 0.006], ['gCl', 'cl', 'Hold: open Cl⁻ channels', 0.01]]) {
+      const b = htmlEl('button', { class: cls }, label);
+      const down = (e) => { e.preventDefault(); sim.manual[key] = g; b.classList.add('held'); }, up = () => { sim.manual[key] = 0; b.classList.remove('held'); };
+      b.addEventListener('pointerdown', down); b.addEventListener('pointerup', up); b.addEventListener('pointerleave', up);
+      manual.appendChild(b);
+    }
+    lab.appendChild(manual);
+    lab.appendChild(htmlEl('h3', {}, 'Drugs and conditions'));
+    slider('Block voltage-gated Na⁺ channels (TTX)', 0, 100, 1, () => 0, (v) => { sim.naBlock = v / 100; }, (v) => v + '%');
+    slider('Block voltage-gated K⁺ channels (TEA)', 0, 100, 1, () => 0, (v) => { sim.kBlock = v / 100; }, (v) => v + '%');
+    slider('Block terminal Ca²⁺ channels', 0, 100, 1, () => 0, (v) => { sim.terminal.caBlock = v / 100; }, (v) => v + '%');
+    slider('Block receptors of input A (antagonist)', 0, 100, 1, () => 0, (v) => { sim.input('A').receptor.block = v / 100; }, (v) => v + '%');
+    slider('Extracellular K⁺ (mM)', 2, 30, 0.5, () => 4, (v) => { sim.conc.K.out = v; }, (v) => v.toFixed(1) + ' mM');
+    slider('Extracellular Na⁺ (mM)', 20, 200, 5, () => 145, (v) => { sim.conc.Na.out = v; }, (v) => v.toFixed(0) + ' mM');
+    const pump = htmlEl('input', { type: 'checkbox' }); pump.checked = true;
+    pump.addEventListener('change', () => { sim.pumpOn = pump.checked; sim.pumpRundownRate = pump.checked ? 0 : 0.02; });
+    row('Na⁺/K⁺ pump running (off = gradients slowly run down, accelerated)', pump);
+    lab.appendChild(htmlEl('h3', {}, 'Recording'));
+    const rec = htmlEl('select');
+    ['dendrite', 'soma', 'hillock', 'axon6', 'terminal', 'next'].forEach(n => rec.appendChild(htmlEl('option', { value: n }, n)));
+    rec.value = app.recordComp; rec.addEventListener('change', () => { app.recordComp = rec.value; $('#trace-title').textContent = profile.traceTitle(app.recordComp); });
+    row('Electrode in', rec);
+    const resetB = htmlEl('button', {}, 'Reset neuron'); resetB.addEventListener('click', () => { sim.reset(); app.history = []; app.markers = []; renderLab(); });
+    lab.appendChild(resetB);
+    panel.appendChild(lab);
+    panel.appendChild(labNav());
+  }
+
+
+  window.NeuronLesson = { profile, drawCell, views: (kit) => { bind(kit); return views; }, lesson, lab };
 })();
 
+</script>
+<script>
+  // Boot: the generic SimApp runs the neuron model with the neuron lesson (see docs/APP_API.md).
+  window.__neuronsim = SimApp.init(Object.assign({ model: new NeuronSim.Neuron() }, NeuronLesson));
 </script>
 </body>
 </html>

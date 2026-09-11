@@ -1,9 +1,14 @@
-# NeuronSim — how a neuron signals
+# NeuronSim and MuscleSim — how excitable cells signal
 
-An interactive, model-driven lesson that helps students build an intuitive, *causal*
+Two interactive, model-driven lessons on one engine. **NeuronSim** builds a causal
 understanding of neuronal signaling: receive → integrate → decide → propagate → transmit.
+**MuscleSim** does the same for a skeletal muscle fibre: rest → shock → impulse → spread → Ca²⁺ →
+force → relax → tetanus, then the neuromuscular junction, with a lab of clinical scenarios. The
+muscle module is self-contained (it is taught first in the course it was built for) and
+introduces the resting membrane and the action potential from scratch.
 
-**Live version:** https://foxworthywa.github.io/neuronsim/ (rebuilt automatically on every push).
+**Live versions:** https://foxworthywa.github.io/neuronsim/ (neuron) and
+https://foxworthywa.github.io/neuronsim/muscle.html (muscle), rebuilt automatically on every push.
 
 No build step. Open `index.html` in a browser (or serve the folder with any static server).
 
@@ -39,6 +44,33 @@ as the model reaches it.
 Then a **free-play lab**: block Na⁺/K⁺/Ca²⁺ channels, change extracellular K⁺, switch off
 the pump, inject current, fire inputs repeatedly, and record from any compartment.
 
+## MuscleSim (`muscle.html`)
+
+Fourteen scenes on one skeletal muscle fibre, same predict → observe → explain rhythm:
+
+1. Zoom from a person lifting a cup to one fibre; one impulse, one twitch.
+2. Parts of a muscle fibre by *function* (sarcolemma, T-tubules, SR, myofibrils, end plate).
+3. The resting membrane (−85 mV): gradients, pump vs. permeability, open a channel yourself.
+4. Insert a recording electrode.
+5. Shock the fibre: threshold, the Na⁺ positive-feedback loop, all-or-none.
+6. Build the action potential phase by phase; the refractory period.
+7. The impulse spreads both ways along the fibre and down the T-tubules.
+8. Voltage to calcium: the tubule sensor opens the SR store (a Ca²⁺-free bath still twitches).
+9. Calcium to force: troponin, tropomyosin, cross-bridges, ATP.
+10. Relaxation: SERCA pumps Ca²⁺ back; with no ATP the fibre locks (rigor).
+11. The twitch on one time axis: milliseconds of impulse, tens of ms of Ca²⁺, ~100 ms of force.
+12. Summation and tetanus, discovered by raising the stimulation rate.
+13. How the body delivers the shock: the neuromuscular junction, ACh, the end-plate potential
+    and its safety margin.
+14. Grading force: motor units and rate (optional).
+
+The **lab** adds clinical scenario cards, each with a prediction: botulinum toxin, magnesium
+sulfate and calcium gluconate, rocuronium with neostigmine or sugammadex, myasthenia gravis with
+pyridostigmine and cholinergic crisis, succinylcholine, organophosphate poisoning, hyper- and
+hypokalaemia (with IV calcium), hypo- and hypercalcaemia, malignant hyperthermia and dantrolene,
+rigor mortis versus cramp, and "which calcium?". The design and every question are in
+`docs/MUSCLE_MODULE.md`; the model is `muscle.js`, tested by `tests/muscle.test.js`.
+
 ## How it works
 
 - `engine.js` — the simulation. A simplified Hodgkin–Huxley conductance model
@@ -54,10 +86,17 @@ the pump, inject current, fire inputs repeatedly, and record from any compartmen
   built from a cell profile so other modules (muscle) can re-stage them.
 - `lessons/neuron.js` — everything neuron-specific: the neuron drawing, the zoom/neuron/synapse/axon
   views, the ten-scene lesson and the lab. `index.html` + `style.css` are the page.
-- `tests/biology.test.js` — "scientific unit tests" asserting the physiology;
+- `muscle.js` — the skeletal muscle fibre: 17 coupled sarcolemma segments (3 cm) with the same
+  channel kinetics, a split K⁺/Na⁺ leak resting at −85 mV, per-segment excitation–contraction
+  coupling (T-tubule sensor → SR release channel → cytosolic Ca²⁺ → troponin → cross-bridges →
+  force, SERCA return, ATP), a neuromuscular junction built from the engine's terminal and
+  receptor classes, and the drug/ion controls behind the clinical scenarios.
+- `views/muscle.js` — the fibre, fibre-wave, triad, sarcomere and junction views;
+  `lessons/muscle.js` — the fourteen-scene lesson and the scenario lab; `muscle.html` is the page.
+- `tests/biology.test.js`, `tests/muscle.test.js` — "scientific unit tests" asserting the physiology;
   `tests/ui/smoke.js` — a Playwright walk of every scene, step and lab view (`npm run test:ui`).
 - `docs/` — `PRODUCT.md`, `BIOLOGY.md`, `PEDAGOGY.md`, `VISUAL_STYLE.md`, `NEURON_MODULE.md`,
-  `MUSCLE_MODULE.md`, `APP_API.md`.
+  `MUSCLE_MODULE.md`, `MUSCLE_VIEWS.md`, `APP_API.md`.
 
 Keyboard: **space** pauses/resumes the simulation clock. The speed menu sets how much simulated
 time passes per real second (default 1 %: a 2 ms action potential takes ~0.2 s; scenes 7–10 use

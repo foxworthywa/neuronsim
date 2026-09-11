@@ -40,6 +40,11 @@ hold-to-open Na⁺/K⁺/Cl⁻ channels, TTX (Na⁺ block), TEA (K⁺ block), Ca�
 receptor antagonist, extracellular K⁺ and Na⁺, pump on/off (accelerated rundown), recording site,
 and any of the views.
 
+Planned clinical scenario (referenced from `MUSCLE_MODULE.md`, not yet built): **lost inhibition**
+(tetanus toxin blocks release from spinal inhibitory interneurons; strychnine blocks their glycine
+receptors): antagonize the receptor at input C and watch the same excitatory inputs now fire the
+cell unopposed. The muscle chain itself is intact in tetanus, which is why it belongs here.
+
 ## Feedback rules
 
 - Wrong option → its own targeted feedback, options stay enabled.

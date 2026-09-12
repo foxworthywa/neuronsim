@@ -1,8 +1,10 @@
-# MUSCLE_MODULE.md — scene sequence (planned, Prototype 0.3)
+# MUSCLE_MODULE.md — scene sequence (Prototype 0.3)
 
 **MuscleSim: from a shock to a twitch.** The second module of the simulator: one skeletal
 muscle fibre, from the resting membrane to a fused tetanus, then the neuromuscular junction
-that normally delivers the command.
+that normally delivers the command. Implemented in `muscle.js` (model), `views/muscle.js`,
+`lessons/muscle.js` and `muscle.html`; the model's behaviour is asserted by `tests/muscle.test.js`.
+Numbers below are the calibrated model's.
 
 Every scene lists: the view, what the student does, the prediction(s), and the acceptance
 condition, in the same format as `NEURON_MODULE.md`. Sections after the table give the questions
@@ -58,7 +60,7 @@ colour, behaviour) with -ize verbs (depolarize, repolarize), as in `BIOLOGY.md` 
 | 3 | The resting membrane | membrane strip of the sarcolemma with K⁺ leak, Na⁺ leak, pump (shared scene) | reads gradients; answers; holds "open Na⁺ channels" and "open K⁺ channels" | which ion is high inside; pump vs permeability; K⁺ direction; Na⁺ direction; Vm change for Na⁺; Vm change for K⁺ | Vm rose ≥ 8 mV above rest / fell ≥ 3 mV below rest |
 | 4 | Recording from inside | whole fibre with recording electrode; trace becomes persistent (shared scene) | answers | meaning of −85 mV | answered |
 | 5 | Shock the fibre: threshold | sarcolemma strip with voltage-gated channels + stimulating electrodes; stimulus-strength slider (0–250 % of threshold strength) | answers what will open the new channels; raises the shock in steps; sim pauses when Vm first crosses the profile threshold (≈ −60 mV); doubles the shock | what a small shock does; what will open a voltage-gated channel; what Na⁺ entry does to the neighbouring channels (positive feedback); what a stronger shock does to the spike (all-or-none) | first spike; a stronger shock has produced the same spike (peak within 2 mV) |
-| 6 | Building the action potential | sarcolemma strip + conductance traces; sim pauses at rise, peak, dip, recovery (shared scene) + muscle-only refractory step ("Shock twice, 3 ms apart" button) | triggers; answers at each pause; fires the paired shock | Vm heading (rise); K⁺ direction (peak); Vm change (fall); why the dip below rest; whether the second shock fires | membrane recovered; a shock 3 ms after a spike produced no spike |
+| 6 | Building the action potential | sarcolemma strip + conductance traces; sim pauses at rise, peak, dip, recovery (shared scene) + muscle-only refractory step ("Shock twice, 3 ms apart" button) | triggers; answers at each pause; fires the paired shock | Vm heading (rise); K⁺ direction (peak); Vm change (fall); why the dip below rest; whether the second shock fires | membrane recovered; a shock 3 ms after a spike produced no spike (4 ms would) |
 | 7 | Along the fibre and down the tubes | unrolled 3 cm fibre with per-segment channel states and V-vs-position profile; T-tubule openings drawn at each segment's own voltage | shocks the middle of the fibre; watches the wave go both ways and into the tubules | which way the wave travels; what opens the next segment; why it does not turn back; where the tubules carry it | spike event in both end segments; `sensorState` active in every segment |
 | 8 | Voltage to calcium | triad: T-tubule wall with voltage sensor, SR with release channel and Ca²⁺ store, myofibril | fires; watches sensor → release channel → Ca²⁺ flood; then repeats in a Ca²⁺-free bath (Ca²⁺ replaced by Mg²⁺) | where the Ca²⁺ comes from; what happens with no Ca²⁺ outside | cytosolic Ca²⁺ peak seen; Ca²⁺-free run seen |
 | 9 | Calcium to force | sarcomere: thin filament with its cover, thick filament with cross-bridges, force gauge | fires; watches Ca²⁺ bind, the cover move, bridges cycle, sarcomere shorten | what has to change before a bridge can form; what the bridge needs to let go; what shortens | force peak seen |
@@ -334,7 +336,7 @@ opening (house style from the neuron module's scene 5).
 - **Activity**: block half the receptors. **Q5** "Will the fibre still twitch?" ✔ "Yes, a
   full-size twitch." → "Half the receptors are gone, but the end-plate potential shrinks by much
   less than half: the open receptors were already pulling Vm most of the way toward 0 mV, so
-  losing some of them costs little. That is why it takes losing about three quarters before the
+  losing some of them costs little. That is why it takes losing about four fifths before the
   impulse fails. This margin is why myasthenia gravis and neuromuscular blockers show nothing at
   first and then weakness. Explore this in the Lab." ✘ "No: half the signal is gone" → "Half the
   receptors, but not half the end-plate potential (watch the ladder), and the impulse only needs
@@ -406,16 +408,16 @@ step. The student predicts before running. Scenarios are grouped by the gate the
 |---|---|---|---|---|
 | Release | **Botulinum toxin** (wound botulism, or a therapeutic Botox dose) | release blocked (the fusion machinery is cut) | command arrives, Ca²⁺ enters, no vesicles fuse, no twitch; direct shock still works | "The nerve is fine and the muscle is fine. Will a command work? Will a shock?" |
 | Release | **Magnesium sulfate** (pre-eclampsia infusion; reflexes, breathing rate and urine output checked every hour) | Mg²⁺ 1 → 5 mM (terminal Ca²⁺ entry partly blocked: Mg²⁺ competes with Ca²⁺ for the channel); then **calcium gluconate** (extracellular Ca²⁺ 2 → 3 mM) | smaller release, smaller end-plate potential; at 5 mM commands fail; direct shock works; raising Ca²⁺ out-competes the Mg²⁺ and commands twitch again | "Why does the nurse check the patellar reflex?" then "The reflex is gone and breathing is slow. The nurse gives calcium gluconate. Will the commands come back?" |
-| Receptor | **Rocuronium / vecuronium** (non-depolarizing blocker in the OR) | receptor block fraction rises 0 → 95 % | twitches unchanged until ~75 % block, then fail; at 85 % **neostigmine** (AChE activity down) or **sugammadex** (block removed) restores them; at 95 % neostigmine does not, sugammadex does | "At what fraction of blocked receptors does the twitch fail?" then "Push the block to 95 %. Will more ACh beat a nearly complete block?" |
-| Receptor | **Myasthenia gravis** | receptor density 100 % → the value at which the first end-plate potential is ≈ 1.1× threshold; command train at 3 Hz; then **pyridostigmine** (AChE 0.3); then too much pyridostigmine (AChE at the overdose setting) | first commands fire, later ones fail as the end-plate potential runs down (fatigable weakness); pyridostigmine restores the whole train; overdose: long end-plate potentials, repetitive spikes, then depolarizing block and failure again | "Why does the patient's eyelid droop *later in the day*?" then, on the overdose step, "Stronger or weaker?" |
+| Receptor | **Rocuronium / vecuronium** (non-depolarizing blocker in the OR) | receptor block fraction rises 0 → 95 % | twitches unchanged until ~80 % block, then fail at 85 %; at 85 % **neostigmine** (AChE activity down) or **sugammadex** (block removed) restores them; at 95 % neostigmine does not, sugammadex does | "At what fraction of blocked receptors does the twitch fail?" then "Push the block to 95 %. Will more ACh beat a nearly complete block?" |
+| Receptor | **Myasthenia gravis** | receptor density 100 % → 20 % (the first end-plate potential just clears threshold); command train at 3 Hz; then **pyridostigmine** (AChE 0.3); then too much pyridostigmine (AChE 0.05) with a 20 Hz train | the first command fires, later ones fail as the end-plate potential runs down (fatigable weakness); pyridostigmine restores the whole train; overdose: a long end-plate potential, an impulse or two, then depolarizing block and failure again | "Why does the patient's eyelid droop *later in the day*?" then, on the overdose step, "Stronger or weaker?" |
 | Receptor | **Succinylcholine** (depolarizing blocker, rapid-sequence intubation) | persistent agonist on (not cleared by AChE) | end plate depolarizes and stays; a burst of spikes (fasciculations), then the Na⁺ channels near the end plate inactivate and commands fail; a shock at the end plate fails, a shock at the far end of the fibre still fires (the block is at the junction, not the whole membrane); K⁺ leaks out | "Why does the patient twitch *before* going limp?" |
-| Cleft | **Organophosphate poisoning** (insecticide, nerve agent) | AChE activity → 0 | each command produces a long end-plate potential and repeated spikes, then depolarizing block; **pralidoxime** reactivates AChE only if given before the enzyme has "aged" (hours for most insecticides, minutes for some nerve agents) | "Too much ACh: stronger or weaker?" |
-| Membrane | **Hyperkalaemia** (renal failure) | extracellular K⁺ 4 → 7 → 12 mM; then **IV calcium** (Ca²⁺ 2 → 3 mM) at 12 mM | at 7 mM rest drifts toward −75 and the fibre is *easier* to fire; at 12 mM Na⁺ channels inactivate and neither shock nor command fires; raising Ca²⁺ restores the gap between rest and threshold and the fibre fires again | "The membrane is *closer* to threshold. Stronger or weaker?" then "The K⁺ has not changed. Will calcium make the fibre fire again?" |
+| Cleft | **Organophosphate poisoning** (insecticide, nerve agent) | AChE activity → 0; a 20 Hz command train (the nerve driving a sustained contraction) | the first command produces an end-plate potential four times longer than normal and an impulse; ACh then piles up in the cleft, the end plate stays depolarized and later commands fail (depolarizing block); **pralidoxime** reactivates AChE only if given before the enzyme has "aged" (hours for most insecticides, minutes for some nerve agents) | "Too much ACh: stronger or weaker?" |
+| Membrane | **Hyperkalaemia** (renal failure) | extracellular K⁺ 4 → 7 → 11 → 12 mM; then **IV calcium** (Ca²⁺ 2 → 3 mM) at 11 mM | at 7 mM rest drifts toward −74 and the fibre is *easier* to fire; at 11 mM enough Na⁺ channels are inactivated that nerve commands fail (weakness) though a strong shock still fires; at 12 mM nothing fires; raising Ca²⁺ at 11 mM shifts the Na⁺ channels back and commands work again | "The membrane is *closer* to threshold. Stronger or weaker?" then "The K⁺ has not changed. Will calcium make the fibre answer its nerve again?" |
 | Membrane | **Hypokalaemia** (diuretics, vomiting, K⁺ 2.5 mM) | extracellular K⁺ 4 → 2.5 mM | rest hyperpolarizes by about 10 mV (E_K itself moves from −95 to about −107 mV); a nerve command still fires (the safety margin covers it) but a shock must be stronger | "Which way does Vm move, and is threshold nearer or farther?" |
-| Membrane | **Hypocalcaemia** (post-thyroidectomy tetany, Chvostek's and Trousseau's signs, stridor) | extracellular Ca²⁺ 2 → 1 mM (the model's 2 mM is the textbook value; a patient's ionized Ca²⁺ is normally ≈ 1.2 mmol/L and tetany appears below ≈ 0.8) | shock threshold drops by about 20 % (threshold readout); the motor nerve, which rests closer to threshold, starts sending commands on its own, so the fibre twitches with nobody asking | "Less calcium: more contraction or less? Why?" |
+| Membrane | **Hypocalcaemia** (post-thyroidectomy tetany, Chvostek's and Trousseau's signs, stridor) | extracellular Ca²⁺ 2 → 1 mM (the model's 2 mM is the textbook value; a patient's ionized Ca²⁺ is normally ≈ 1.2 mmol/L and tetany appears below ≈ 0.8) | shock threshold drops by about 10 % (threshold readout); the motor nerve, which rests closer to threshold, starts sending commands on its own (several a second), so the fibre twitches with nobody asking | "Less calcium: more contraction or less? Why?" |
 | Membrane | **Hypercalcaemia** | extracellular Ca²⁺ 2 → 3.5 mM | threshold strength rises; the nerve is quiet; sluggish, weak response | "Now the opposite." |
 | Store | **Malignant hyperthermia** (volatile anaesthetic or succinylcholine in a susceptible patient) | SR release channel leak on | Ca²⁺ leaks continuously; sustained force with no impulses; ATP meter falls, heat rises; **dantrolene** closes the leak | "Minutes after induction: rigid jaw, then rigid body, rising heart rate and exhaled CO₂, no nerve activity. Which gate?" |
-| Filaments | **Rigor mortis** (and ischaemic contracture) | ATP off | one twitch then locked force; Ca²⁺ stays high | "Is a rigid muscle *receiving* impulses?" |
+| Filaments | **Rigor mortis** (and ischaemic contracture) | ATP off | one contraction that never relaxes (force locks at tetanic level); Ca²⁺ stays high | "Is a rigid muscle *receiving* impulses?" |
 | Whole chain | **Cramp** | command train at 30–50 Hz with nothing else changed | an unfused tetanus the patient did not ask for; stops when the commands stop | "Rigid and painful. Is *this* muscle receiving impulses?" |
 | Contrast | **Which Ca²⁺?** | Ca²⁺-free bath (Ca²⁺ replaced by Mg²⁺); then command vs shock | commands fail (no release), shocks still twitch (SR store intact) | "No calcium in the bath. Does a *command* work? Does a *shock*?" |
 
@@ -716,48 +718,44 @@ sentence say each model must keep its own section true. Then add a **Skeletal mu
 
 ## Acceptance tests
 
-`tests/muscle.test.js` (run by `npm test` alongside the neuron tests). "Baseline" means force
-< 0.02 and Ca²⁺ < 0.15 µM; "threshold step" means the model's measured threshold depolarization.
+`tests/muscle.test.js` (run by `npm test` alongside the neuron tests; 22 tests, ≈ 35 s).
+"Baseline" means force < 0.03 and Ca²⁺ < 0.15 µM; "threshold step" is the 25 mV from rest to
+the model's ≈ −60 mV threshold; spikes are counted at `R3`, 5 mm from the stimulator, so the
+stimulus artefact at the end-plate segment never counts as one.
 
-- Stable rest at −85 mV; same gradient and Nernst-sign checks as the neuron.
-- Subthreshold shock: no spike, Vm returns to rest. Suprathreshold shock: spike with overshoot
-  and a dip below rest; doubling the shock changes spike amplitude by < 2 mV (all-or-none).
+- Stable rest at −85 mV in every segment; same gradient and Nernst-sign checks as the neuron;
+  the K⁺ leak dominates; opening Na⁺ / K⁺ channels by hand moves Vm up / down.
+- Subthreshold shock: no propagated spike, Vm returns to rest. Suprathreshold shock: overshoot and
+  a dip below rest; doubling the shock changes the propagated spike amplitude by < 2 mV.
+- The threshold readout is ≈ 1 in normal fluid.
 - A 2× shock 3 ms after a spike produces no second spike; 20 ms after, it does.
-- Shock at the end plate: both end segments spike, in distance order, with an end-to-end delay
-  between 2 and 10 ms; the end-plate segment has repolarized before the ends spike.
-- Spike precedes cytosolic Ca²⁺ peak precedes force peak; all three return to baseline; force
-  duration > 20× spike duration.
-- Twitch force ≈ 0.25 (normalized); two shocks 20 ms apart give a peak > 1.3× a single twitch;
-  a 50 Hz train fuses (peak > 3× twitch, ripple < 10 %) and a 100 Hz train follows spike for
-  spike; a 10 Hz train is unfused.
-- Ca²⁺-free, Mg²⁺-substituted bath: a shock still produces a twitch within 5 % of control; a
-  nerve command produces no release and no twitch.
-- ATP = 0 from before the shock: force rises once, then does not fall, and cytosolic Ca²⁺ does not
-  fall (rigor).
-- SR leak on: force rises with no shocks; dantrolene returns it to baseline.
-- Nerve command: release → end-plate potential → spike → twitch. With Na⁺ channels blocked the
-  end-plate potential alone is between 1.7× and 2.5× the threshold step.
-- Receptor block 50 %: command still twitches, with a peak within 5 % of control. Block 85 %:
-  no twitch; neostigmine (AChE 0.3) at 85 % restores the twitch; at 95 % block neostigmine does
-  not restore it and sugammadex does.
-- Receptor density at the model-derived myasthenia value: the first command in a 3 Hz train
-  twitches, a later one fails; AChE 0.3 makes the whole train succeed; AChE 0.05 with the same
-  density gives repetitive spikes on the first command and then failure.
-- Persistent agonist: at least two spontaneous spikes, then no response to a command or to a
-  shock at the end plate; a shock at the far end still spikes there; extracellular K⁺ rises in the
-  accelerated model.
-- AChE = 0: end-plate potential duration > 5× normal but finite (< 100 ms), repetitive spikes;
-  pralidoxime restores the normal duration.
-- Release blocked: command gives terminal Ca²⁺ entry but no release; shock still twitches.
-- Extracellular K⁺ 7 mM: rest between −78 and −72 mV, lower threshold strength than at 4 mM.
-  K⁺ 12 mM: no spike to any shock or command; K⁺ 12 mM + Ca²⁺ 3 mM: a shock spikes again.
-  K⁺ 2.5 mM: rest between −100 and −92 mV, higher threshold strength; a nerve command still
-  twitches.
-- Extracellular Ca²⁺ 1 mM: threshold strength ≈ 20 % lower than normal, no spontaneous fibre
-  spikes in 2 s with the nerve silenced, and spontaneous commands from the nerve within 2 s with
-  it enabled. Ca²⁺ 3.5 mM: threshold strength higher than normal.
-- Mg²⁺ 5 mM: command gives no twitch, shock twitches; Mg²⁺ 5 mM + Ca²⁺ 3 mM: command twitches
-  again.
-- TTX blocks the spike and the twitch from either shock or command; the end-plate potential is
-  still visible.
+- Shock at the end plate: every segment spikes, in distance order both ways, end to end in 2–10 ms.
+- Spike precedes cytosolic Ca²⁺ peak precedes force peak; twitch ≈ 0.27, peak at 20–50 ms;
+  force lasts > 20× the spike; all three return to baseline; `ca_release`, `twitch_peak` and
+  `relaxed` events are emitted.
+- Two shocks 20 ms apart peak > 1.3× a twitch; 10 Hz is unfused (ripple > 50 %); 50 Hz fuses
+  (ripple < 10 %, `tetanus_fused`, > 2.2× a twitch); 100 Hz reads ≈ 1 with 50 separate spikes.
+- Ca²⁺-free, Mg²⁺-substituted bath: excitability unchanged, a shock twitches within 5 % of
+  control, a command releases nothing.
+- ATP = 0 from before the shock: force rises once and never falls; Ca²⁺ stays up (rigor).
+- SR leak on: force rises with no impulses; dantrolene returns it to baseline.
+- Nerve command: release → spike → twitch, release before the spike. With Na⁺ channels blocked the
+  end-plate potential alone is 1.7–2.5× the threshold step and emits `epp_peak`.
+- Receptor block 50 %: a twitch within 5 % of control. 85 %: no twitch; neostigmine (AChE 0.3)
+  restores it. 95 %: neostigmine does not; clearing the block (sugammadex) does.
+- Receptor density 20 %: in a 3 Hz train the first command fires and at least one later one
+  fails; AChE 0.3 makes all six fire; AChE 0.05 with a 20 Hz train fires at first and then fails.
+- Persistent agonist: at least one spontaneous spike, the end plate held above −60 mV, commands
+  and end-plate shocks fail, a shock at the far end still fires there, extracellular K⁺ rises.
+- AChE = 0: end-plate potential > 3× longer but < 300 ms; a 20 Hz train fires and then blocks;
+  restoring AChE (pralidoxime) lets every command fire.
+- Release blocked: no release, no twitch to a command; a shock still twitches.
+- K⁺ 7 mM: rest between −78 and −70, threshold lower, commands work. K⁺ 11 mM: commands fail;
+  K⁺ 11 mM + Ca²⁺ 3 mM: commands work. K⁺ 12 mM: no spike to a 2× shock or a command.
+  K⁺ 2.5 mM: rest between −100 and −92, threshold higher, commands still work.
+- Ca²⁺ 1 mM: threshold lower, the fibre itself is silent for 2 s with the nerve disabled, the
+  nerve's spontaneous rate is > 3 Hz and spontaneous commands appear with it enabled.
+  Ca²⁺ 3.5 mM: threshold higher. Mg²⁺ 5 mM: commands fail, shocks twitch; Mg²⁺ 5 mM + Ca²⁺ 3 mM:
+  commands work.
+- TTX blocks spike and twitch from shock or command; the end-plate potential is still visible.
 - Pump off does not change Vm immediately; with the accelerated rundown Vm drifts as E_K falls.

@@ -10,6 +10,14 @@ introduces the resting membrane and the action potential from scratch.
 **Live versions:** https://foxworthywa.github.io/neuronsim/ (neuron) and
 https://foxworthywa.github.io/neuronsim/muscle.html (muscle), rebuilt automatically on every push.
 
+**Frozen release, safe to assign:** https://foxworthywa.github.io/neuronsim/v1/muscle.html and
+https://foxworthywa.github.io/neuronsim/v1/index.html. These are byte-for-byte copies of the first
+classroom-usable build (commit `c60f6d6`, tag `muscle-v1`), carried in `v1/` and copied into the
+site untouched by `node build.js`. Nothing that happens on the main pages can change them, so a
+link handed to students mid-semester keeps working exactly as it did the day it was tested. To
+freeze a later release, copy the current `dist/*.html` into a new `v2/` folder and add it to
+`FROZEN` in `build.js`.
+
 No build step. Open `index.html` in a browser (or serve the folder with any static server).
 
 ```

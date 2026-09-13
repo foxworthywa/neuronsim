@@ -70,6 +70,12 @@ main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1
 #narrator { margin: 4px 10px 10px; font-size: 14px; line-height: 1.35; background: #fbfaf6; border: 1px solid var(--line); border-left: 4px solid var(--accent); padding: 7px 12px; border-radius: 8px; min-height: 44px; color: var(--ink); }
 #narrator:empty { visibility: hidden; }
 #narrator b { font-weight: 650; }
+/* Each line of commentary is held long enough to read; this marks the moment it changes, and
+   shows a caret while further lines are still queued behind it (see pumpNarration in app.js). */
+#narrator.fresh { animation: narrator-in .5s ease-out; }
+@keyframes narrator-in { from { background: #fff2d4; border-left-color: var(--warn); } to { background: #fbfaf6; border-left-color: var(--accent); } }
+#narrator.more::after { content: ' ▾'; color: var(--muted); font-weight: 700; }
+@media (prefers-reduced-motion: reduce) { #narrator.fresh { animation: none; } }
 #narrator .dir { font-weight: 700; letter-spacing: .3px; }
 #paused-badge { position: absolute; left: 50%; bottom: 70px; transform: translateX(-50%); font-size: 12px; background: #fff3d6; border: 1px solid #ecd9a6; color: #7a5a10; padding: 3px 10px; border-radius: 999px; display: none; }
 
@@ -99,6 +105,11 @@ main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1
 .hint { font-size: 13px; color: var(--muted); }
 .ion { display: inline-block; padding: 0 5px; border-radius: 999px; color: #fff; font-size: 12px; font-weight: 600; }
 .ion.na { background: var(--na); } .ion.k { background: var(--k); } .ion.cl { background: var(--cl); } .ion.ca { background: var(--ca); } .ion.nt { background: var(--nt); }
+/* the phase-by-phase walk through a fast sequence (lessons/muscle.js phaseWalk) */
+.status ol.phases { margin: 6px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+.status ol.phases li { color: var(--muted); }
+.status ol.phases li:last-child { color: var(--ink); }
+.status ol.phases li.now { color: var(--ink); background: #fff6e2; border-radius: 5px; padding: 2px 5px; margin-left: -5px; }
 kbd.part { background: #eef0f4; border: 1px solid #d6dae2; border-radius: 4px; padding: 0 5px; font: inherit; font-size: 13px; }
 
 #trace-wrap { grid-column: 1; grid-row: 2; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px 6px; }
@@ -766,6 +777,10 @@ header .sub a:hover { text-decoration: underline; }
           V: p.rest, m: 0, h: 1, n: 0, gNa: 0, gK: 0, iNa: 0, iK: 0, iL: 0, iCl: 0, iSyn: 0, iAx: 0, dVdt: 0,
           // EC coupling
           d: 0, dPeak: 0, ryr: 0, caSR: 1, ca: p.caRest, tn: 0, xb: 0, cocked: p.cocked0, force: 0,
+          // highest value each fast variable has reached since resetPeaks(): sampled every
+          // integration step, so a lesson can ask "did this happen?" without depending on where
+          // the animation frames happened to fall (see resetPeaks).
+          vPeak: p.rest, ryrPeak: 0, caPeak: p.caRest, tnPeak: 0, forcePeak: 0,
           _spiking: false, _caHigh: false,
         });
       }
@@ -866,6 +881,7 @@ header .sub a:hover { text-decoration: underline; }
         c.V = p.rest; c.m = r.minf; c.h = r.hinf; c.n = r.ninf;
         c.gNa = 0; c.gK = 0; c.iNa = 0; c.iK = 0; c.iL = 0; c.iCl = 0; c.iSyn = 0; c.iAx = 0; c.dVdt = 0;
         c.d = 0; c.dPeak = 0; c.ryr = 0; c.caSR = 1; c.ca = p.caRest; c.tn = 0; c.xb = 0; c.cocked = p.cocked0; c.force = 0;
+        c.vPeak = p.rest; c.ryrPeak = 0; c.caPeak = p.caRest; c.tnPeak = 0; c.forcePeak = 0;
         c._spiking = false; c._caHigh = false;
       }
     }
@@ -914,8 +930,13 @@ header .sub a:hover { text-decoration: underline; }
       for (let i = 0; i < n; i++) this.schedule.push({ t: this.t + i * dtms, kind: 'command' });
     }
     cancelScheduled() { this.schedule = []; }
-    /** Clear the per-segment peak records (dPeak) so a lesson step can ask "did every tubule activate after this shock?". */
-    resetPeaks() { for (const c of this.comps) c.dPeak = 0; }
+    /** Clear the per-segment peak records so a lesson step can ask "did this happen since I asked?"
+     *  — "did every tubule activate after this shock?", "did the release channels open at all?" —
+     *  without its answer depending on which instants the animation happened to sample. */
+    resetPeaks() {
+      const rest = this.p.rest, caRest = this.p.caRest;
+      for (const c of this.comps) { c.dPeak = 0; c.vPeak = rest; c.ryrPeak = 0; c.caPeak = caRest; c.tnPeak = 0; c.forcePeak = 0; }
+    }
     /** The classic Ca²⁺-free bath: Ca²⁺ replaced by enough Mg²⁺ to leave Na⁺ channel gating unchanged. */
     setCaFreeBath(on) {
       const p = this.p;
@@ -1047,23 +1068,28 @@ header .sub a:hover { text-decoration: underline; }
         const dinf = 1 / (1 + Math.exp(-(Vnew - p.dHalf) / p.dSlope));
         c.d = expEuler(c.d, dinf, p.tauD, dt);
         if (c.d > c.dPeak) c.dPeak = c.d;               // frame-independent record for the lesson (see resetPeaks)
+        if (c.V > c.vPeak) c.vPeak = c.V;
         c.ryr = clamp(c.d * (1 - 0.7 * this.dantrolene) + this.ryrLeak * (1 - this.dantrolene), 0, 1);
+        if (c.ryr > c.ryrPeak) c.ryrPeak = c.ryr;
         const rel = p.kRel * c.ryr * c.caSR;                 // store units / ms
         const uptake = p.vSerca * c.ca * c.ca / (c.ca * c.ca + p.kSerca * p.kSerca) * this.atp;   // µM/ms
         c.caSR += (-rel + uptake / p.sigma) * dt;
         c.caSR = clamp(c.caSR, 0, 1);
         c.ca += (p.sigma * rel - uptake) * dt;
         if (c.ca < p.caRest) c.ca += (p.caRest - c.ca) * (1 - Math.exp(-dt / 5));   // resting leak keeps the floor
+        if (c.ca > c.caPeak) c.caPeak = c.ca;
         if (!c._caHigh && c.ca > 1) { c._caHigh = true; this.events.push({ t: this.t, type: 'ca_release', comp: i, name: c.name }); }
         else if (c._caHigh && c.ca < 0.5) c._caHigh = false;
         c.tn += (p.tnKon * c.ca * (1 - c.tn) - p.tnKoff * c.tn) * dt;
         c.tn = clamp(c.tn, 0, 1);
+        if (c.tn > c.tnPeak) c.tnPeak = c.tn;
         const attach = p.xbKon * c.tn * c.tn * c.cocked * (1 - c.xb);
         const detach = p.xbKoff * this.atp * c.xb;
         c.xb += (attach - detach) * dt;
         c.cocked += ((p.cocked0 - c.cocked) / p.tauCock * this.atp - attach) * dt;
         c.cocked = clamp(c.cocked, 0, 1); c.xb = clamp(c.xb, 0, 1);
         c.force = expEuler(c.force, c.xb, p.tauForce, dt);
+        if (c.force > c.forcePeak) c.forcePeak = c.force;
       }
 
       // --- whole-fibre readouts and events
@@ -1290,6 +1316,27 @@ header .sub a:hover { text-decoration: underline; }
     };
   }
 
+  // Option order for a multiple-choice question. Lessons are written with the correct answer
+  // first, which is easy to author and impossible to miss as a student, so the order is permuted
+  // here instead. The permutation is derived from the question's own text: it is unpredictable
+  // but the same every time that question appears, so going back to a question (or discussing it
+  // with the class) does not reshuffle it. Set `keepOrder: true` on a question whose options read
+  // as a sequence.
+  function questionOrder(q) {
+    if (q._order) return q._order;
+    const n = q.options.length;
+    const idx = q.options.map((_, i) => i);
+    if (!q.keepOrder && n > 1) {
+      let h = 2166136261;
+      const seed = String(q.prompt || '') + q.options.map(o => o.t).join('|');
+      for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
+      const rnd = () => { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; h |= 0; return (h >>> 0) / 4294967296; };
+      for (let i = n - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); const t = idx[i]; idx[i] = idx[j]; idx[j] = t; }
+    }
+    q._order = idx;
+    return idx;
+  }
+
   function drawBilayer(parent, x0, x1, yTop, yBot, holes, scale) {
     // two rows of phospholipid heads with tails; `holes` = list of [xa, xb] to leave empty
     scale = scale || 1;
@@ -1386,6 +1433,10 @@ header .sub a:hover { text-decoration: underline; }
       showThreshold: false, // threshold line appears once the concept is introduced (scene.showThreshold)
       userSpeed: null,      // speed chosen by the user via the menu; cleared on scene change
       listeners: [],        // event listeners for sim events
+      narrateQueue: [],     // narration lines waiting their turn (see pumpNarration)
+      narrateHeld: 0,       // ms the current narration line has been on screen
+      narrateShownKey: null,  // which beat is on screen, ignoring its live numbers
+      narrateQueuedKey: null, // which beat was queued last, ignoring its live numbers
     };
     function fireEvent(ev) { for (const l of app.listeners) l(ev); }
 
@@ -1796,6 +1847,7 @@ header .sub a:hover { text-decoration: underline; }
       if (eff.electrode != null) app.electrode = eff.electrode;
       if (eff.labels != null) app.labels = eff.labels;
       if (step.reset) { sim.reset(); app.history = []; app.markers = []; }
+      app.narrateQueue.length = 0; app.narrateHeld = NARRATE_HOLD; app.narrateShownKey = null; app.narrateQueuedKey = null;
       if (step.enter) step.enter(ctx);
       renderPanel();
       renderProgress();
@@ -1860,7 +1912,7 @@ header .sub a:hover { text-decoration: underline; }
       box.appendChild(htmlEl('div', { class: 'prompt' }, q.prompt));
       const opts = htmlEl('div', { class: 'options' });
       const fb = htmlEl('div', { class: 'feedback', style: 'display:none' });
-      q.options.forEach((o, i) => {
+      questionOrder(q).map(i => q.options[i]).forEach((o) => {
         const b = htmlEl('button', {}, o.t);
         b.addEventListener('click', () => {
           st.attempts++;
@@ -1929,17 +1981,60 @@ header .sub a:hover { text-decoration: underline; }
       get lesson() { return LESSON; },
       // control
       setPaused, setSpeed, mountView, gotoStep, enterLab, renderProgress, setCaption, labNav,
-      stimPulse, refire, since, spikeIn, anySpike, I, FB_GRADIENT, fmtV, fmtE, chip, IN, OUT, LOOP_HTML, loopHighlight,
+      stimPulse, refire, since, spikeIn, anySpike, I, FB_GRADIENT, fmtV, fmtE, chip, IN, OUT, LOOP_HTML, loopHighlight, questionOrder,
       // drawing
       svgEl, setAttrs, htmlEl, $, clamp, lerp, rand, ION_COLOR, ION_LABEL, CH, vColor, insideFill,
       drawChannel, setChannelState, makeIonPool, makeParticles, fluxCounter, drawBilayer, drawChargeRow,
       drawInset, drawLadder, drawConcTable, drawCell,
     };
 
+    // The running commentary under the stage. At the faster speeds several things happen inside a
+    // second, and the text used to flick past faster than anyone could read it. Lines are now
+    // queued and each is held long enough to read, so a burst is read as a short slideshow while
+    // the traces and the animation carry on live. A line whose only change is its live numbers is
+    // not a new line: it is updated in place, so the reading time is spent on real beats.
+    const NARRATE_HOLD = 1300, NARRATE_QUEUE_MAX = 4;
+    const narrateKey = (html) => String(html).replace(/[-+−]?[\d.,]+/g, '#').replace(/\s+/g, ' ');
+    function pumpNarration(html, dtReal) {
+      const el = $('#narrator');
+      app.narrateHeld += dtReal;
+      if (html != null) {
+        const key = narrateKey(html);
+        if (key === app.narrateShownKey) {
+          if (html !== app._lastNarration) { app._lastNarration = html; el.innerHTML = html; }
+        } else if (key !== app.narrateQueuedKey) {
+          app.narrateQueuedKey = key;
+          app.narrateQueue.push(html);
+          while (app.narrateQueue.length > NARRATE_QUEUE_MAX) app.narrateQueue.shift();
+        } else if (app.narrateQueue.length) {
+          app.narrateQueue[app.narrateQueue.length - 1] = html;   // same beat, freshest wording
+        }
+      }
+      if (!app.narrateQueue.length) { el.classList.remove('more'); return; }
+      if (app.narrateShownKey != null && app.narrateHeld < NARRATE_HOLD) { el.classList.add('more'); return; }
+      const next = app.narrateQueue.shift();
+      app._lastNarration = next; app.narrateShownKey = narrateKey(next); app.narrateHeld = 0;
+      el.innerHTML = next;
+      el.classList.toggle('more', app.narrateQueue.length > 0);
+      el.classList.remove('fresh'); void el.offsetWidth; el.classList.add('fresh');
+    }
+
     // =======================================================================
     // Main loop
     // =======================================================================
-    function frame(ts) {
+    // A throw anywhere in the frame used to skip requestAnimationFrame, which stopped the clock,
+    // the trace and every control until the page was reloaded. Each callback is now isolated: a
+    // broken one is reported once and skipped, and the frame is always scheduled again.
+    const reportedErrors = new Set();
+    function guard(label, fn) {
+      try { return fn(); } catch (err) {
+        const key = label + ':' + (err && err.message);
+        if (!reportedErrors.has(key)) { reportedErrors.add(key); console.error(`[SimApp] ${label} failed (skipping it from now on this frame):`, err); }
+        app.lastError = { label, message: String(err && err.message || err) };
+        return undefined;
+      }
+    }
+    function frameBody(ts) {
       if (app.lastFrame == null) app.lastFrame = ts;
       const dtReal = Math.min(50, ts - app.lastFrame); app.lastFrame = ts;
       let dtSim = 0;
@@ -1949,22 +2044,25 @@ header .sub a:hover { text-decoration: underline; }
         while (remaining > 1e-9) { const h = Math.min(0.1, remaining); sim.advance(h); remaining -= h; recordSample(); }
       }
       const events = sim.takeEvents();
-      if (app.view && app.view.update) app.view.update(dtReal, dtSim, events);
+      if (app.view && app.view.update) guard('view.update', () => app.view.update(dtReal, dtSim, events));
       if (!runner.labMode) {
         const step = currentStep();
-        if (step.tick) step.tick(ctx, events, dtSim);
-        if (step.waitFor && !runner.state.done && step.waitFor(ctx, events)) { runner.state.done = true; if (step.onDone) step.onDone(ctx); refreshNav(); }
-        if (step.status && typeof step.status === 'function') { const s = panel.querySelector('.status'); if (s) { const html = step.status(ctx); if (s.innerHTML !== html) s.innerHTML = html; } }
+        if (step.tick) guard('step.tick', () => step.tick(ctx, events, dtSim));
+        if (step.waitFor && !runner.state.done && guard('step.waitFor', () => step.waitFor(ctx, events))) { runner.state.done = true; if (step.onDone) guard('step.onDone', () => step.onDone(ctx)); refreshNav(); }
+        if (step.status && typeof step.status === 'function') { const s = panel.querySelector('.status'); if (s) { const html = guard('step.status', () => step.status(ctx)); if (html != null && s.innerHTML !== html) s.innerHTML = html; } }
       }
       for (const e of events) fireEvent(e);
-      if (app.view && app.view.narrate) { const html = app.view.narrate(); if (html !== app._lastNarration) { app._lastNarration = html; $('#narrator').innerHTML = html; } }
-      else if (app._lastNarration !== '') { app._lastNarration = ''; $('#narrator').innerHTML = ''; }
+      if (app.view && app.view.narrate) pumpNarration(guard('view.narrate', () => app.view.narrate()), dtReal);
+      else if (app._lastNarration !== '') { app._lastNarration = ''; app.narrateQueue.length = 0; app.narrateShownKey = null; app.narrateQueuedKey = null; $('#narrator').innerHTML = ''; }
       drawTrace();
       const rc = sim.byName[app.recordComp];
       const V = rc ? rc.V : (profile.probeV ? profile.probeV(sim, app.recordComp) : undefined);
       $('#vm-value').textContent = fmtV(V == null ? REST : V);
       $('#vm-label').textContent = 'Vm (' + app.recordComp + ')';
       $('#sim-clock').textContent = `t = ${sim.t.toFixed(1)} ms`;
+    }
+    function frame(ts) {
+      guard('frame', () => frameBody(ts));
       requestAnimationFrame(frame);
     }
 
@@ -3127,13 +3225,13 @@ header .sub a:hover { text-decoration: underline; }
   'use strict';
 
   // Kit members used below; filled in by bind(kit) before any lesson code runs.
-  let sim, app, runner, panel, htmlEl, $, clamp, ION_COLOR, CH, chip, I, fmtV, fmtE, spikeIn,
+  let sim, app, runner, panel, htmlEl, $, clamp, ION_COLOR, CH, chip, I, fmtV, fmtE, spikeIn, questionOrder,
     setPaused, setSpeed, mountView, enterLab, refire, since, LOOP_HTML, loopHighlight, labNav;
   let boundKit = null;
   function bind(kit) {
     if (boundKit === kit) return;
     boundKit = kit;
-    ({ sim, app, runner, panel, htmlEl, $, clamp, ION_COLOR, CH, chip, I, fmtV, fmtE, spikeIn,
+    ({ sim, app, runner, panel, htmlEl, $, clamp, ION_COLOR, CH, chip, I, fmtV, fmtE, spikeIn, questionOrder,
       setPaused, setSpeed, mountView, enterLab, refire, since, LOOP_HTML, loopHighlight, labNav } = kit);
     app.listeners.push(onModelEvent);
   }
@@ -3213,6 +3311,11 @@ header .sub a:hover { text-decoration: underline; }
   const vm = (name) => `Vm (${name === 'endplate' ? 'end plate' : name}) = ${fmtV(sim.byName[name].V)} mV`;
   const live = (name) => `${vm(name)} · Ca²⁺ ${sim.ca.toFixed(1)} µM · force ${sim.force.toFixed(2)}`;
   const pct = (x) => `${Math.round(x * 100)} %`;
+  // Measurements that only exist once the activity has actually been done. A status line must
+  // never throw on a missing one: an exception in a step callback used to stop the animation
+  // loop for good, which looked like the whole page freezing mid-scene.
+  const num = (v, dp) => (typeof v === 'number' && isFinite(v)) ? v.toFixed(dp == null ? 2 : dp) : '—';
+  const ratio = (a, b, dp) => (typeof a === 'number' && typeof b === 'number' && b) ? (a / b).toFixed(dp == null ? 1 : dp) : '—';
 
   // Spike peaks at R3 attributed to the last shock (scene 5's all-or-none comparison).
   function spikePeakTracker() {
@@ -3552,7 +3655,7 @@ header .sub a:hover { text-decoration: underline; }
           actions: [{ label: 'Shock', cls: 'na', run: (c) => { setPaused(false); sim.shock(1.5); const d = c.stepState().data; d.shocked = true; d.caMax = 0; } }],
           tick: (c) => { const d = c.stepState().data; if (d.shocked) d.caMax = Math.max(d.caMax, sim.ca); },
           waitFor: (c) => { const d = c.stepState().data; return !!d.shocked && d.caMax > 1 && sim.ca < 0.8 * d.caMax; }, waitHint: 'Shock and watch the Ca²⁺ rise and fall',
-          status: (c) => { const d = c.stepState().data; return runner.state.done ? `<b>Observed:</b> cytosolic Ca²⁺ peaked at ${d.caMax.toFixed(1)} µM a few ms after the impulse, straight out of the store (store level now ${pct(sim.srLevel)}).` : `${vm('R3')} · Ca²⁺ ${sim.ca.toFixed(1)} µM · store ${pct(sim.srLevel)}`; },
+          status: (c) => { const d = c.stepState().data; return runner.state.done ? `<b>Observed:</b> cytosolic Ca²⁺ peaked at ${num(d.caMax, 1)} µM a few ms after the impulse, straight out of the store (store level now ${pct(sim.srLevel)}).` : `${vm('R3')} · Ca²⁺ ${sim.ca.toFixed(1)} µM · store ${pct(sim.srLevel)}`; },
         },
         {
           view: 'triad', title: 'The classic experiment: no Ca²⁺ outside',
@@ -3566,7 +3669,7 @@ header .sub a:hover { text-decoration: underline; }
           actions: [{ label: 'Shock (Ca²⁺-free bath)', cls: 'na', run: (c) => { setPaused(false); sim.setCaFreeBath(true); sim.shock(1.5); c.stepState().data.shocked = true; } }],
           tick: (c, ev) => { const d = c.stepState().data; if (!d.shocked) return; for (const e of ev) if (e.type === 'twitch_peak') d.peak = e.force; },
           waitFor: (c) => c.stepState().data.peak != null, waitHint: 'Shock in the Ca²⁺-free bath',
-          status: (c) => { const d = c.stepState().data; return runner.state.done ? `<b>Observed:</b> force peak ${d.peak.toFixed(2)} with no Ca²⁺ outside${ref.twitch ? ` (normal fluid: ${ref.twitch.toFixed(2)})` : ''}. The store did it all.` : `Ca²⁺ outside: ${sim.conc.Ca.out} mM · ${live('R3')}`; },
+          status: (c) => { const d = c.stepState().data; return runner.state.done ? `<b>Observed:</b> force peak ${num(d.peak)} with no Ca²⁺ outside${ref.twitch ? ` (normal fluid: ${num(ref.twitch)})` : ''}. The store did it all.` : `Ca²⁺ outside: ${sim.conc.Ca.out} mM · ${live('R3')}`; },
         },
       ],
     });
@@ -3587,7 +3690,7 @@ header .sub a:hover { text-decoration: underline; }
           actions: [{ label: 'Shock', cls: 'na', run: (c) => { setPaused(false); sim.shock(1.5); c.stepState().data.shocked = true; } }],
           tick: (c, ev) => { const d = c.stepState().data; if (!d.shocked) return; for (const e of ev) if (e.type === 'twitch_peak') d.peak = e.force; },
           waitFor: (c) => c.stepState().data.peak != null, waitHint: 'Shock and watch the bridges cycle',
-          status: (c) => { const d = c.stepState().data; return runner.state.done ? `<b>Observed:</b> Ca²⁺ bound troponin, the cover moved, bridges cycled; force peaked at ${d.peak.toFixed(2)} about 35 ms after the impulse.` : live('R3'); },
+          status: (c) => { const d = c.stepState().data; return runner.state.done ? `<b>Observed:</b> Ca²⁺ bound troponin, the cover moved, bridges cycled; force peaked at ${num(d.peak)} about 35 ms after the impulse.` : live('R3'); },
         },
         {
           view: 'sarcomere', title: 'Letting go',
@@ -3654,6 +3757,51 @@ header .sub a:hover { text-decoration: underline; }
       const parts = [R3().V > -30 ? 'impulse' : 'impulse over', sim.ca > 0.5 ? 'Ca²⁺ still high' : 'Ca²⁺ back down', F > 0.03 ? (F >= prev ? 'force rising' : 'force falling') : 'relaxed'];
       return `${parts.join('; ')} · ${live('R3')}`;
     };
+    // A stepped walk through a sequence that is over too quickly to read at full speed. The
+    // simulation runs until the next phase has happened, then pauses and says what it was; the
+    // student presses on for the next one. The full-speed run (the step before this) stays,
+    // because seeing the phases overlap is the point of it — this is for reading them one at a
+    // time. Phases are tested against the model's own per-integration-step peak records rather
+    // than instantaneous state, so a phase that lasts a millisecond cannot be stepped over
+    // between two animation frames however fast the clock is set.
+    const phaseWalk = (phases, start) => ({
+      speed: 0.004,
+      enter: (c) => { app.userSpeed = null; setSpeed(0.004); c.stepState().data.m = freshMax(); },
+      actions: [
+        { label: 'Start', cls: 'na', run: (c) => { const d = c.stepState().data; d.i = 0; d.log = []; d.m = freshMax(); setPaused(false); start(c); c.refresh(); }, disabled: (c) => { const d = c.stepState().data; return d.i != null && d.i < phases.length; } },
+        { label: 'Next phase →', cls: 'primary', run: (c) => { setPaused(false); c.refresh(); }, disabled: (c) => { const d = c.stepState().data; return d.i == null || d.i >= phases.length || !app.paused; } },
+        { label: 'Start over', run: (c) => { const d = c.stepState().data; d.i = null; d.log = []; d.m = freshMax(); sim.cancelScheduled(); setPaused(true); c.refresh(); } },
+      ],
+      tick: (c, ev) => {
+        const d = c.stepState().data;
+        const m = d.m || (d.m = freshMax());
+        // Every fast quantity comes from the model's own per-integration-step peak records, so no
+        // phase can be stepped over between two animation frames however fast the clock is set.
+        const r = R3();
+        m.epV = sim.endplate.vPeak; m.v = r.vPeak; m.d = r.dPeak;
+        m.ryr = r.ryrPeak; m.ca = r.caPeak; m.tn = r.tnPeak; m.force = Math.max(m.force, r.forcePeak, sim.force);
+        for (const e of ev) if (e.type === 'twitch_peak') m.peaked = true;
+        if (d.i == null || d.i >= phases.length || app.paused) return;
+        if (!phases[d.i].test(m)) return;
+        d.log.push(phases[d.i].say);
+        c.mark(phases[d.i].mark || '');
+        d.i++;
+        setPaused(true);
+        c.refresh();
+      },
+      waitFor: (c) => { const d = c.stepState().data; return d.i != null && d.i >= phases.length; },
+      waitHint: 'Step through every phase',
+      status: (c) => {
+        const d = c.stepState().data;
+        if (d.i == null) return 'Press <b>Start</b>: the fibre will run to the first phase and stop there.';
+        const done = d.i >= phases.length;
+        const head = done ? `<b>All ${phases.length} phases.</b> That whole chain is what "one shock, one twitch" means.`
+          : `<b>Phase ${d.i} of ${phases.length}.</b> ${app.paused ? 'Press <b>Next phase</b> when you have read it.' : 'Running to the next phase…'}`;
+        return `${head}<ol class="phases">${d.log.map((t, i) => `<li${i === d.log.length - 1 && !done ? ' class="now"' : ''}>${t}</li>`).join('')}</ol>`;
+      },
+    });
+    const freshMax = () => ({ epV: -1e9, v: -1e9, d: 0, ryr: 0, ca: 0, tn: 0, force: 0, peaked: false });
+
     scenes.push({
       id: 'twitch', title: 'The twitch on one time axis', speed: 0.1, showThreshold: true, bands: BANDS, historyMs: 2000, window: 300,
       steps: [
@@ -3681,6 +3829,22 @@ header .sub a:hover { text-decoration: underline; }
           waitFor: (c) => { const s = c.stepState().data.seq; return !!(s && s.shocks === 1 && s.spike && s.ca && s.peak && s.relaxed); }, waitHint: 'Shock once and let the twitch finish',
           status: (c) => { const s = c.stepState().data.seq; return runner.state.done ? '<b>One clean twitch:</b> impulse → Ca²⁺ → force → relaxed. Read the three durations off the traces.' : (s && s.shocks > 1 ? 'Two shocks overlapped; wait for the fibre to relax and shock once.' : narrateTwitch()); },
         },
+        Object.assign({
+          view: 'fibre', title: 'The same twitch, one phase at a time',
+          text: `<p>That was the whole chain in about a second. Now walk it: the fibre stops at each
+                 phase and waits for you. Watch which trace moves at each stop.</p>`,
+        }, phaseWalk([
+          { say: '<b>The shock.</b> Charge was pushed into the fibre at the end plate and Vm is climbing towards threshold.', test: (m) => m.epV > REST + 12, mark: 'shock' },
+          { say: '<b>The impulse.</b> Voltage-gated Na⁺ channels opened; the spike is running along the sarcolemma in both directions.', test: (m) => m.v > -20, mark: 'impulse' },
+          { say: '<b>Into the tubules.</b> The impulse has run down the T-tubules and the voltage sensors in the tubule wall have moved.', test: (m) => m.d > 0.5 },
+          { say: '<b>The store opens.</b> The moved sensors have pulled open the release channels in the terminal cisternae next to them.', test: (m) => m.ryr > 0.3 },
+          { say: '<b>Ca²⁺ floods out.</b> Cytosolic Ca²⁺ is climbing far above its resting level — look at the Ca²⁺ trace, not the Vm trace.', test: (m) => m.ca > 1.5, mark: 'Ca²⁺' },
+          { say: '<b>Troponin catches it.</b> Ca²⁺ has bound troponin and tropomyosin has slid off the binding sites on actin.', test: (m) => m.tn > 0.55 },
+          { say: '<b>Cross-bridges cycle.</b> Myosin heads are attaching, pulling, and letting go again with ATP. Force is rising.', test: (m) => m.force > 0.06 },
+          { say: '<b>Peak force.</b> The impulse ended long ago; this is happening entirely because Ca²⁺ is still on troponin.', test: (m) => m.peaked || (m.force > 0.1 && sim.force < 0.94 * m.force), mark: 'peak' },
+          { say: '<b>SERCA clears up.</b> The pumps are putting Ca²⁺ back in the store, and cytosolic Ca²⁺ is falling.', test: (m) => sim.ca < 0.6 && m.force > 0.08 },
+          { say: '<b>Relaxed.</b> Troponin has let go, tropomyosin covers actin again, the bridges have stopped forming and the fibre is back where it started.', test: () => sim.force < 0.03 && sim.ca < 0.3, mark: 'relaxed' },
+        ], () => { sim.resetPeaks(); sim.shock(1.5); })),
         {
           view: 'fibre', title: 'Which lasts longest?',
           actions: [{ label: 'Shock once', cls: 'na', run: () => { setPaused(false); sim.shock(1.5); } }],
@@ -3729,7 +3893,7 @@ header .sub a:hover { text-decoration: underline; }
           ],
           tick: (c, ev) => { const d = c.stepState().data; if (d.pairT == null) return; for (const e of ev) { if (e.type === 'spike' && e.name === 'R3') d.spikes++; if (e.type === 'twitch_peak' && d.spikes >= 2) d.peak = Math.max(d.peak || 0, e.force); } },
           waitFor: (c) => { const d = c.stepState().data; return d.pairT != null && d.spikes >= 2 && ref.twitch != null && d.peak != null && d.peak > 1.3 * ref.twitch; }, waitHint: 'Fire the pair (and a single twitch to compare)',
-          status: (c) => { const d = c.stepState().data; const tw = ref.twitch ? `single twitch ${ref.twitch.toFixed(2)}` : 'shock once first to measure a single twitch'; return runner.state.done ? `<b>Observed:</b> two full impulses, and the force peaked at ${d.peak.toFixed(2)}: ${(d.peak / ref.twitch).toFixed(1)}× a single twitch.` : `${tw}${d.spikes ? ` · impulses since the pair: ${d.spikes}` : ''} · ${live('R3')}`; },
+          status: (c) => { const d = c.stepState().data; const tw = ref.twitch ? `single twitch ${num(ref.twitch)}` : 'shock once first to measure a single twitch'; return runner.state.done ? `<b>Observed:</b> two full impulses, and the force peaked at ${num(d.peak)}: ${ratio(d.peak, ref.twitch)}× a single twitch.` : `${tw}${d.spikes ? ` · impulses since the pair: ${d.spikes}` : ''} · ${live('R3')}`; },
         },
         {
           view: 'fibre', title: 'Raise the rate',
@@ -3747,7 +3911,7 @@ header .sub a:hover { text-decoration: underline; }
           ],
           tick: (c, ev) => { const d = c.stepState().data; for (const e of ev) if (e.type === 'tetanus_fused') { d.fusedAt = e.force; d.fusedHz = d.hz; } },
           waitFor: (c) => { const d = c.stepState().data; return d.fusedAt != null && (ref.twitch == null || d.fusedAt > 2.2 * ref.twitch); }, waitHint: 'Raise the rate until the force fuses',
-          status: (c) => { const d = c.stepState().data; return runner.state.done ? `<b>Fused tetanus</b> at ${d.fusedHz} Hz: force ${d.fusedAt.toFixed(2)}${ref.twitch ? ` (${(d.fusedAt / ref.twitch).toFixed(1)}× a twitch)` : ''}, ripple under 10 %, spikes still separate.` : `${d.hz ? `last train ${d.hz} Hz · ` : ''}${sim.isFused ? 'fused · ' : ''}${live('R3')} · store ${pct(sim.srLevel)}`; },
+          status: (c) => { const d = c.stepState().data; return runner.state.done ? `<b>Fused tetanus</b> at ${d.fusedHz || '—'} Hz: force ${num(d.fusedAt)}${ref.twitch ? ` (${ratio(d.fusedAt, ref.twitch)}× a twitch)` : ''}, ripple under 10 %, spikes still separate.` : `${d.hz ? `last train ${d.hz} Hz · ` : ''}${sim.isFused ? 'fused · ' : ''}${live('R3')} · store ${pct(sim.srLevel)}`; },
         },
       ],
     });
@@ -3802,7 +3966,7 @@ header .sub a:hover { text-decoration: underline; }
           tick: (c, ev) => { const d = c.stepState().data; if (!d.sent) return; for (const e of ev) if (e.type === 'epp_peak' && sim.naBlock === 1) d.epp = e.V; },
           waitFor: (c) => c.stepState().data.epp != null, waitHint: 'Send a command with the Na⁺ channels off',
           onContinue: () => { sim.naBlock = 0; },
-          status: (c) => { const d = c.stepState().data; return runner.state.done ? `<b>End-plate potential:</b> the receptors alone pushed Vm to ${fmtV(d.epp)} mV, about ${((d.epp - REST) / (THR - REST)).toFixed(1)}× as far as threshold needs.` : `Na⁺ channels off · ${vm('endplate')}`; },
+          status: (c) => { const d = c.stepState().data; return runner.state.done ? `<b>End-plate potential:</b> the receptors alone pushed Vm to ${d.epp == null ? '—' : fmtV(d.epp)} mV, about ${ratio(d.epp - REST, THR - REST)}× as far as threshold needs.` : `Na⁺ channels off · ${vm('endplate')}`; },
         },
         {
           view: 'nmj', title: 'One command', speed: 0.1, window: 300,
@@ -3816,7 +3980,7 @@ header .sub a:hover { text-decoration: underline; }
           actions: [{ label: 'Send command', cls: 'ca', run: (c) => { sim.naBlock = 0; send(c); } }],
           tick: (c, ev) => { const d = c.stepState().data; if (!d.sent) return; for (const e of ev) { if (e.type === 'spike' && e.name === 'R3') d.spike = true; if (e.type === 'twitch_peak' && d.spike) d.peak = e.force; } },
           waitFor: (c) => { const d = c.stepState().data; return !!d.spike && d.peak != null; }, waitHint: 'Send a command and watch the fibre',
-          status: (c) => { const d = c.stepState().data; return runner.state.done ? `<b>Observed:</b> command → end-plate potential → impulse → twitch (peak ${d.peak.toFixed(2)}). One command, one twitch.` : live('endplate'); },
+          status: (c) => { const d = c.stepState().data; return runner.state.done ? `<b>Observed:</b> command → end-plate potential → impulse → twitch (peak ${num(d.peak)}). One command, one twitch.` : live('endplate'); },
         },
         {
           view: 'nmj', title: 'Switching it off',
@@ -3847,7 +4011,7 @@ header .sub a:hover { text-decoration: underline; }
             for (const e of ev) if (e.type === 'twitch_peak') { if (d.pending === 'blocked') d.blocked = e.force; else if (d.pending === 'control') d.control = e.force; }
           },
           waitFor: (c) => { const d = c.stepState().data; const ctl = d.control != null ? d.control : ref.twitch; return d.blocked != null && ctl != null && Math.abs(d.blocked - ctl) < 0.05 * ctl; }, waitHint: 'Send a command with half the receptors blocked',
-          status: (c) => { const d = c.stepState().data; const ctl = d.control != null ? d.control : ref.twitch; return runner.state.done ? `<b>Observed:</b> twitch peak ${d.blocked.toFixed(2)} with half the receptors blocked, ${ctl.toFixed(2)} with all of them: within 5 %.` : `Receptors blocked: ${pct(sim.receptor.block)} · ${ctl != null ? `control twitch ${ctl.toFixed(2)} · ` : 'no control twitch yet: press Control first · '}${live('endplate')}`; },
+          status: (c) => { const d = c.stepState().data; const ctl = d.control != null ? d.control : ref.twitch; return runner.state.done ? `<b>Observed:</b> twitch peak ${num(d.blocked)} with half the receptors blocked, ${num(ctl)} with all of them: within 5 %.` : `Receptors blocked: ${pct(sim.receptor.block)} · ${ctl != null ? `control twitch ${num(ctl)} · ` : 'no control twitch yet: press Control first · '}${live('endplate')}`; },
         },
       ],
     });
@@ -4243,7 +4407,7 @@ header .sub a:hover { text-decoration: underline; }
       const box = htmlEl('div', { class: 'question' });
       box.appendChild(htmlEl('div', { class: 'prompt' }, q.prompt));
       const opts = htmlEl('div', { class: 'options' }), fb = htmlEl('div', { class: 'feedback' }); fb.style.display = 'none';
-      q.options.forEach(o => {
+      questionOrder(q).map(i => q.options[i]).forEach(o => {
         const b = htmlEl('button', {}, o.t);
         b.addEventListener('click', () => {
           Array.from(opts.children).forEach(c => c.classList.remove('wrong'));

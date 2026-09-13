@@ -108,6 +108,10 @@
           V: p.rest, m: 0, h: 1, n: 0, gNa: 0, gK: 0, iNa: 0, iK: 0, iL: 0, iCl: 0, iSyn: 0, iAx: 0, dVdt: 0,
           // EC coupling
           d: 0, dPeak: 0, ryr: 0, caSR: 1, ca: p.caRest, tn: 0, xb: 0, cocked: p.cocked0, force: 0,
+          // highest value each fast variable has reached since resetPeaks(): sampled every
+          // integration step, so a lesson can ask "did this happen?" without depending on where
+          // the animation frames happened to fall (see resetPeaks).
+          vPeak: p.rest, ryrPeak: 0, caPeak: p.caRest, tnPeak: 0, forcePeak: 0,
           _spiking: false, _caHigh: false,
         });
       }
@@ -208,6 +212,7 @@
         c.V = p.rest; c.m = r.minf; c.h = r.hinf; c.n = r.ninf;
         c.gNa = 0; c.gK = 0; c.iNa = 0; c.iK = 0; c.iL = 0; c.iCl = 0; c.iSyn = 0; c.iAx = 0; c.dVdt = 0;
         c.d = 0; c.dPeak = 0; c.ryr = 0; c.caSR = 1; c.ca = p.caRest; c.tn = 0; c.xb = 0; c.cocked = p.cocked0; c.force = 0;
+        c.vPeak = p.rest; c.ryrPeak = 0; c.caPeak = p.caRest; c.tnPeak = 0; c.forcePeak = 0;
         c._spiking = false; c._caHigh = false;
       }
     }
@@ -256,8 +261,13 @@
       for (let i = 0; i < n; i++) this.schedule.push({ t: this.t + i * dtms, kind: 'command' });
     }
     cancelScheduled() { this.schedule = []; }
-    /** Clear the per-segment peak records (dPeak) so a lesson step can ask "did every tubule activate after this shock?". */
-    resetPeaks() { for (const c of this.comps) c.dPeak = 0; }
+    /** Clear the per-segment peak records so a lesson step can ask "did this happen since I asked?"
+     *  — "did every tubule activate after this shock?", "did the release channels open at all?" —
+     *  without its answer depending on which instants the animation happened to sample. */
+    resetPeaks() {
+      const rest = this.p.rest, caRest = this.p.caRest;
+      for (const c of this.comps) { c.dPeak = 0; c.vPeak = rest; c.ryrPeak = 0; c.caPeak = caRest; c.tnPeak = 0; c.forcePeak = 0; }
+    }
     /** The classic Ca²⁺-free bath: Ca²⁺ replaced by enough Mg²⁺ to leave Na⁺ channel gating unchanged. */
     setCaFreeBath(on) {
       const p = this.p;
@@ -389,23 +399,28 @@
         const dinf = 1 / (1 + Math.exp(-(Vnew - p.dHalf) / p.dSlope));
         c.d = expEuler(c.d, dinf, p.tauD, dt);
         if (c.d > c.dPeak) c.dPeak = c.d;               // frame-independent record for the lesson (see resetPeaks)
+        if (c.V > c.vPeak) c.vPeak = c.V;
         c.ryr = clamp(c.d * (1 - 0.7 * this.dantrolene) + this.ryrLeak * (1 - this.dantrolene), 0, 1);
+        if (c.ryr > c.ryrPeak) c.ryrPeak = c.ryr;
         const rel = p.kRel * c.ryr * c.caSR;                 // store units / ms
         const uptake = p.vSerca * c.ca * c.ca / (c.ca * c.ca + p.kSerca * p.kSerca) * this.atp;   // µM/ms
         c.caSR += (-rel + uptake / p.sigma) * dt;
         c.caSR = clamp(c.caSR, 0, 1);
         c.ca += (p.sigma * rel - uptake) * dt;
         if (c.ca < p.caRest) c.ca += (p.caRest - c.ca) * (1 - Math.exp(-dt / 5));   // resting leak keeps the floor
+        if (c.ca > c.caPeak) c.caPeak = c.ca;
         if (!c._caHigh && c.ca > 1) { c._caHigh = true; this.events.push({ t: this.t, type: 'ca_release', comp: i, name: c.name }); }
         else if (c._caHigh && c.ca < 0.5) c._caHigh = false;
         c.tn += (p.tnKon * c.ca * (1 - c.tn) - p.tnKoff * c.tn) * dt;
         c.tn = clamp(c.tn, 0, 1);
+        if (c.tn > c.tnPeak) c.tnPeak = c.tn;
         const attach = p.xbKon * c.tn * c.tn * c.cocked * (1 - c.xb);
         const detach = p.xbKoff * this.atp * c.xb;
         c.xb += (attach - detach) * dt;
         c.cocked += ((p.cocked0 - c.cocked) / p.tauCock * this.atp - attach) * dt;
         c.cocked = clamp(c.cocked, 0, 1); c.xb = clamp(c.xb, 0, 1);
         c.force = expEuler(c.force, c.xb, p.tauForce, dt);
+        if (c.force > c.forcePeak) c.forcePeak = c.force;
       }
 
       // --- whole-fibre readouts and events

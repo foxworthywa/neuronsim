@@ -41,7 +41,8 @@ const H = 'window.__simapp';
   const paused = () => ev(`${H}.app.paused`);
   const resume = () => ev(`${H}.kit.setPaused(false)`);
   const click = async (label) => { const b = page.locator('#panel button', { hasText: label }).first(); await b.click(); };
-  const answerRight = async () => { const idx = await ev(`(() => { const h = ${H}; const st = h.lesson()[h.runner().scene].steps[h.runner().step]; return st.question ? st.question.options.findIndex(o => o.ok) : -1; })()`); if (idx >= 0) await page.locator('#panel .question .options button').nth(idx).click(); };
+  // options are shown in a permuted order (kit.questionOrder), so click the answer's *displayed* slot
+  const answerRight = async () => { const idx = await ev(`(() => { const h = ${H}; const st = h.lesson()[h.runner().scene].steps[h.runner().step]; if (!st.question) return -1; const q = st.question; const order = h.kit.questionOrder(q); return order.findIndex(i => q.options[i].ok); })()`); if (idx >= 0) { await page.locator('#panel .question .options button').nth(idx).click(); const ok = await ev(`${H}.runner().state.answered`); if (!ok) failures.push('answerRight clicked the wrong option'); } };
   const waitDone = async (ms, what) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await done()) return true; await sleep(100); } failures.push(`not done: ${what} (${await ev(`JSON.stringify({ t: ${H}.sim.t, V: ${H}.sim.byName.R3.V, F: ${H}.sim.force, paused: ${H}.app.paused, status: document.querySelector('#panel .status') && document.querySelector('#panel .status').textContent })`)})`); return false; };
   const check = (cond, what) => { if (!cond) failures.push(what); };
   const sceneIdx = async (id) => ev(`${H}.lesson().findIndex(s => s.id === '${id}')`);
@@ -83,6 +84,20 @@ const H = 'window.__simapp';
   // ---- scene 11, 12
   s = await sceneIdx('twitch');
   await goto(s, 0, 0.15); await answerRight(); await click('Shock once'); await waitDone(12000, 'scene 11 step 0 (clean twitch sequence)');
+  // the stepped walk: every phase must be reachable, and each one must stop the clock
+  await goto(s, 1); await click('Start');
+  const phaseCount = await ev(`${H}.lesson()[${s}].steps[1].actions.length && (${H}.runner().state.data, 10)`);
+  let phases = 0;
+  for (let i = 0; i < phaseCount + 2; i++) {
+    const t0 = Date.now(); let stopped = false;
+    while (Date.now() - t0 < 25000) { if (await paused() || await done()) { stopped = true; break; } await sleep(80); }
+    if (!stopped) break;
+    phases = await ev(`${H}.runner().state.data.i`);
+    if (await done()) break;
+    await click('Next phase');
+    await sleep(120);
+  }
+  check(await done(), `scene 11 step 1 (phase walk) reached ${phases} of ${phaseCount} phases`);
   s = await sceneIdx('tetanus');
   await goto(s, 1, 0.15); await answerRight(); await click('Shock once'); await sleep(2500); await click('Shock twice'); await waitDone(12000, 'scene 12 step 1 (summation)');
   await goto(s, 2, 0.15); await answerRight();

@@ -24,6 +24,9 @@ No build step. Open `index.html` in a browser (or serve the folder with any stat
 npm test          # biology unit tests (Node 18+)
 npm start         # optional: serve on http://localhost:8080
 node build.js     # bundle each page into dist/<page>.html (one self-contained file each)
+npm run test:ui     # walk every scene, step and lab view in headless Chromium
+npm run test:walk   # perform every muscle activity through the panel buttons
+npm run test:robust # no step callback throws, and the loop survives one that does
 ```
 
 `dist/index.html` is the single-file version: copy it anywhere, double-click it, or drop it on
@@ -66,7 +69,8 @@ Thirteen scenes on one skeletal muscle fibre, same predict → observe → expla
 8. Voltage to calcium: the tubule sensor opens the SR store (a Ca²⁺-free bath still twitches).
 9. Calcium to force: troponin, tropomyosin, cross-bridges, ATP.
 10. Relaxation: SERCA pumps Ca²⁺ back; with no ATP the fibre locks (rigor).
-11. The twitch on one time axis: milliseconds of impulse, tens of ms of Ca²⁺, ~100 ms of force.
+11. The twitch on one time axis: milliseconds of impulse, tens of ms of Ca²⁺, ~100 ms of force —
+    first at full speed, then walked one phase at a time, the fibre stopping at each.
 12. Summation and tetanus, discovered by raising the stimulation rate.
 13. How the body delivers the shock: the neuromuscular junction, ACh, the end-plate potential
     and its safety margin.

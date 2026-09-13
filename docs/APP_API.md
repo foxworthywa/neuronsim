@@ -93,7 +93,7 @@ the kit filled in.
 ### Views
 
 `views(kit)` returns `{ name: (opts) => view }`. A view is `{ mount(el), update(dtReal, dtSim, events),
-narrate() → html | '', unmount() }` plus whatever the lesson needs (`highlight`, `onPart`, ...).
+narrate() → html | '', unmount() }` plus whatever the lesson needs (`highlight`, `hint`, `onPart`, ...).
 It draws into `el` (an SVG with `viewBox` 0 0 900 520 fits the stage), sets the caption with
 `kit.setCaption(opts.caption)` and keeps a whole-cell inset via `kit.drawInset(svg, region)` →
 `{ g, parts, update() }`. The built-in `membrane` view takes
@@ -118,10 +118,32 @@ Step keys (inherited by later steps of the same scene: `view`, `viewOpts`, `reco
 | `title`, `text`, `question`, `actions`, `status`, `extraHtml`, `waitHint`, `continueLabel` | panel content (`text`/`status`/`extraHtml` may be functions of `ctx`) |
 | `enter(ctx)`, `tick(ctx, events, dtSim)`, `waitFor(ctx, events)`, `onDone`, `onContinue`, `continueTo` | behaviour |
 
-`question: { prompt, options: [{ t, ok, fb }], explain, onCorrect }`; an action is
-`{ label, cls, run(ctx) }` or `{ label, cls, hold: true, down(ctx), up(ctx) }`. `ctx` is
+`question: { prompt, options: [{ t, ok, fb }], explain, onCorrect, keepOrder }`; an action is
+`{ label, cls, run(ctx), disabled(ctx) }` or `{ label, cls, hold: true, down(ctx), up(ctx) }`. `ctx` is
 `{ sim, app, profile, view(), complete(), status(html, ok), pause(), resume(), next(), mark(label), stepState(), refresh() }`.
 A scene with `showThreshold: true` draws the threshold line on the trace and the ladder.
+
+**Write questions with the correct answer first** — it is easy to author and impossible to
+mis-flag. `kit.questionOrder(q)` permutes the options for display, so students do not see the
+answer in the same place every time. The permutation is derived from the question's own text: it
+is unpredictable but stable, so returning to a question (or discussing "the second option" with a
+class) does not reshuffle it, and a test can still find the answer with `options.findIndex(o => o.ok)`.
+Set `keepOrder: true` on a question whose options read as a sequence. Any renderer of questions
+outside `app.js` (a lab card, say) should go through `kit.questionOrder` too.
+
+**Nothing a step does can stop the page.** Every `enter`/`tick`/`waitFor`/`status`/`narrate` call
+is isolated: if one throws it is logged once and skipped, and the animation frame is scheduled
+again regardless. Before this, a throw inside a step callback skipped `requestAnimationFrame` and
+froze the clock, the trace and every control until the page was reloaded. `npm run test:robust`
+checks both halves of that: that no step callback throws in any state the runner can produce
+(notably "done" before the activity that produces the measurement its status line wants to
+report — format those with a fallback, never `d.peak.toFixed(2)`), and that a deliberately
+throwing callback does not stop the loop.
+
+**Narration is paced, not dropped.** `view.narrate()` is still called every frame, but lines are
+queued and each is held about 1.3 s so a burst reads as a short slideshow; a line whose only
+change is its live numbers is updated in place rather than counting as a new line. `#narrator`
+gets `.fresh` for one animation as each line lands and `.more` while others are still queued.
 
 ### Lab
 
@@ -135,7 +157,7 @@ A scene with `showThreshold: true` draws the threshold line on the trace and the
 Passed to `views`, `lesson`, `lab`, `drawCell` and the shared-scene builders.
 
 - **state**: `sim`, `app` (`speed, paused, view, recordComp, extraTraces, showG, gComp, bands, history, historyMs, historyWindow, electrode, labels, markers, showThreshold`), `runner` (`scene, step, state, labMode`), `profile`, `panel`, `stage`, `views`, `config`, `lesson` (getter).
-- **control**: `setPaused(p)`, `setSpeed(s)`, `mountView(name, opts)`, `gotoStep(scene, step)`, `enterLab()`, `renderProgress()`, `setCaption(text)`, `labNav()`, `stimPulse(nA?, ms?)` (= `sim.pulse(profile.stimComp, ...)`), `refire` (a "Fire again" action), `since(ctx)` (samples since the step began), `spikeIn(events, name)`, `anySpike(events)`, `I(ion)`/`chip(ion)`, `IN`, `OUT`, `FB_GRADIENT`, `fmtV(V)` (`−70.4`), `fmtE(V)` (`−70`), `LOOP_HTML`, `loopHighlight(ctx)` (reads `profile.apComp`).
+- **control**: `setPaused(p)`, `setSpeed(s)`, `mountView(name, opts)`, `gotoStep(scene, step)`, `enterLab()`, `renderProgress()`, `setCaption(text)`, `labNav()`, `stimPulse(nA?, ms?)` (= `sim.pulse(profile.stimComp, ...)`), `refire` (a "Fire again" action), `since(ctx)` (samples since the step began), `spikeIn(events, name)`, `anySpike(events)`, `I(ion)`/`chip(ion)`, `IN`, `OUT`, `FB_GRADIENT`, `fmtV(V)` (`−70.4`), `fmtE(V)` (`−70`), `LOOP_HTML`, `loopHighlight(ctx)` (reads `profile.apComp`), `questionOrder(q)`.
 - **drawing**: `svgEl`, `setAttrs`, `htmlEl`, `$`, `clamp`, `lerp`, `rand`, `ION_COLOR`, `ION_LABEL`, `CH`, `vColor(V)`, `insideFill(V)`, `drawChannel`, `setChannelState`, `makeIonPool`, `makeParticles`, `fluxCounter`, `drawBilayer`, `drawChargeRow`, `drawInset(parent, region)`, `drawLadder(parent, x, y)`, `drawConcTable(parent, x, y)`, `drawCell(parent, opts)`.
 
 ## Shared scenes (`scenes/shared.js`)
@@ -170,6 +192,9 @@ Step keys: resting membrane `solutions, pump, kLeak, naOpen, naObserve, kObserve
 
 - `node build.js` writes `dist/index.html` and, once `muscle.html` exists, `dist/muscle.html`
   (every local `<script src>` and `<link rel="stylesheet">` inlined).
+- `npm run test:robust` checks that no step callback throws and that the animation loop survives
+  one that does (see **Lesson** above). `npm run test:walk` performs every muscle scene's activity
+  through the panel buttons and checks the completion conditions.
 - `npm test` runs the model tests; `npm run test:ui` walks every scene, step and lab view of
   `index.html` and `dist/index.html` in headless Chromium, fails on any console/page error and
   writes one screenshot per scene. `node tests/ui/smoke.js muscle.html dist/muscle.html` checks

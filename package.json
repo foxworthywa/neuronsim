@@ -7,7 +7,8 @@
     "start": "npx --yes serve -l 8080 .",
     "test:ui": "node tests/ui/smoke.js",
     "build": "node build.js",
-    "test:walk": "node tests/ui/muscle-walk.js muscle.html --serve"
+    "test:walk": "node tests/ui/muscle-walk.js muscle.html --serve",
+    "test:robust": "node tests/ui/robust.js"
   },
   "license": "MIT",
   "private": true

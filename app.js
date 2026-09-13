@@ -159,6 +159,27 @@
     };
   }
 
+  // Option order for a multiple-choice question. Lessons are written with the correct answer
+  // first, which is easy to author and impossible to miss as a student, so the order is permuted
+  // here instead. The permutation is derived from the question's own text: it is unpredictable
+  // but the same every time that question appears, so going back to a question (or discussing it
+  // with the class) does not reshuffle it. Set `keepOrder: true` on a question whose options read
+  // as a sequence.
+  function questionOrder(q) {
+    if (q._order) return q._order;
+    const n = q.options.length;
+    const idx = q.options.map((_, i) => i);
+    if (!q.keepOrder && n > 1) {
+      let h = 2166136261;
+      const seed = String(q.prompt || '') + q.options.map(o => o.t).join('|');
+      for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
+      const rnd = () => { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; h |= 0; return (h >>> 0) / 4294967296; };
+      for (let i = n - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); const t = idx[i]; idx[i] = idx[j]; idx[j] = t; }
+    }
+    q._order = idx;
+    return idx;
+  }
+
   function drawBilayer(parent, x0, x1, yTop, yBot, holes, scale) {
     // two rows of phospholipid heads with tails; `holes` = list of [xa, xb] to leave empty
     scale = scale || 1;
@@ -255,6 +276,10 @@
       showThreshold: false, // threshold line appears once the concept is introduced (scene.showThreshold)
       userSpeed: null,      // speed chosen by the user via the menu; cleared on scene change
       listeners: [],        // event listeners for sim events
+      narrateQueue: [],     // narration lines waiting their turn (see pumpNarration)
+      narrateHeld: 0,       // ms the current narration line has been on screen
+      narrateShownKey: null,  // which beat is on screen, ignoring its live numbers
+      narrateQueuedKey: null, // which beat was queued last, ignoring its live numbers
     };
     function fireEvent(ev) { for (const l of app.listeners) l(ev); }
 
@@ -665,6 +690,7 @@
       if (eff.electrode != null) app.electrode = eff.electrode;
       if (eff.labels != null) app.labels = eff.labels;
       if (step.reset) { sim.reset(); app.history = []; app.markers = []; }
+      app.narrateQueue.length = 0; app.narrateHeld = NARRATE_HOLD; app.narrateShownKey = null; app.narrateQueuedKey = null;
       if (step.enter) step.enter(ctx);
       renderPanel();
       renderProgress();
@@ -729,7 +755,7 @@
       box.appendChild(htmlEl('div', { class: 'prompt' }, q.prompt));
       const opts = htmlEl('div', { class: 'options' });
       const fb = htmlEl('div', { class: 'feedback', style: 'display:none' });
-      q.options.forEach((o, i) => {
+      questionOrder(q).map(i => q.options[i]).forEach((o) => {
         const b = htmlEl('button', {}, o.t);
         b.addEventListener('click', () => {
           st.attempts++;
@@ -798,17 +824,60 @@
       get lesson() { return LESSON; },
       // control
       setPaused, setSpeed, mountView, gotoStep, enterLab, renderProgress, setCaption, labNav,
-      stimPulse, refire, since, spikeIn, anySpike, I, FB_GRADIENT, fmtV, fmtE, chip, IN, OUT, LOOP_HTML, loopHighlight,
+      stimPulse, refire, since, spikeIn, anySpike, I, FB_GRADIENT, fmtV, fmtE, chip, IN, OUT, LOOP_HTML, loopHighlight, questionOrder,
       // drawing
       svgEl, setAttrs, htmlEl, $, clamp, lerp, rand, ION_COLOR, ION_LABEL, CH, vColor, insideFill,
       drawChannel, setChannelState, makeIonPool, makeParticles, fluxCounter, drawBilayer, drawChargeRow,
       drawInset, drawLadder, drawConcTable, drawCell,
     };
 
+    // The running commentary under the stage. At the faster speeds several things happen inside a
+    // second, and the text used to flick past faster than anyone could read it. Lines are now
+    // queued and each is held long enough to read, so a burst is read as a short slideshow while
+    // the traces and the animation carry on live. A line whose only change is its live numbers is
+    // not a new line: it is updated in place, so the reading time is spent on real beats.
+    const NARRATE_HOLD = 1300, NARRATE_QUEUE_MAX = 4;
+    const narrateKey = (html) => String(html).replace(/[-+−]?[\d.,]+/g, '#').replace(/\s+/g, ' ');
+    function pumpNarration(html, dtReal) {
+      const el = $('#narrator');
+      app.narrateHeld += dtReal;
+      if (html != null) {
+        const key = narrateKey(html);
+        if (key === app.narrateShownKey) {
+          if (html !== app._lastNarration) { app._lastNarration = html; el.innerHTML = html; }
+        } else if (key !== app.narrateQueuedKey) {
+          app.narrateQueuedKey = key;
+          app.narrateQueue.push(html);
+          while (app.narrateQueue.length > NARRATE_QUEUE_MAX) app.narrateQueue.shift();
+        } else if (app.narrateQueue.length) {
+          app.narrateQueue[app.narrateQueue.length - 1] = html;   // same beat, freshest wording
+        }
+      }
+      if (!app.narrateQueue.length) { el.classList.remove('more'); return; }
+      if (app.narrateShownKey != null && app.narrateHeld < NARRATE_HOLD) { el.classList.add('more'); return; }
+      const next = app.narrateQueue.shift();
+      app._lastNarration = next; app.narrateShownKey = narrateKey(next); app.narrateHeld = 0;
+      el.innerHTML = next;
+      el.classList.toggle('more', app.narrateQueue.length > 0);
+      el.classList.remove('fresh'); void el.offsetWidth; el.classList.add('fresh');
+    }
+
     // =======================================================================
     // Main loop
     // =======================================================================
-    function frame(ts) {
+    // A throw anywhere in the frame used to skip requestAnimationFrame, which stopped the clock,
+    // the trace and every control until the page was reloaded. Each callback is now isolated: a
+    // broken one is reported once and skipped, and the frame is always scheduled again.
+    const reportedErrors = new Set();
+    function guard(label, fn) {
+      try { return fn(); } catch (err) {
+        const key = label + ':' + (err && err.message);
+        if (!reportedErrors.has(key)) { reportedErrors.add(key); console.error(`[SimApp] ${label} failed (skipping it from now on this frame):`, err); }
+        app.lastError = { label, message: String(err && err.message || err) };
+        return undefined;
+      }
+    }
+    function frameBody(ts) {
       if (app.lastFrame == null) app.lastFrame = ts;
       const dtReal = Math.min(50, ts - app.lastFrame); app.lastFrame = ts;
       let dtSim = 0;
@@ -818,22 +887,25 @@
         while (remaining > 1e-9) { const h = Math.min(0.1, remaining); sim.advance(h); remaining -= h; recordSample(); }
       }
       const events = sim.takeEvents();
-      if (app.view && app.view.update) app.view.update(dtReal, dtSim, events);
+      if (app.view && app.view.update) guard('view.update', () => app.view.update(dtReal, dtSim, events));
       if (!runner.labMode) {
         const step = currentStep();
-        if (step.tick) step.tick(ctx, events, dtSim);
-        if (step.waitFor && !runner.state.done && step.waitFor(ctx, events)) { runner.state.done = true; if (step.onDone) step.onDone(ctx); refreshNav(); }
-        if (step.status && typeof step.status === 'function') { const s = panel.querySelector('.status'); if (s) { const html = step.status(ctx); if (s.innerHTML !== html) s.innerHTML = html; } }
+        if (step.tick) guard('step.tick', () => step.tick(ctx, events, dtSim));
+        if (step.waitFor && !runner.state.done && guard('step.waitFor', () => step.waitFor(ctx, events))) { runner.state.done = true; if (step.onDone) guard('step.onDone', () => step.onDone(ctx)); refreshNav(); }
+        if (step.status && typeof step.status === 'function') { const s = panel.querySelector('.status'); if (s) { const html = guard('step.status', () => step.status(ctx)); if (html != null && s.innerHTML !== html) s.innerHTML = html; } }
       }
       for (const e of events) fireEvent(e);
-      if (app.view && app.view.narrate) { const html = app.view.narrate(); if (html !== app._lastNarration) { app._lastNarration = html; $('#narrator').innerHTML = html; } }
-      else if (app._lastNarration !== '') { app._lastNarration = ''; $('#narrator').innerHTML = ''; }
+      if (app.view && app.view.narrate) pumpNarration(guard('view.narrate', () => app.view.narrate()), dtReal);
+      else if (app._lastNarration !== '') { app._lastNarration = ''; app.narrateQueue.length = 0; app.narrateShownKey = null; app.narrateQueuedKey = null; $('#narrator').innerHTML = ''; }
       drawTrace();
       const rc = sim.byName[app.recordComp];
       const V = rc ? rc.V : (profile.probeV ? profile.probeV(sim, app.recordComp) : undefined);
       $('#vm-value').textContent = fmtV(V == null ? REST : V);
       $('#vm-label').textContent = 'Vm (' + app.recordComp + ')';
       $('#sim-clock').textContent = `t = ${sim.t.toFixed(1)} ms`;
+    }
+    function frame(ts) {
+      guard('frame', () => frameBody(ts));
       requestAnimationFrame(frame);
     }
 

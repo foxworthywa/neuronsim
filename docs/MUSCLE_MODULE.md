@@ -65,7 +65,7 @@ colour, behaviour) with -ize verbs (depolarize, repolarize), as in `BIOLOGY.md` 
 | 8 | Voltage to calcium | triad: T-tubule wall with voltage sensor, SR with release channel and Ca²⁺ store, myofibril | fires; watches sensor → release channel → Ca²⁺ flood; then repeats in a Ca²⁺-free bath (Ca²⁺ replaced by Mg²⁺) | where the Ca²⁺ comes from; what happens with no Ca²⁺ outside | cytosolic Ca²⁺ peak seen; Ca²⁺-free run seen |
 | 9 | Calcium to force | sarcomere: thin filament with its cover, thick filament with cross-bridges, force gauge | fires; watches Ca²⁺ bind, the cover move, bridges cycle, sarcomere shorten | what has to change before a bridge can form; what the bridge needs to let go; what shortens | force peak seen |
 | 10 | Relaxation | triad + sarcomere side by side with SERCA pump and ATP meter | watches Ca²⁺ pumped back, force fall; then runs with ATP switched off | what removes Ca²⁺; what happens with no ATP (rigor) | force back to baseline; rigor run seen |
-| 11 | The twitch on one time axis | three-trace plot: Vm, cytosolic Ca²⁺, force, same time axis; fibre inset | predicts the order, shocks once, reads off the three durations | order of the three events; which lasts longest | one clean twitch recorded (spike → Ca²⁺ peak → force peak → relaxed, no other shock in between) |
+| 11 | The twitch on one time axis | three-trace plot: Vm, cytosolic Ca²⁺, force, same time axis; fibre inset | predicts the order, shocks once, reads off the three durations, then walks the same twitch phase by phase | order of the three events; which lasts longest; what each phase is | one clean twitch recorded (spike → Ca²⁺ peak → force peak → relaxed, no other shock in between), then all ten phases stepped through |
 | 12 | Summation and tetanus | same plot + "Shock twice, 20 ms apart" button + stimulus-rate slider + force gauge | fires the pair; raises the rate until force fuses | second shock before force falls; why force adds when impulses cannot; what happens at high rate | pair: two spikes, peak > 1.3× a twitch; fused tetanus (force > 3× twitch, ripple < 10 %) |
 | 13 | How the body delivers the shock | neuromuscular junction: motor terminal, cleft with AChE, folded end plate with receptors; then whole fibre | predicts, then "sends a command" with pauses at Ca²⁺ entry and at receptor opening; sees the end-plate potential alone (fibre Na⁺ channels temporarily off); then the full chain; then blocks half the receptors | which way Ca²⁺ moves at the terminal; ACh's effect on the end plate; will one command fire the fibre; what stops the signal; will half the receptors do | `epp_peak` with Na⁺ blocked; spike + twitch after a command; twitch at 50 % block with peak within 5 % of control |
 | 14 | Grading force (optional; not yet built: needs the `motorUnit` view) | whole muscle with three motor units of different size; force gauge | reads the one-line motor-unit intro; recruits units; raises rate | what differs between a gentle and a strong pull | three units recruited and rate raised → Lab |
@@ -275,6 +275,16 @@ Pauses at rise, peak, dip, recovery. Conductance sub-plot under the trace.
   ✔ "Vm → Ca²⁺ → force." → "Shock once and check." ✘ "Ca²⁺ → Vm → force" → "Ca²⁺ is released
   because the tubule depolarized (scene 8); the spike has to come first." ✘ "Vm → force → Ca²⁺" →
   "Force needs Ca²⁺ on troponin (scene 9). Nothing pulls until Ca²⁺ is there."
+- **Stepped walk** (between Q1 and Q2, no question). The same twitch, one phase at a time: the
+  clock runs until the next phase has happened, then stops and says what it was, and the student
+  presses on. Ten phases — the shock, the impulse, into the tubules, the store opens, Ca²⁺ floods
+  out, troponin catches it, cross-bridges cycle, peak force, SERCA clears up, relaxed — and each
+  one is added to a numbered list, so the step ends with a written account of the whole chain.
+  The full-speed run stays as the step before it: seeing the phases overlap is the point of that
+  one, and this is for reading them. Every phase is tested against the model's own
+  per-integration-step peak records (`vPeak`, `dPeak`, `ryrPeak`, `caPeak`, `tnPeak`,
+  `forcePeak`), never against instantaneous state, so no phase can be stepped over between two
+  animation frames however fast the clock is set. **Done when** all ten phases have been reached.
 - **Q2** "Which lasts longest?" ✔ "Force (about a hundred milliseconds)." ✘ "The impulse" → "The
   spike is over in a millisecond or two; the force it launched lasts fifty times longer. This gap
   is the key to the next scene." ✘ "Ca²⁺" → "Ca²⁺ is back near baseline in a few tens of
@@ -384,6 +394,13 @@ the muscle's rest and threshold lines. Muscle adds:
   ones fired and which did not (threshold, refractory, block scenarios).
 - The neuron module's rule stands: threshold is not drawn until scene 5 introduces it, and scene 3
   runs with voltage-gated Na⁺ channels absent so opening a channel by hand cannot fire the fibre.
+
+## Answer order
+
+Questions are written here (and in `lessons/muscle.js`) with the correct answer first: it is easy
+to author and impossible to mis-flag. The page permutes them for display — see **Lesson** in
+`docs/APP_API.md` — so students do not find the answer in the same place every time, while the
+order any one question is shown in stays the same from visit to visit.
 
 ## Feedback rules
 

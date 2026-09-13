@@ -140,7 +140,8 @@ async function runPage(browser, url, prefix) {
     await settle(); await shoot(`${String(apIdx + 1).padStart(2, '0')}-ap-rising`);
     // Continue → (paused question step: answer it) → Continue → runs to the peak and pauses again.
     const answer = async () => {
-      const idx = await page.evaluate(`(() => { const h = ${H}; const st = h.lesson()[h.runner().scene].steps[h.runner().step]; return st.question ? st.question.options.findIndex(o => o.ok) : -1; })()`);
+      // options are shown in a permuted order (kit.questionOrder), so find the answer's *displayed* slot
+      const idx = await page.evaluate(`(() => { const h = ${H}; const st = h.lesson()[h.runner().scene].steps[h.runner().step]; if (!st.question) return -1; const q = st.question; const order = h.kit.questionOrder ? h.kit.questionOrder(q) : q.options.map((_, i) => i); return order.findIndex(i => q.options[i].ok); })()`);
       if (idx >= 0) await page.locator('#panel .question .options button').nth(idx).click();
     };
     const state = async () => page.evaluate(`(() => { const h = ${H}; const c = h.sim.byName[h.app.recordComp]; return { paused: h.app.paused, step: h.runner().step, V: c ? c.V : null, stim: Object.keys(h.sim.stim).length, t: h.sim.t, rest: h.profile ? h.profile.rest : -70 }; })()`);

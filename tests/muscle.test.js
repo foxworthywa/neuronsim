@@ -274,3 +274,29 @@ test('switching the pump off does not change Vm immediately; with the accelerate
   run(f, 1500);
   assert.ok(f.endplate.V > REST + 5, `drifted to ${f.endplate.V.toFixed(1)} as E_K fell`);
 });
+
+test('the peak records capture a whole twitch whatever step size the caller uses, and resetPeaks clears them', () => {
+  // A lesson that samples the fibre only occasionally must still be able to ask "did the release
+  // channels open?" — the answer has to come from the integration, not from where the caller looked.
+  const f = fresh();
+  const r3 = f.byName.R3;
+  assert.ok(r3.vPeak <= REST + 0.5 && r3.ryrPeak === 0 && r3.tnPeak === 0, 'a resting fibre has no peaks');
+  f.shock(1.5);
+  const fine = (() => { run(f, 200); return { v: r3.vPeak, d: r3.dPeak, ryr: r3.ryrPeak, ca: r3.caPeak, tn: r3.tnPeak, force: r3.forcePeak }; })();
+  assert.ok(fine.v > 0, `the spike is recorded (${fine.v.toFixed(1)} mV)`);
+  assert.ok(fine.ryr > 0.3 && fine.d > 0.5, 'the sensor moved and the release channels opened');
+  assert.ok(fine.ca > 1 && fine.tn > 0.5 && fine.force > 0.1, 'Ca²⁺, troponin and force are all recorded');
+
+  // the same twitch integrated in 5 ms lumps: the peaks must agree, not be sampled away
+  const g = fresh();
+  g.shock(1.5);
+  for (let t = 0; t < 200; t += 5) g.advance(5);
+  const c = g.byName.R3;
+  for (const [k, a, b] of [['vPeak', fine.v, c.vPeak], ['dPeak', fine.d, c.dPeak], ['ryrPeak', fine.ryr, c.ryrPeak],
+                           ['caPeak', fine.ca, c.caPeak], ['tnPeak', fine.tn, c.tnPeak], ['forcePeak', fine.force, c.forcePeak]])
+    assert.ok(Math.abs(a - b) <= Math.max(0.05, 0.15 * Math.abs(a)), `${k} agrees between step sizes (${a.toFixed(3)} vs ${b.toFixed(3)})`);
+
+  g.resetPeaks();
+  assert.ok(c.dPeak === 0 && c.ryrPeak === 0 && c.tnPeak === 0 && c.forcePeak === 0 && c.vPeak <= REST + 0.5,
+    'resetPeaks clears every record so the next question starts clean');
+});

@@ -63,6 +63,12 @@ main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1
 #narrator { margin: 4px 10px 10px; font-size: 14px; line-height: 1.35; background: #fbfaf6; border: 1px solid var(--line); border-left: 4px solid var(--accent); padding: 7px 12px; border-radius: 8px; min-height: 44px; color: var(--ink); }
 #narrator:empty { visibility: hidden; }
 #narrator b { font-weight: 650; }
+/* Each line of commentary is held long enough to read; this marks the moment it changes, and
+   shows a caret while further lines are still queued behind it (see pumpNarration in app.js). */
+#narrator.fresh { animation: narrator-in .5s ease-out; }
+@keyframes narrator-in { from { background: #fff2d4; border-left-color: var(--warn); } to { background: #fbfaf6; border-left-color: var(--accent); } }
+#narrator.more::after { content: ' ▾'; color: var(--muted); font-weight: 700; }
+@media (prefers-reduced-motion: reduce) { #narrator.fresh { animation: none; } }
 #narrator .dir { font-weight: 700; letter-spacing: .3px; }
 #paused-badge { position: absolute; left: 50%; bottom: 70px; transform: translateX(-50%); font-size: 12px; background: #fff3d6; border: 1px solid #ecd9a6; color: #7a5a10; padding: 3px 10px; border-radius: 999px; display: none; }
 
@@ -92,6 +98,11 @@ main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1
 .hint { font-size: 13px; color: var(--muted); }
 .ion { display: inline-block; padding: 0 5px; border-radius: 999px; color: #fff; font-size: 12px; font-weight: 600; }
 .ion.na { background: var(--na); } .ion.k { background: var(--k); } .ion.cl { background: var(--cl); } .ion.ca { background: var(--ca); } .ion.nt { background: var(--nt); }
+/* the phase-by-phase walk through a fast sequence (lessons/muscle.js phaseWalk) */
+.status ol.phases { margin: 6px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+.status ol.phases li { color: var(--muted); }
+.status ol.phases li:last-child { color: var(--ink); }
+.status ol.phases li.now { color: var(--ink); background: #fff6e2; border-radius: 5px; padding: 2px 5px; margin-left: -5px; }
 kbd.part { background: #eef0f4; border: 1px solid #d6dae2; border-radius: 4px; padding: 0 5px; font: inherit; font-size: 13px; }
 
 #trace-wrap { grid-column: 1; grid-row: 2; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px 6px; }

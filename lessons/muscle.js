@@ -14,13 +14,13 @@
   'use strict';
 
   // Kit members used below; filled in by bind(kit) before any lesson code runs.
-  let sim, app, runner, panel, htmlEl, $, clamp, ION_COLOR, CH, chip, I, fmtV, fmtE, spikeIn,
+  let sim, app, runner, panel, htmlEl, $, clamp, ION_COLOR, CH, chip, I, fmtV, fmtE, spikeIn, questionOrder,
     setPaused, setSpeed, mountView, enterLab, refire, since, LOOP_HTML, loopHighlight, labNav;
   let boundKit = null;
   function bind(kit) {
     if (boundKit === kit) return;
     boundKit = kit;
-    ({ sim, app, runner, panel, htmlEl, $, clamp, ION_COLOR, CH, chip, I, fmtV, fmtE, spikeIn,
+    ({ sim, app, runner, panel, htmlEl, $, clamp, ION_COLOR, CH, chip, I, fmtV, fmtE, spikeIn, questionOrder,
       setPaused, setSpeed, mountView, enterLab, refire, since, LOOP_HTML, loopHighlight, labNav } = kit);
     app.listeners.push(onModelEvent);
   }
@@ -100,6 +100,11 @@
   const vm = (name) => `Vm (${name === 'endplate' ? 'end plate' : name}) = ${fmtV(sim.byName[name].V)} mV`;
   const live = (name) => `${vm(name)} · Ca²⁺ ${sim.ca.toFixed(1)} µM · force ${sim.force.toFixed(2)}`;
   const pct = (x) => `${Math.round(x * 100)} %`;
+  // Measurements that only exist once the activity has actually been done. A status line must
+  // never throw on a missing one: an exception in a step callback used to stop the animation
+  // loop for good, which looked like the whole page freezing mid-scene.
+  const num = (v, dp) => (typeof v === 'number' && isFinite(v)) ? v.toFixed(dp == null ? 2 : dp) : '—';
+  const ratio = (a, b, dp) => (typeof a === 'number' && typeof b === 'number' && b) ? (a / b).toFixed(dp == null ? 1 : dp) : '—';
 
   // Spike peaks at R3 attributed to the last shock (scene 5's all-or-none comparison).
   function spikePeakTracker() {
@@ -439,7 +444,7 @@
           actions: [{ label: 'Shock', cls: 'na', run: (c) => { setPaused(false); sim.shock(1.5); const d = c.stepState().data; d.shocked = true; d.caMax = 0; } }],
           tick: (c) => { const d = c.stepState().data; if (d.shocked) d.caMax = Math.max(d.caMax, sim.ca); },
           waitFor: (c) => { const d = c.stepState().data; return !!d.shocked && d.caMax > 1 && sim.ca < 0.8 * d.caMax; }, waitHint: 'Shock and watch the Ca²⁺ rise and fall',
-          status: (c) => { const d = c.stepState().data; return runner.state.done ? `<b>Observed:</b> cytosolic Ca²⁺ peaked at ${d.caMax.toFixed(1)} µM a few ms after the impulse, straight out of the store (store level now ${pct(sim.srLevel)}).` : `${vm('R3')} · Ca²⁺ ${sim.ca.toFixed(1)} µM · store ${pct(sim.srLevel)}`; },
+          status: (c) => { const d = c.stepState().data; return runner.state.done ? `<b>Observed:</b> cytosolic Ca²⁺ peaked at ${num(d.caMax, 1)} µM a few ms after the impulse, straight out of the store (store level now ${pct(sim.srLevel)}).` : `${vm('R3')} · Ca²⁺ ${sim.ca.toFixed(1)} µM · store ${pct(sim.srLevel)}`; },
         },
         {
           view: 'triad', title: 'The classic experiment: no Ca²⁺ outside',
@@ -453,7 +458,7 @@
           actions: [{ label: 'Shock (Ca²⁺-free bath)', cls: 'na', run: (c) => { setPaused(false); sim.setCaFreeBath(true); sim.shock(1.5); c.stepState().data.shocked = true; } }],
           tick: (c, ev) => { const d = c.stepState().data; if (!d.shocked) return; for (const e of ev) if (e.type === 'twitch_peak') d.peak = e.force; },
           waitFor: (c) => c.stepState().data.peak != null, waitHint: 'Shock in the Ca²⁺-free bath',
-          status: (c) => { const d = c.stepState().data; return runner.state.done ? `<b>Observed:</b> force peak ${d.peak.toFixed(2)} with no Ca²⁺ outside${ref.twitch ? ` (normal fluid: ${ref.twitch.toFixed(2)})` : ''}. The store did it all.` : `Ca²⁺ outside: ${sim.conc.Ca.out} mM · ${live('R3')}`; },
+          status: (c) => { const d = c.stepState().data; return runner.state.done ? `<b>Observed:</b> force peak ${num(d.peak)} with no Ca²⁺ outside${ref.twitch ? ` (normal fluid: ${num(ref.twitch)})` : ''}. The store did it all.` : `Ca²⁺ outside: ${sim.conc.Ca.out} mM · ${live('R3')}`; },
         },
       ],
     });
@@ -474,7 +479,7 @@
           actions: [{ label: 'Shock', cls: 'na', run: (c) => { setPaused(false); sim.shock(1.5); c.stepState().data.shocked = true; } }],
           tick: (c, ev) => { const d = c.stepState().data; if (!d.shocked) return; for (const e of ev) if (e.type === 'twitch_peak') d.peak = e.force; },
           waitFor: (c) => c.stepState().data.peak != null, waitHint: 'Shock and watch the bridges cycle',
-          status: (c) => { const d = c.stepState().data; return runner.state.done ? `<b>Observed:</b> Ca²⁺ bound troponin, the cover moved, bridges cycled; force peaked at ${d.peak.toFixed(2)} about 35 ms after the impulse.` : live('R3'); },
+          status: (c) => { const d = c.stepState().data; return runner.state.done ? `<b>Observed:</b> Ca²⁺ bound troponin, the cover moved, bridges cycled; force peaked at ${num(d.peak)} about 35 ms after the impulse.` : live('R3'); },
         },
         {
           view: 'sarcomere', title: 'Letting go',
@@ -541,6 +546,51 @@
       const parts = [R3().V > -30 ? 'impulse' : 'impulse over', sim.ca > 0.5 ? 'Ca²⁺ still high' : 'Ca²⁺ back down', F > 0.03 ? (F >= prev ? 'force rising' : 'force falling') : 'relaxed'];
       return `${parts.join('; ')} · ${live('R3')}`;
     };
+    // A stepped walk through a sequence that is over too quickly to read at full speed. The
+    // simulation runs until the next phase has happened, then pauses and says what it was; the
+    // student presses on for the next one. The full-speed run (the step before this) stays,
+    // because seeing the phases overlap is the point of it — this is for reading them one at a
+    // time. Phases are tested against the model's own per-integration-step peak records rather
+    // than instantaneous state, so a phase that lasts a millisecond cannot be stepped over
+    // between two animation frames however fast the clock is set.
+    const phaseWalk = (phases, start) => ({
+      speed: 0.004,
+      enter: (c) => { app.userSpeed = null; setSpeed(0.004); c.stepState().data.m = freshMax(); },
+      actions: [
+        { label: 'Start', cls: 'na', run: (c) => { const d = c.stepState().data; d.i = 0; d.log = []; d.m = freshMax(); setPaused(false); start(c); c.refresh(); }, disabled: (c) => { const d = c.stepState().data; return d.i != null && d.i < phases.length; } },
+        { label: 'Next phase →', cls: 'primary', run: (c) => { setPaused(false); c.refresh(); }, disabled: (c) => { const d = c.stepState().data; return d.i == null || d.i >= phases.length || !app.paused; } },
+        { label: 'Start over', run: (c) => { const d = c.stepState().data; d.i = null; d.log = []; d.m = freshMax(); sim.cancelScheduled(); setPaused(true); c.refresh(); } },
+      ],
+      tick: (c, ev) => {
+        const d = c.stepState().data;
+        const m = d.m || (d.m = freshMax());
+        // Every fast quantity comes from the model's own per-integration-step peak records, so no
+        // phase can be stepped over between two animation frames however fast the clock is set.
+        const r = R3();
+        m.epV = sim.endplate.vPeak; m.v = r.vPeak; m.d = r.dPeak;
+        m.ryr = r.ryrPeak; m.ca = r.caPeak; m.tn = r.tnPeak; m.force = Math.max(m.force, r.forcePeak, sim.force);
+        for (const e of ev) if (e.type === 'twitch_peak') m.peaked = true;
+        if (d.i == null || d.i >= phases.length || app.paused) return;
+        if (!phases[d.i].test(m)) return;
+        d.log.push(phases[d.i].say);
+        c.mark(phases[d.i].mark || '');
+        d.i++;
+        setPaused(true);
+        c.refresh();
+      },
+      waitFor: (c) => { const d = c.stepState().data; return d.i != null && d.i >= phases.length; },
+      waitHint: 'Step through every phase',
+      status: (c) => {
+        const d = c.stepState().data;
+        if (d.i == null) return 'Press <b>Start</b>: the fibre will run to the first phase and stop there.';
+        const done = d.i >= phases.length;
+        const head = done ? `<b>All ${phases.length} phases.</b> That whole chain is what "one shock, one twitch" means.`
+          : `<b>Phase ${d.i} of ${phases.length}.</b> ${app.paused ? 'Press <b>Next phase</b> when you have read it.' : 'Running to the next phase…'}`;
+        return `${head}<ol class="phases">${d.log.map((t, i) => `<li${i === d.log.length - 1 && !done ? ' class="now"' : ''}>${t}</li>`).join('')}</ol>`;
+      },
+    });
+    const freshMax = () => ({ epV: -1e9, v: -1e9, d: 0, ryr: 0, ca: 0, tn: 0, force: 0, peaked: false });
+
     scenes.push({
       id: 'twitch', title: 'The twitch on one time axis', speed: 0.1, showThreshold: true, bands: BANDS, historyMs: 2000, window: 300,
       steps: [
@@ -568,6 +618,22 @@
           waitFor: (c) => { const s = c.stepState().data.seq; return !!(s && s.shocks === 1 && s.spike && s.ca && s.peak && s.relaxed); }, waitHint: 'Shock once and let the twitch finish',
           status: (c) => { const s = c.stepState().data.seq; return runner.state.done ? '<b>One clean twitch:</b> impulse → Ca²⁺ → force → relaxed. Read the three durations off the traces.' : (s && s.shocks > 1 ? 'Two shocks overlapped; wait for the fibre to relax and shock once.' : narrateTwitch()); },
         },
+        Object.assign({
+          view: 'fibre', title: 'The same twitch, one phase at a time',
+          text: `<p>That was the whole chain in about a second. Now walk it: the fibre stops at each
+                 phase and waits for you. Watch which trace moves at each stop.</p>`,
+        }, phaseWalk([
+          { say: '<b>The shock.</b> Charge was pushed into the fibre at the end plate and Vm is climbing towards threshold.', test: (m) => m.epV > REST + 12, mark: 'shock' },
+          { say: '<b>The impulse.</b> Voltage-gated Na⁺ channels opened; the spike is running along the sarcolemma in both directions.', test: (m) => m.v > -20, mark: 'impulse' },
+          { say: '<b>Into the tubules.</b> The impulse has run down the T-tubules and the voltage sensors in the tubule wall have moved.', test: (m) => m.d > 0.5 },
+          { say: '<b>The store opens.</b> The moved sensors have pulled open the release channels in the terminal cisternae next to them.', test: (m) => m.ryr > 0.3 },
+          { say: '<b>Ca²⁺ floods out.</b> Cytosolic Ca²⁺ is climbing far above its resting level — look at the Ca²⁺ trace, not the Vm trace.', test: (m) => m.ca > 1.5, mark: 'Ca²⁺' },
+          { say: '<b>Troponin catches it.</b> Ca²⁺ has bound troponin and tropomyosin has slid off the binding sites on actin.', test: (m) => m.tn > 0.55 },
+          { say: '<b>Cross-bridges cycle.</b> Myosin heads are attaching, pulling, and letting go again with ATP. Force is rising.', test: (m) => m.force > 0.06 },
+          { say: '<b>Peak force.</b> The impulse ended long ago; this is happening entirely because Ca²⁺ is still on troponin.', test: (m) => m.peaked || (m.force > 0.1 && sim.force < 0.94 * m.force), mark: 'peak' },
+          { say: '<b>SERCA clears up.</b> The pumps are putting Ca²⁺ back in the store, and cytosolic Ca²⁺ is falling.', test: (m) => sim.ca < 0.6 && m.force > 0.08 },
+          { say: '<b>Relaxed.</b> Troponin has let go, tropomyosin covers actin again, the bridges have stopped forming and the fibre is back where it started.', test: () => sim.force < 0.03 && sim.ca < 0.3, mark: 'relaxed' },
+        ], () => { sim.resetPeaks(); sim.shock(1.5); })),
         {
           view: 'fibre', title: 'Which lasts longest?',
           actions: [{ label: 'Shock once', cls: 'na', run: () => { setPaused(false); sim.shock(1.5); } }],
@@ -616,7 +682,7 @@
           ],
           tick: (c, ev) => { const d = c.stepState().data; if (d.pairT == null) return; for (const e of ev) { if (e.type === 'spike' && e.name === 'R3') d.spikes++; if (e.type === 'twitch_peak' && d.spikes >= 2) d.peak = Math.max(d.peak || 0, e.force); } },
           waitFor: (c) => { const d = c.stepState().data; return d.pairT != null && d.spikes >= 2 && ref.twitch != null && d.peak != null && d.peak > 1.3 * ref.twitch; }, waitHint: 'Fire the pair (and a single twitch to compare)',
-          status: (c) => { const d = c.stepState().data; const tw = ref.twitch ? `single twitch ${ref.twitch.toFixed(2)}` : 'shock once first to measure a single twitch'; return runner.state.done ? `<b>Observed:</b> two full impulses, and the force peaked at ${d.peak.toFixed(2)}: ${(d.peak / ref.twitch).toFixed(1)}× a single twitch.` : `${tw}${d.spikes ? ` · impulses since the pair: ${d.spikes}` : ''} · ${live('R3')}`; },
+          status: (c) => { const d = c.stepState().data; const tw = ref.twitch ? `single twitch ${num(ref.twitch)}` : 'shock once first to measure a single twitch'; return runner.state.done ? `<b>Observed:</b> two full impulses, and the force peaked at ${num(d.peak)}: ${ratio(d.peak, ref.twitch)}× a single twitch.` : `${tw}${d.spikes ? ` · impulses since the pair: ${d.spikes}` : ''} · ${live('R3')}`; },
         },
         {
           view: 'fibre', title: 'Raise the rate',
@@ -634,7 +700,7 @@
           ],
           tick: (c, ev) => { const d = c.stepState().data; for (const e of ev) if (e.type === 'tetanus_fused') { d.fusedAt = e.force; d.fusedHz = d.hz; } },
           waitFor: (c) => { const d = c.stepState().data; return d.fusedAt != null && (ref.twitch == null || d.fusedAt > 2.2 * ref.twitch); }, waitHint: 'Raise the rate until the force fuses',
-          status: (c) => { const d = c.stepState().data; return runner.state.done ? `<b>Fused tetanus</b> at ${d.fusedHz} Hz: force ${d.fusedAt.toFixed(2)}${ref.twitch ? ` (${(d.fusedAt / ref.twitch).toFixed(1)}× a twitch)` : ''}, ripple under 10 %, spikes still separate.` : `${d.hz ? `last train ${d.hz} Hz · ` : ''}${sim.isFused ? 'fused · ' : ''}${live('R3')} · store ${pct(sim.srLevel)}`; },
+          status: (c) => { const d = c.stepState().data; return runner.state.done ? `<b>Fused tetanus</b> at ${d.fusedHz || '—'} Hz: force ${num(d.fusedAt)}${ref.twitch ? ` (${ratio(d.fusedAt, ref.twitch)}× a twitch)` : ''}, ripple under 10 %, spikes still separate.` : `${d.hz ? `last train ${d.hz} Hz · ` : ''}${sim.isFused ? 'fused · ' : ''}${live('R3')} · store ${pct(sim.srLevel)}`; },
         },
       ],
     });
@@ -689,7 +755,7 @@
           tick: (c, ev) => { const d = c.stepState().data; if (!d.sent) return; for (const e of ev) if (e.type === 'epp_peak' && sim.naBlock === 1) d.epp = e.V; },
           waitFor: (c) => c.stepState().data.epp != null, waitHint: 'Send a command with the Na⁺ channels off',
           onContinue: () => { sim.naBlock = 0; },
-          status: (c) => { const d = c.stepState().data; return runner.state.done ? `<b>End-plate potential:</b> the receptors alone pushed Vm to ${fmtV(d.epp)} mV, about ${((d.epp - REST) / (THR - REST)).toFixed(1)}× as far as threshold needs.` : `Na⁺ channels off · ${vm('endplate')}`; },
+          status: (c) => { const d = c.stepState().data; return runner.state.done ? `<b>End-plate potential:</b> the receptors alone pushed Vm to ${d.epp == null ? '—' : fmtV(d.epp)} mV, about ${ratio(d.epp - REST, THR - REST)}× as far as threshold needs.` : `Na⁺ channels off · ${vm('endplate')}`; },
         },
         {
           view: 'nmj', title: 'One command', speed: 0.1, window: 300,
@@ -703,7 +769,7 @@
           actions: [{ label: 'Send command', cls: 'ca', run: (c) => { sim.naBlock = 0; send(c); } }],
           tick: (c, ev) => { const d = c.stepState().data; if (!d.sent) return; for (const e of ev) { if (e.type === 'spike' && e.name === 'R3') d.spike = true; if (e.type === 'twitch_peak' && d.spike) d.peak = e.force; } },
           waitFor: (c) => { const d = c.stepState().data; return !!d.spike && d.peak != null; }, waitHint: 'Send a command and watch the fibre',
-          status: (c) => { const d = c.stepState().data; return runner.state.done ? `<b>Observed:</b> command → end-plate potential → impulse → twitch (peak ${d.peak.toFixed(2)}). One command, one twitch.` : live('endplate'); },
+          status: (c) => { const d = c.stepState().data; return runner.state.done ? `<b>Observed:</b> command → end-plate potential → impulse → twitch (peak ${num(d.peak)}). One command, one twitch.` : live('endplate'); },
         },
         {
           view: 'nmj', title: 'Switching it off',
@@ -734,7 +800,7 @@
             for (const e of ev) if (e.type === 'twitch_peak') { if (d.pending === 'blocked') d.blocked = e.force; else if (d.pending === 'control') d.control = e.force; }
           },
           waitFor: (c) => { const d = c.stepState().data; const ctl = d.control != null ? d.control : ref.twitch; return d.blocked != null && ctl != null && Math.abs(d.blocked - ctl) < 0.05 * ctl; }, waitHint: 'Send a command with half the receptors blocked',
-          status: (c) => { const d = c.stepState().data; const ctl = d.control != null ? d.control : ref.twitch; return runner.state.done ? `<b>Observed:</b> twitch peak ${d.blocked.toFixed(2)} with half the receptors blocked, ${ctl.toFixed(2)} with all of them: within 5 %.` : `Receptors blocked: ${pct(sim.receptor.block)} · ${ctl != null ? `control twitch ${ctl.toFixed(2)} · ` : 'no control twitch yet: press Control first · '}${live('endplate')}`; },
+          status: (c) => { const d = c.stepState().data; const ctl = d.control != null ? d.control : ref.twitch; return runner.state.done ? `<b>Observed:</b> twitch peak ${num(d.blocked)} with half the receptors blocked, ${num(ctl)} with all of them: within 5 %.` : `Receptors blocked: ${pct(sim.receptor.block)} · ${ctl != null ? `control twitch ${num(ctl)} · ` : 'no control twitch yet: press Control first · '}${live('endplate')}`; },
         },
       ],
     });
@@ -1130,7 +1196,7 @@
       const box = htmlEl('div', { class: 'question' });
       box.appendChild(htmlEl('div', { class: 'prompt' }, q.prompt));
       const opts = htmlEl('div', { class: 'options' }), fb = htmlEl('div', { class: 'feedback' }); fb.style.display = 'none';
-      q.options.forEach(o => {
+      questionOrder(q).map(i => q.options[i]).forEach(o => {
         const b = htmlEl('button', {}, o.t);
         b.addEventListener('click', () => {
           Array.from(opts.children).forEach(c => c.classList.remove('wrong'));

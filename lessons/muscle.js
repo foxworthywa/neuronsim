@@ -252,7 +252,7 @@
         id: 'threshold', title: 'Shock the fibre: threshold', speed: 0.002, showThreshold: true,
         steps: [
           {
-            view: 'fibre', viewOpts: { caption: 'Stimulating electrodes at the end plate; recording electrode at the end plate.', labels: false, stimulator: true, electrodeAt: 'endplate' }, reset: true, remount: true, record: 'endplate', extra: ['R3'], electrode: true, labels: false,
+            view: 'fibre', viewOpts: { caption: 'Stimulating electrodes at the end plate; recording electrode at the end plate.', labels: false, stimulator: true, electrodeAt: 'endplate' }, reset: true, remount: true, record: 'endplate', electrode: true, labels: false,
             enter: () => { app.showThreshold = false; thr = null; ref.thr = T(); pk.reset(); },
             title: 'Shock the fibre',
             text: `<p>A pair of <b>stimulating electrodes</b> now touches the fibre at the end plate. A shock pushes a little positive charge in for half a millisecond.</p>`,
@@ -388,18 +388,37 @@
       id: 'spread', title: 'Along the fibre and down the tubes', speed: 0.003, showThreshold: true,
       steps: [
         {
-          view: 'fibreWave', viewOpts: { caption: 'The 3 cm fibre unrolled: end plate in the middle, T-tubule openings under every segment.', showTubules: true }, reset: true, remount: true, record: 'R3', extra: ['R8'], electrode: true,
+          view: 'fibreWave', viewOpts: { caption: 'The 3 cm fibre unrolled: end plate in the middle, T-tubule openings under every segment.', showTubules: true }, reset: true, remount: true, record: 'R3', electrode: true,
           title: 'Shock the middle of the fibre',
-          text: `<p>The fibre is laid out as segments, each with its own voltage-gated Na⁺ and K⁺ channels. Electrodes record 5 mm from the end plate and at the far end.</p>`,
+          text: `<p>The fibre is laid out as segments, each with its own voltage-gated Na⁺ and K⁺ channels. The recording electrode is still 5 mm from the shock, marked on the picture; the trace below comes from there.</p>`,
           question: { prompt: 'The shock is in the middle of a 3 cm fibre. Which way does the impulse travel?', options: [
             { t: 'Both ways, to both ends.', ok: true, fb: 'Shock it and watch both ends.' },
             { t: 'Toward the tendon only.', fb: 'Nothing about the membrane knows which way the tendon is. Local currents spread in both directions from the active spot.' },
             { t: 'It stays where the shock was.', fb: 'Watch: Na⁺ entering here depolarizes the next patch, whose channels open, and so on.' },
           ] },
           actions: [{ label: 'Shock the middle', cls: 'na', run: (c) => { if (!readyToShock(c)) return; setPaused(false); sim.shock(1.5); c.stepState().data.shocked = true; } }],
-          tick: (c, ev) => { const d = c.stepState().data; if (!d.shocked) return; d.l8 = d.l8 || spikeIn(ev, 'L8'); d.r8 = d.r8 || spikeIn(ev, 'R8'); },
+          // The far end's arrival is marked on the one trace rather than drawn as a second curve:
+          // students have read a single trace for six scenes, and a second rise and fall reads as
+          // a second event. The dashed mark says "this is when the far end fired" with no new
+          // grammar to learn, and the delay between the two is measured for them below.
+          tick: (c, ev) => {
+            const d = c.stepState().data; if (!d.shocked) return;
+            for (const e of ev) {
+              if (e.type !== 'spike') continue;
+              if (e.name === 'R3' && d.tNear == null) d.tNear = e.t;
+              if (e.name === 'R8' && d.tFar == null) { d.tFar = e.t; c.mark('far end fires'); }
+              if (e.name === 'L8') d.l8 = true;
+            }
+            d.r8 = d.tFar != null;
+          },
           waitFor: (c) => !!(c.stepState().data.l8 && c.stepState().data.r8), waitHint: 'Shock the fibre and watch the wave reach both ends',
-          status: (c) => runner.state.done ? '<b>Observed:</b> the impulse reached both ends, a few milliseconds after the shock. Look at the two traces: the same full-size impulse, later at the far end.' : `${vm('R3')} · Vm (far end) = ${fmtV(sim.end.V)} mV`,
+          status: (c) => {
+            const d = c.stepState().data;
+            if (!runner.state.done) return `${vm('R3')} · Vm (far end) = ${fmtV(sim.end.V)} mV`;
+            const dt = (d.tFar != null && d.tNear != null) ? d.tFar - d.tNear : null;
+            const mm = 5 * (sim.p.segLen / 1000);                       // R3 → R8 is five segments
+            return `<b>Observed:</b> the impulse reached both ends, at full size. It passed the electrode first and the far end ${dt ? `${dt.toFixed(1)} ms` : 'a few ms'} later (the dashed mark on the trace)${dt ? `: ${mm.toFixed(1)} mm in ${dt.toFixed(1)} ms, about ${(mm / dt).toFixed(1)} m/s` : ''}.`;
+          },
         },
         {
           view: 'fibreWave', title: 'What opens the next segment?',
@@ -722,7 +741,7 @@
       id: 'nmj', title: 'How the body delivers the shock', speed: 0.003, showThreshold: true, bands: FORCE_BAND, historyMs: 600, window: 60,
       steps: [
         {
-          view: 'nmj', viewOpts: { caption: 'The neuromuscular junction: the motor nerve\'s terminal above, the gap, the folded end plate below.' }, reset: true, remount: true, record: 'endplate', extra: ['R3'], electrode: true,
+          view: 'nmj', viewOpts: { caption: 'The neuromuscular junction: the motor nerve\'s terminal above, the gap, the folded end plate below.' }, reset: true, remount: true, record: 'endplate', electrode: true,
           enter: () => { sim.naBlock = 0; sim.receptor.block = 0; },
           title: 'The nerve ending on the end plate',
           text: `<p>In the body nobody holds an electrode. A motor nerve ends in a <b>terminal</b> pressed against the end plate, with a narrow gap between. Its own impulse (a <b>command</b>) arrives from the left. The terminal membrane has voltage-gated ${I('Ca')} channels; Ca²⁺ is 2 mM outside and almost absent inside.</p>`,

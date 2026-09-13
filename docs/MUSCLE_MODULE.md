@@ -395,6 +395,15 @@ the muscle's rest and threshold lines. Muscle adds:
 - The neuron module's rule stands: threshold is not drawn until scene 5 introduces it, and scene 3
   runs with voltage-gated Na⁺ channels absent so opening a channel by hand cannot fire the fibre.
 
+## One trace
+
+The lesson shows **one voltage trace at one recording site**. A second curve is a new visual
+grammar, and students have read a single trace since scene 3; a second rise and fall is read as a
+second event rather than the same impulse at another electrode. Scene 7, where a second site does
+carry a real point, marks the far end's arrival on the one trace instead: a dashed mark labelled
+"far end fires", and the measured delay and conduction speed in the status line. The picture names
+where the trace comes from, in the trace's own colour.
+
 ## Answer order
 
 Questions are written here (and in `lessons/muscle.js`) with the correct answer first: it is easy

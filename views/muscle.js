@@ -13,13 +13,13 @@
 
   const FORCE = '#a0442a', TUBULE = '#8a7a50', COVER = '#6b7280', SR_BLUE = '#2d8fd5';
 
-  let sim, app, svgEl, setAttrs, htmlEl, $, clamp, lerp, rand, ION_COLOR, ION_LABEL, CH, vColor, insideFill,
+  let sim, app, profile, svgEl, setAttrs, htmlEl, $, clamp, lerp, rand, ION_COLOR, ION_LABEL, CH, vColor, insideFill,
     drawChannel, setChannelState, makeIonPool, makeParticles, fluxCounter, drawBilayer, drawInset, chip, IN, OUT, fmtV, setCaption;
   let boundKit = null;
   function bind(kit) {
     if (boundKit === kit) return;
     boundKit = kit;
-    ({ sim, app, svgEl, setAttrs, htmlEl, $, clamp, lerp, rand, ION_COLOR, ION_LABEL, CH, vColor, insideFill,
+    ({ sim, app, profile, svgEl, setAttrs, htmlEl, $, clamp, lerp, rand, ION_COLOR, ION_LABEL, CH, vColor, insideFill,
       drawChannel, setChannelState, makeIonPool, makeParticles, fluxCounter, drawBilayer, drawInset, chip, IN, OUT, fmtV, setCaption } = kit);
     if (!CH.nAChR) CH.nAChR = { color: ION_COLOR.Na, label: 'ACh receptor (Na⁺/K⁺ channel)', ion: 'Na', dir: -1, receptor: true };
   }
@@ -429,7 +429,7 @@
   // ---------------------------------------------------------------- unrolled fibre with channel states
   views.fibreWave = function (opts) {
     const X0 = 40, X1 = 860, Y_TOP = 190, Y_BOT = 290;
-    let svg, segs = [], naChans = [], kChans = [], tubes = [], particles, counters = [], profile, arrows, insetParts;
+    let svg, segs = [], naChans = [], kChans = [], tubes = [], particles, counters = [], vProfile, arrows, insetParts;
     return {
       mount(el) {
         svg = svgEl('svg', { viewBox: '0 0 900 520' });
@@ -462,9 +462,23 @@
         const epx = lerp(X0, X1, (sim.endplate.index + 0.5) / n);
         svgEl('path', { d: `M${epx},${Y_TOP - 60} l0,30 m-8,-8 l8,8 l8,-8`, fill: 'none', stroke: '#4a4f5a', 'stroke-width': 3 }, svg);
         svgEl('text', { x: epx, y: Y_TOP - 66, 'font-size': 11, 'text-anchor': 'middle', fill: '#4a4f5a', text: 'shock here' }, svg);
+        // Where the trace below comes from, drawn in the trace's own colour, and the two ends
+        // named the way the trace's marks name them.
+        const rec = app.recordComp || (profile && profile.comp);
+        const recIdx = sim.byName[rec] ? sim.byName[rec].index : -1;
+        if (recIdx >= 0) {
+          const rx = lerp(X0, X1, (recIdx + 0.5) / n);
+          const col = (profile && profile.traceColors && profile.traceColors[rec]) || '#1f2430';
+          svgEl('rect', { x: rx - 9, y: 140, width: 18, height: 14, rx: 3, fill: col }, svg);
+          svgEl('line', { x1: rx, y1: 154, x2: rx, y2: Y_TOP + 10, stroke: col, 'stroke-width': 2.5 }, svg);
+          svgEl('text', { x: rx, y: 132, 'font-size': 11, 'text-anchor': 'middle', 'font-weight': 700, fill: col, text: 'recording electrode' }, svg);
+          svgEl('text', { x: rx, y: 120, 'font-size': 10, 'text-anchor': 'middle', fill: col, text: '(the trace below is from here)' }, svg);
+        }
+        svgEl('text', { x: lerp(X0, X1, 0.5 / n), y: Y_BOT + 74, 'font-size': 10, 'text-anchor': 'middle', fill: '#6b7280', text: 'other end' }, svg);
+        svgEl('text', { x: lerp(X0, X1, (n - 0.5) / n), y: Y_BOT + 74, 'font-size': 10, 'text-anchor': 'middle', fill: '#6b7280', text: 'far end' }, svg);
         arrows = svgEl('g', {}, svg);
         particles = makeParticles(svgEl('g', {}, svg));
-        const lg = svgEl('g', { transform: 'translate(150,84)', 'font-size': 12, fill: '#3a3f4a' }, svg);
+        const lg = svgEl('g', { transform: 'translate(56,98)', 'font-size': 12, fill: '#3a3f4a' }, svg);
         const mk = (x, y, type, state, label) => { const gg = svgEl('g', { transform: `translate(${x},${y})` }, lg); const c = drawChannel(gg, 0, 0, 26, type, 0.55); setChannelState(c, state); svgEl('text', { x: 16, y: 17, text: label }, gg); };
         mk(0, 0, 'Na_v', 'closed', 'Na⁺ closed'); mk(100, 0, 'Na_v', 'open', 'Na⁺ open'); mk(190, 0, 'Na_v', 'inactivated', 'Na⁺ inactivated (refractory)');
         mk(0, 38, 'K_v', 'closed', 'K⁺ closed'); mk(100, 38, 'K_v', 'open', 'K⁺ open');
@@ -475,7 +489,7 @@
         svgEl('text', { x: X0 - 4, y: 504, 'font-size': 10, 'text-anchor': 'end', fill: '#6b7280', text: '−85' }, pg);
         svgEl('text', { x: X0 - 4, y: 434, 'font-size': 10, 'text-anchor': 'end', fill: '#6b7280', text: '0' }, pg);
         svgEl('text', { x: X0 - 4, y: 400, 'font-size': 10, 'text-anchor': 'end', fill: '#6b7280', text: '+40' }, pg);
-        profile = svgEl('polyline', { fill: 'none', stroke: '#1f2430', 'stroke-width': 2.5 }, pg);
+        vProfile = svgEl('polyline', { fill: 'none', stroke: '#1f2430', 'stroke-width': 2.5 }, pg);
         insetParts = drawInset(svg, 'fibre');
         setCaption(opts.caption || '');
       },
@@ -503,7 +517,7 @@
           }
           pts.push(`${lerp(X0, X1, (i + 0.5) / n).toFixed(1)},${(500 - (c.V + 85) * 0.82).toFixed(1)}`);
         }
-        profile.setAttribute('points', pts.join(' '));
+        vProfile.setAttribute('points', pts.join(' '));
         particles.update(dtReal);
         insetParts.update({ hideLabels: true });
       },
@@ -712,6 +726,7 @@
     const PRE_X0 = 300, PRE_X1 = 600, PRE_Y = 178, POST_Y_TOP = 300, POST_Y_BOT = 356, CLEFT_Y0 = PRE_Y + 14, CLEFT_Y1 = POST_Y_TOP;
     let svg, preFill, postFill, caChans = [], recChans = [], plugs = [], vesicleLayer, docked = [], particles, ntParticles, pool, caCounter, recCounter, insetParts, apArrow, list, ache = [], agonistDots;
     const nt = [];
+    let acheT = 0;
     return {
       mount(el) {
         svg = svgEl('svg', { viewBox: '0 0 900 520' });
@@ -727,7 +742,7 @@
         caChans = [380, 520].map(x => drawChannel(chLayer, x, PRE_Y - 34, PRE_Y + 8, 'Ca_v', 0.9));
         svgEl('text', { x: 450, y: PRE_Y + 30, 'font-size': 11, 'text-anchor': 'middle', fill: '#1c5f92', text: 'voltage-gated Ca²⁺ channels' }, chLayer);
         vesicleLayer = svgEl('g', {}, svg);
-        svgEl('text', { x: 30, y: CLEFT_Y1 - 18, 'font-size': 12, fill: '#4a5468', 'font-weight': 600, text: 'the gap (outside), with the enzyme acetylcholinesterase' }, svg);
+        svgEl('text', { x: 30, y: CLEFT_Y0 + 16, 'font-size': 12, fill: '#4a5468', 'font-weight': 600, text: 'the gap (outside)' }, svg);
         postFill = svgEl('rect', { x: 20, y: POST_Y_BOT, width: 600, height: 500 - POST_Y_BOT, fill: '#fbf3e6', rx: 10 }, svg);
         // folded end plate: bilayer with fold notches
         drawBilayer(svg, 20, 620, POST_Y_TOP, POST_Y_BOT, [[352, 408], [412, 468], [472, 528], [532, 588]]);
@@ -737,13 +752,21 @@
         plugs = recChans.map(ch => svgEl('rect', { x: ch.x - 7, y: POST_Y_TOP - 12, width: 14, height: 12, rx: 3, fill: '#6b7280', opacity: 0 }, chLayer));
         svgEl('text', { x: 470, y: POST_Y_BOT + 22, 'font-size': 11, 'text-anchor': 'middle', fill: '#4a4f5a', text: 'ACh receptors (channels that pass Na⁺ in, some K⁺ out)' }, chLayer);
         svgEl('text', { x: 30, y: 492, 'font-size': 13, 'font-weight': 600, fill: '#6b5a3a', text: 'INSIDE the muscle fibre (the end plate)' }, svg);
-        // acetylcholinesterase glyphs in the cleft
+        // Acetylcholinesterase in the cleft. Drawn as a body with a notch cut out of the top — the
+        // active site the ACh has to drop into — because a plain blob is read as decoration, and a
+        // leader line to one of them, because the label used to be printed across the whole row.
+        const acheY = 248;
         for (const x of [90, 170, 250, 330, 470, 560]) {
-          const g = svgEl('g', { transform: `translate(${x},${(CLEFT_Y0 + CLEFT_Y1) / 2 + 20})` }, svg);
-          svgEl('path', { d: 'M0,0 L10,-6 A11,11 0 1 1 10,6 Z', fill: '#c98a1b', stroke: '#7a5410', 'stroke-width': 1.5 }, g);
+          const g = svgEl('g', { transform: `translate(${x},${acheY})` }, svg);
+          g._x = x; g._y = acheY;
+          svgEl('title', { text: 'acetylcholinesterase: it breaks ACh down in the gap' }, g);
+          svgEl('path', { d: 'M-5,-12 L0,-3 L5,-12 A13,13 0 1 1 -5,-12 Z', fill: '#c98a1b', stroke: '#7a5410', 'stroke-width': 1.8, 'stroke-linejoin': 'round' }, g);
+          svgEl('circle', { cx: 0, cy: 2, r: 3, fill: '#7a5410', opacity: 0.35 }, g);
           ache.push(g);
         }
-        svgEl('text', { x: 130, y: (CLEFT_Y0 + CLEFT_Y1) / 2 + 44, 'font-size': 10, fill: '#7a5410', text: 'acetylcholinesterase (destroys ACh)' }, svg);
+        svgEl('path', { d: `M86,${acheY + 20} L90,${acheY + 14}`, stroke: '#7a5410', 'stroke-width': 1.2, fill: 'none' }, svg);
+        svgEl('text', { x: 26, y: acheY + 32, 'font-size': 11, 'font-weight': 600, fill: '#7a5410', text: 'acetylcholinesterase' }, svg);
+        svgEl('text', { x: 26, y: acheY + 44, 'font-size': 10, fill: '#7a5410', text: 'the enzyme that breaks ACh down' }, svg);
         const ionLayer = svgEl('g', {}, svg);
         pool = {
           cleft: makeIonPool(ionLayer, { x0: 30, x1: 610, y0: CLEFT_Y0 - 4, y1: CLEFT_Y1 - 4 }, { Na: 14, Ca: 8, Cl: 4 }, { r: 7 }),
@@ -817,7 +840,14 @@
         });
         for (const e of events) if (e.type === 'release') this._release();
         const acheOn = sim.acheActivity;
-        ache.forEach((g, i) => g.setAttribute('opacity', 0.25 + 0.75 * clamp(acheOn, 0, 1)));
+        // They visibly work: while there is ACh in the gap and the enzyme is active, they pulse.
+        acheT += dtReal;
+        const acheBusy = acheOn > 0.05 && sim.terminal.nt > 0.03;
+        ache.forEach((g, i) => {
+          g.setAttribute('opacity', 0.3 + 0.7 * clamp(acheOn, 0, 1));
+          const k = acheBusy ? 1 + 0.16 * Math.sin(acheT / 90 + i * 1.1) : 1;
+          g.setAttribute('transform', `translate(${g._x},${g._y}) scale(${k.toFixed(3)})`);
+        });
         if (!app.paused) {
           if (term.s > 0.3) { const n = Math.min(3, caCounter(term.iCa * 40, dtSim)); for (let i = 0; i < n; i++) { const ch = caChans[i % 2]; particles.spawn('Ca', ch.x + rand(-6, 6), PRE_Y + 30 + rand(0, 20), ch.x + rand(-40, 40), PRE_Y - 60 - rand(0, 40), rand(650, 900), { r: 7 }); } }
           if (open) { const n = Math.min(3, recCounter(rec.i, dtSim)); for (let i = 0; i < n; i++) { const ch = recChans[i % nVisible]; particles.spawn('Na', ch.x + rand(-6, 6), POST_Y_TOP - 30 - rand(0, 40), ch.x + rand(-60, 60), POST_Y_BOT + 60 + rand(0, 60), rand(700, 1000), { r: 7 }); } }

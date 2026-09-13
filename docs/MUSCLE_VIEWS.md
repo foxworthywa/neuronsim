@@ -110,11 +110,21 @@ scenes 3–4 use `comp: 'endplate'`.
 
 - `motorUnit` was not built; the lesson skips scene 14 (grading force) when the view is absent,
   so the page has 13 scenes. The scene's copy is kept in `lessons/muscle.js` for when it is added.
-- Two voltage traces appear only in the scenes that are about two places: scene 5's first step
-  (end plate vs 5 mm away, to show the shock's own charge does not reach), scene 7 (5 mm vs the
-  far end, propagation) and scene 13 (end plate vs 5 mm). Scene 5's later steps and scene 6 carry
-  one trace: there, a second unexplained curve reads as a second event rather than the same
-  impulse seen elsewhere.
+- **One voltage trace, everywhere.** A second curve is a new visual grammar, and it arrived in the
+  scenes where students were already busy: a second rise and fall reads as a second event, not as
+  the same impulse at another electrode. Where a second site matters — scene 7's propagation — the
+  far end's arrival is a labelled dashed mark on the one trace (`ctx.mark('far end fires')`) and
+  the delay is measured for the student in the status line (≈ 4.9 m/s over the 8.8 mm between the
+  electrode and the far end). `profile.traceLabel(comp)` names each site for the legend, and
+  `profile.traceTitle(comp, extras)` names every site on the plot, so if a page ever does show two
+  the heading says so.
+- `fibreWave` draws the recording electrode over the recorded segment in that trace's own colour,
+  labelled "the trace below is from here", and names the two ends "other end" / "far end" to match
+  the trace's marks. `app.recordComp` is set before the view is mounted so the electrode lands on
+  the right segment.
+- The acetylcholinesterase glyphs in `nmj` have a notch cut out of the top — the active site the
+  ACh drops into — with one leader-lined label instead of text printed across the row, and they
+  pulse while there is ACh in the gap to clear.
 - `fibreWave` ignores `opts.showTubules` (the T-tubule openings are always drawn).
 - The fibre is drawn 110 units deep (was 84) to leave a 25-unit band inside each face for the
   tubules and cisternae; `FIB.h` and `MYO_Y(k)` are the only geometry anything else needs.

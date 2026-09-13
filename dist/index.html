@@ -1339,6 +1339,14 @@ header .sub a:hover { text-decoration: underline; }
       // into the middle of a scene (or stepping back into it) shows the right picture.
       const eff = {};
       for (let j = 0; j <= ki; j++) for (const k of STEP_KEYS) if (scene.steps[j][k] != null) eff[k] = scene.steps[j][k];
+      // The recording site and the electrode/label flags are set before the view is mounted: a
+      // view that draws where the trace comes from has to know that at mount time.
+      if (eff.record) app.recordComp = eff.record;
+      // Inherited extras can name the step's own recording site; drawing it twice looks like two
+      // different signals that happen to coincide.
+      app.extraTraces = (eff.extra || []).filter(c => c !== app.recordComp);
+      if (eff.electrode != null) app.electrode = eff.electrode;
+      if (eff.labels != null) app.labels = eff.labels;
       const needView = eff.view && (eff.view !== app.viewName || step.remount || sceneChanged || (step.viewOpts && step.view));
       if (needView) mountView(eff.view, eff.viewOpts || {});
       else if (eff.viewOpts && eff.viewOpts.caption != null) setCaption(eff.viewOpts.caption);
@@ -1346,18 +1354,12 @@ header .sub a:hover { text-decoration: underline; }
       if (app.userSpeed == null) setSpeed(eff.speed || scene.speed || 0.01);
       app.showThreshold = !!scene.showThreshold;
       setPaused(!!step.pause);
-      if (eff.record) app.recordComp = eff.record;
-      // Inherited extras can name the step's own recording site; drawing it twice looks like two
-      // different signals that happen to coincide.
-      app.extraTraces = (eff.extra || []).filter(c => c !== app.recordComp);
       app.showG = !!eff.showG; $('#show-g').checked = app.showG;
       app.gComp = eff.gComp || null;
       app.bands = eff.bands || scene.bands || [];
       app.historyMs = eff.historyMs || scene.historyMs || 400;
       app.historyWindow = eff.window || scene.window || 60;
       applyTraceLayout();
-      if (eff.electrode != null) app.electrode = eff.electrode;
-      if (eff.labels != null) app.labels = eff.labels;
       if (step.reset) { sim.reset(); app.history = []; app.markers = []; }
       app.narrateQueue.length = 0; app.narrateHeld = NARRATE_HOLD; app.narrateShownKey = null; app.narrateQueuedKey = null;
       if (step.enter) step.enter(ctx);

@@ -1696,7 +1696,9 @@ header .sub a:hover { text-decoration: underline; }
     // Voltage trace
     // =======================================================================
     const TRACE_COLORS = profile.traceColors || {};
-    const traceTitle = (comp) => profile.traceTitle ? profile.traceTitle(comp) : `Membrane potential recorded inside the ${comp}`;
+    const traceTitle = (comp, extras) => profile.traceTitle ? profile.traceTitle(comp, extras || []) : `Membrane potential recorded inside the ${comp}`;
+    // Legend entries name the recording site, not the compartment's internal id.
+    const traceLabel = (comp) => (profile.traceLabel ? profile.traceLabel(comp) : comp);
     function recordSample() {
       const s = { t: sim.t, V: {}, gNa: {}, gK: {}, x: sim.sampleExtras ? sim.sampleExtras() : {} };
       for (const c of sim.comps) { s.V[c.name] = c.V; s.gNa[c.name] = c.gNa; s.gK[c.name] = c.gK; }
@@ -1781,8 +1783,8 @@ header .sub a:hover { text-decoration: underline; }
       for (const m of app.markers) { if (m.t < t0) continue; ctx.strokeStyle = '#9ca3af'; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(X(m.t), padT); ctx.lineTo(X(m.t), plotBottom); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle = '#374151'; ctx.fillText(m.label, X(m.t) + 3, padT + 2); }
       // legend
       const legend = $('#trace-legend');
-      legend.innerHTML = series.map(([comp, color]) => `<span><i style="background:${color}"></i>${comp}</span>`).join('')
-        + (app.showG ? `<span><i style="background:#e8772e"></i>gNa</span><span><i style="background:#8e5cf0"></i>gK</span>` : '')
+      legend.innerHTML = series.map(([comp, color]) => `<span><i style="background:${color}"></i>${traceLabel(comp)}</span>`).join('')
+        + (app.showG ? `<span><i style="background:#e8772e"></i>Na⁺ channels open</span><span><i style="background:#8e5cf0"></i>K⁺ channels open</span>` : '')
         + app.bands.map(b => `<span><i style="background:${b.color || '#1f2430'}"></i>${String(b.label || b.key).split('\n')[0]}</span>`).join('');
     }
     function applyTraceLayout() {
@@ -1837,7 +1839,9 @@ header .sub a:hover { text-decoration: underline; }
       app.showThreshold = !!scene.showThreshold;
       setPaused(!!step.pause);
       if (eff.record) app.recordComp = eff.record;
-      app.extraTraces = eff.extra || [];
+      // Inherited extras can name the step's own recording site; drawing it twice looks like two
+      // different signals that happen to coincide.
+      app.extraTraces = (eff.extra || []).filter(c => c !== app.recordComp);
       app.showG = !!eff.showG; $('#show-g').checked = app.showG;
       app.gComp = eff.gComp || null;
       app.bands = eff.bands || scene.bands || [];
@@ -1851,7 +1855,7 @@ header .sub a:hover { text-decoration: underline; }
       if (step.enter) step.enter(ctx);
       renderPanel();
       renderProgress();
-      $('#trace-title').textContent = traceTitle(app.recordComp);
+      $('#trace-title').textContent = traceTitle(app.recordComp, app.extraTraces);
     }
 
     function renderProgress() {
@@ -1948,7 +1952,7 @@ header .sub a:hover { text-decoration: underline; }
       app.gComp = null; app.bands = []; app.historyMs = 400; app.historyWindow = 60;
       applyTraceLayout();
       config.lab(kit);
-      $('#trace-title').textContent = traceTitle(app.recordComp);
+      $('#trace-title').textContent = traceTitle(app.recordComp, app.extraTraces);
     }
     // "← Back to lesson" navigation row for the lab panel.
     function labNav() {
@@ -3260,7 +3264,16 @@ header .sub a:hover { text-decoration: underline; }
     fluxScale: 0.006,            // ion-traffic particles per nA in the membrane view (a segment carries ~150× a soma's leak current)
     defaultView: 'fibre',
     traceColors: { endplate: '#1f2430', R3: '#b45309', R8: '#0f766e', L8: '#7c3aed', mid: '#0f766e', nerve: '#d63c8a' },
-    traceTitle: (comp) => `Membrane potential recorded inside the fibre (${comp === 'endplate' ? 'end plate' : comp === 'R3' ? '5 mm from the end plate' : comp === 'R8' || comp === 'L8' ? 'far end' : comp === 'nerve' ? 'motor terminal' : comp})`,
+    // Where each recording site is, in words a student can read off the legend. Segment names
+    // (R3, R8) mean nothing to them, and a second unexplained curve looks like a second event.
+    traceLabel: (c) => ({ endplate: 'at the end plate', R3: '5 mm along', mid: 'half way along', R8: 'far end, 2.5 cm', L8: 'other end, 2.5 cm', nerve: 'motor terminal' }[c] || c),
+    traceTitle: (comp, extras) => {
+      const where = { endplate: 'the end plate', R3: '5 mm from the end plate', mid: 'half way along', R8: 'the far end, 2.5 cm away', L8: 'the other end, 2.5 cm away', nerve: 'the motor terminal' };
+      const at = [comp].concat(extras || []).filter(c => c !== 'nerve' || comp === 'nerve').map(c => where[c] || c);
+      if (at.length < 2) return `Membrane potential recorded inside the fibre (${(at[0] || comp).replace(/^the /, '')})`;
+      const last = at.pop();
+      return `Membrane potential recorded inside the fibre at two electrodes: ${at.join(', ')} and ${last}`;
+    },
     probeV: (s, name) => name === 'nerve' ? s.nerveV : undefined,
     extraVoltages: (s) => ({ nerve: s.nerveV }),
     // Dashed highlight on the whole-fibre inset (930 × 520, fibre horizontal, end plate centred;
@@ -3470,7 +3483,7 @@ header .sub a:hover { text-decoration: underline; }
             status: (c) => { const d = c.stepState().data; return runner.state.done ? `<b>Observed:</b> Vm rose to ${fmtV(d.max)} mV and fell straight back. The shock moved charge; nothing kept it there.` : `${vm('endplate')}${d.max != null ? ` · highest so far ${fmtV(d.max)} mV` : ''}`; },
           },
           {
-            view: 'membrane', viewOpts: { comp: 'R3', inset: 'R3', channels: ['Na_v', 'K_v', 'Na_v', 'K_v', 'K_leak'], caption: 'The sarcolemma 5 mm from the electrodes. New channels, marked V.' }, remount: true, record: 'R3', extra: ['R8'], electrode: true,
+            view: 'membrane', viewOpts: { comp: 'R3', inset: 'R3', channels: ['Na_v', 'K_v', 'Na_v', 'K_v', 'K_leak'], caption: 'The sarcolemma 5 mm from the electrodes. New channels, marked V.' }, remount: true, record: 'R3', electrode: true,
             enter: () => { app.showThreshold = false; },
             title: 'Channels with a voltage sensor',
             text: `<p>We now record <b>5 mm from the shock</b>, where the shock's own charge cannot reach. This patch of membrane has two new kinds of channel, marked <b>V</b>. At rest both are shut.</p>
@@ -3582,7 +3595,6 @@ header .sub a:hover { text-decoration: underline; }
           status: (c) => { const d = c.stepState().data; if (runner.state.done) return '<b>Observed:</b> the first shock fired an impulse; the second, 3 ms later, produced nothing. The Na⁺ channels were still plugged.'; if (d.armed && d.shocks >= 2 && sim.t > d.t0 + 10) return d.spikes === 0 ? 'No impulse at all: the fibre was still recovering from the last one. Wait a moment and fire the pair again.' : 'Two impulses: the pair landed on a recovered membrane twice. Fire the pair again.'; return `${vm('R3')} · Na⁺ channels ${sim.naState(R3())}`; },
         }],
       });
-      ap.steps[0].extra = ['R8'];
       return Object.assign(ap, { showThreshold: true });
     })());
 
@@ -4181,7 +4193,7 @@ header .sub a:hover { text-decoration: underline; }
     lab.appendChild(htmlEl('h3', {}, 'Recording'));
     const rec = htmlEl('select');
     [['endplate', 'end plate'], ['R3', '5 mm from the end plate (R3)'], ['mid', 'half way (R4)'], ['R8', 'far end (R8)'], ['L8', 'other end (L8)'], ['nerve', 'motor terminal']].forEach(([v, t]) => rec.appendChild(htmlEl('option', { value: v }, t)));
-    rec.value = app.recordComp; rec.addEventListener('change', () => { app.recordComp = rec.value; $('#trace-title').textContent = profile.traceTitle(app.recordComp); });
+    rec.value = app.recordComp; rec.addEventListener('change', () => { app.recordComp = rec.value; $('#trace-title').textContent = profile.traceTitle(app.recordComp, app.extraTraces); });
     controls.push({ sync: () => { rec.value = app.recordComp; } });
     row('Electrode in', rec);
     const thrRow = htmlEl('div', { class: 'row' }); thrRow.appendChild(htmlEl('label', {}, 'Threshold strength (measured by the model)')); thrEl = htmlEl('span', { class: 'val', style: 'width:auto' }, 'measuring…'); thrRow.appendChild(thrEl); lab.appendChild(thrRow);

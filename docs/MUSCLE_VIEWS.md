@@ -110,6 +110,11 @@ scenes 3–4 use `comp: 'endplate'`.
 
 - `motorUnit` was not built; the lesson skips scene 14 (grading force) when the view is absent,
   so the page has 13 scenes. The scene's copy is kept in `lessons/muscle.js` for when it is added.
+- Two voltage traces appear only in the scenes that are about two places: scene 5's first step
+  (end plate vs 5 mm away, to show the shock's own charge does not reach), scene 7 (5 mm vs the
+  far end, propagation) and scene 13 (end plate vs 5 mm). Scene 5's later steps and scene 6 carry
+  one trace: there, a second unexplained curve reads as a second event rather than the same
+  impulse seen elsewhere.
 - `fibreWave` ignores `opts.showTubules` (the T-tubule openings are always drawn).
 - The fibre is drawn 110 units deep (was 84) to leave a 25-unit band inside each face for the
   tubules and cisternae; `FIB.h` and `MYO_Y(k)` are the only geometry anything else needs.

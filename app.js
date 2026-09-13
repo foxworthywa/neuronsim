@@ -539,7 +539,9 @@
     // Voltage trace
     // =======================================================================
     const TRACE_COLORS = profile.traceColors || {};
-    const traceTitle = (comp) => profile.traceTitle ? profile.traceTitle(comp) : `Membrane potential recorded inside the ${comp}`;
+    const traceTitle = (comp, extras) => profile.traceTitle ? profile.traceTitle(comp, extras || []) : `Membrane potential recorded inside the ${comp}`;
+    // Legend entries name the recording site, not the compartment's internal id.
+    const traceLabel = (comp) => (profile.traceLabel ? profile.traceLabel(comp) : comp);
     function recordSample() {
       const s = { t: sim.t, V: {}, gNa: {}, gK: {}, x: sim.sampleExtras ? sim.sampleExtras() : {} };
       for (const c of sim.comps) { s.V[c.name] = c.V; s.gNa[c.name] = c.gNa; s.gK[c.name] = c.gK; }
@@ -624,8 +626,8 @@
       for (const m of app.markers) { if (m.t < t0) continue; ctx.strokeStyle = '#9ca3af'; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(X(m.t), padT); ctx.lineTo(X(m.t), plotBottom); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle = '#374151'; ctx.fillText(m.label, X(m.t) + 3, padT + 2); }
       // legend
       const legend = $('#trace-legend');
-      legend.innerHTML = series.map(([comp, color]) => `<span><i style="background:${color}"></i>${comp}</span>`).join('')
-        + (app.showG ? `<span><i style="background:#e8772e"></i>gNa</span><span><i style="background:#8e5cf0"></i>gK</span>` : '')
+      legend.innerHTML = series.map(([comp, color]) => `<span><i style="background:${color}"></i>${traceLabel(comp)}</span>`).join('')
+        + (app.showG ? `<span><i style="background:#e8772e"></i>Na⁺ channels open</span><span><i style="background:#8e5cf0"></i>K⁺ channels open</span>` : '')
         + app.bands.map(b => `<span><i style="background:${b.color || '#1f2430'}"></i>${String(b.label || b.key).split('\n')[0]}</span>`).join('');
     }
     function applyTraceLayout() {
@@ -680,7 +682,9 @@
       app.showThreshold = !!scene.showThreshold;
       setPaused(!!step.pause);
       if (eff.record) app.recordComp = eff.record;
-      app.extraTraces = eff.extra || [];
+      // Inherited extras can name the step's own recording site; drawing it twice looks like two
+      // different signals that happen to coincide.
+      app.extraTraces = (eff.extra || []).filter(c => c !== app.recordComp);
       app.showG = !!eff.showG; $('#show-g').checked = app.showG;
       app.gComp = eff.gComp || null;
       app.bands = eff.bands || scene.bands || [];
@@ -694,7 +698,7 @@
       if (step.enter) step.enter(ctx);
       renderPanel();
       renderProgress();
-      $('#trace-title').textContent = traceTitle(app.recordComp);
+      $('#trace-title').textContent = traceTitle(app.recordComp, app.extraTraces);
     }
 
     function renderProgress() {
@@ -791,7 +795,7 @@
       app.gComp = null; app.bands = []; app.historyMs = 400; app.historyWindow = 60;
       applyTraceLayout();
       config.lab(kit);
-      $('#trace-title').textContent = traceTitle(app.recordComp);
+      $('#trace-title').textContent = traceTitle(app.recordComp, app.extraTraces);
     }
     // "← Back to lesson" navigation row for the lab panel.
     function labNav() {

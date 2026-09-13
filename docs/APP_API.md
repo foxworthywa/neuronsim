@@ -140,6 +140,13 @@ checks both halves of that: that no step callback throws in any state the runner
 report — format those with a fallback, never `d.peak.toFixed(2)`), and that a deliberately
 throwing callback does not stop the loop.
 
+**Name the recording sites.** `profile.traceLabel(comp)` gives the legend a phrase a student can
+read ("far end, 2.5 cm") instead of the compartment's internal id ("R8"), and
+`profile.traceTitle(comp, extras)` receives every site on the plot so a second curve is never
+unexplained. A step's inherited `extra` list is filtered against its own `record`, so a site is
+never drawn twice. Only put a second trace in a scene that is *about* two places — an unexplained
+second rise reads as a second event, not the same impulse arriving later.
+
 **Narration is paced, not dropped.** `view.narrate()` is still called every frame, but lines are
 queued and each is held about 1.3 s so a burst reads as a short slideshow; a line whose only
 change is its live numbers is updated in place rather than counting as a new line. `#narrator`

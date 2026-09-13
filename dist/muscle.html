@@ -32,7 +32,8 @@ html, body { height: 100%; }
 body {
   margin: 0; background: var(--bg); color: var(--ink);
   font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+  /* Scrolls rather than clipping if the layout is ever taller than the window. */
+  display: flex; flex-direction: column; height: 100vh; overflow: auto;
 }
 header {
   display: flex; align-items: center; gap: 14px; padding: 8px 16px;
@@ -59,7 +60,7 @@ header select { font: inherit; font-size: 13px; padding: 4px 6px; border-radius:
 #progress button.current { background: var(--accent); color: #fff; border-color: var(--accent); }
 
 main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 380px; grid-template-rows: minmax(0, 1fr) auto; gap: 10px; padding: 10px 16px 14px; }
-#stage-wrap { grid-column: 1; grid-row: 1; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; position: relative; overflow: hidden; min-height: 420px; display: flex; flex-direction: column; }
+#stage-wrap { grid-column: 1; grid-row: 1; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; position: relative; overflow: hidden; min-height: 0; display: flex; flex-direction: column; }
 #stage-top { display: flex; align-items: center; gap: 10px; padding: 6px 12px 4px; }
 #stage { flex: 1; min-height: 0; width: 100%; display: block; background: var(--bg); }
 #stage svg { width: 100%; height: 100%; display: block; }
@@ -101,7 +102,9 @@ main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1
 kbd.part { background: #eef0f4; border: 1px solid #d6dae2; border-radius: 4px; padding: 0 5px; font: inherit; font-size: 13px; }
 
 #trace-wrap { grid-column: 1; grid-row: 2; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px 6px; }
-#trace-head { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+/* Wraps onto extra lines instead of squeezing the heading into an unreadable sliver. */
+#trace-head { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+#trace-title { flex: 1 1 260px; font-weight: 600; color: var(--ink); }
 #trace-head label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
 #trace { width: 100%; height: 200px; display: block; }
 #trace.with-g { height: 250px; }
@@ -122,13 +125,19 @@ kbd.part { background: #eef0f4; border: 1px solid #d6dae2; border-radius: 4px; p
 .loop-diagram .node.hot { background: #fff1e6; border-color: var(--na); font-weight: 600; }
 .loop-diagram .arrow { text-align: center; color: var(--muted); line-height: 1; }
 
+@media (max-height: 860px) {
+  #trace { height: 170px; }
+  #trace.with-g { height: 212px; }
+  #trace.with-bands { height: calc(170px + var(--bands, 1) * 42px); }
+  #trace.with-g.with-bands { height: calc(212px + var(--bands, 1) * 42px); }
+}
 @media (max-height: 640px) {
-  body { height: auto; min-height: 100vh; overflow: auto; }
+  body { height: auto; min-height: 100vh; }
   main { display: flex; flex-direction: column; }
   #stage-wrap { min-height: 420px; }
 }
 @media (max-width: 980px) {
-  body { height: auto; min-height: 100vh; overflow: auto; }
+  body { height: auto; min-height: 100vh; }
   main { grid-template-columns: 1fr; grid-template-rows: auto auto auto; }
   #stage-wrap { grid-column: 1; grid-row: 1; min-height: 340px; }
   #trace-wrap { grid-column: 1; grid-row: 2; }
@@ -1281,24 +1290,26 @@ header .sub a:hover { text-decoration: underline; }
     };
   }
 
-  function drawBilayer(parent, x0, x1, yTop, yBot, holes) {
+  function drawBilayer(parent, x0, x1, yTop, yBot, holes, scale) {
     // two rows of phospholipid heads with tails; `holes` = list of [xa, xb] to leave empty
+    scale = scale || 1;
     const g = svgEl('g', {}, parent);
     svgEl('rect', { x: x0, y: yTop, width: x1 - x0, height: yBot - yTop, fill: '#f0ead8' }, g);
-    const step = 14;
-    for (let x = x0 + 7; x < x1; x += step) {
+    const step = 14 * scale, r = 6 * scale, tail = 12 * scale;
+    for (let x = x0 + step / 2; x < x1; x += step) {
       if (holes.some(([a, b]) => x > a && x < b)) continue;
-      for (const [cy, dir] of [[yTop + 7, 1], [yBot - 7, -1]]) {
-        svgEl('circle', { cx: x, cy, r: 6, fill: '#c9b98f', stroke: '#8a7a50', 'stroke-width': 1 }, g);
-        svgEl('path', { d: `M${x - 3},${cy + dir * 6} l0,${dir * 12} M${x + 3},${cy + dir * 6} l0,${dir * 12}`, stroke: '#8a7a50', 'stroke-width': 1.5, fill: 'none' }, g);
+      for (const [cy, dir] of [[yTop + r + 1, 1], [yBot - r - 1, -1]]) {
+        svgEl('circle', { cx: x, cy, r, fill: '#c9b98f', stroke: '#8a7a50', 'stroke-width': 1 }, g);
+        svgEl('path', { d: `M${x - r / 2},${cy + dir * r} l0,${dir * tail} M${x + r / 2},${cy + dir * r} l0,${dir * tail}`, stroke: '#8a7a50', 'stroke-width': 1.5, fill: 'none' }, g);
       }
     }
     return g;
   }
 
-  function drawChargeRow(parent, x0, x1, y, sign, color) {
-    const g = svgEl('g', { 'font-size': 18, 'font-weight': 700, fill: color, 'text-anchor': 'middle', 'pointer-events': 'none' }, parent);
-    for (let x = x0 + 20; x < x1; x += 46) svgEl('text', { x, y, text: sign }, g);
+  function drawChargeRow(parent, x0, x1, y, sign, color, size) {
+    size = size || 18;
+    const g = svgEl('g', { 'font-size': size, 'font-weight': 700, fill: color, 'text-anchor': 'middle', 'pointer-events': 'none' }, parent);
+    for (let x = x0 + 20; x < x1; x += size * 2.6) svgEl('text', { x, y, text: sign }, g);
     return g;
   }
 
@@ -1398,7 +1409,7 @@ header .sub a:hover { text-decoration: underline; }
     // ---------------------------------------------------------------- whole-cell inset
     function drawCell(parent, opts) { return config.drawCell(parent, opts || {}, kit); }
     function drawInset(parent, region) {
-      const fr = Object.assign({ transform: 'translate(640,6) scale(0.27)', x: -10, y: -10, width: 960, height: 520 }, profile.insetFrame || {});
+      const fr = Object.assign({ transform: 'translate(672,4) scale(0.245)', x: -10, y: -10, width: 960, height: 520 }, profile.insetFrame || {});
       const g = svgEl('g', { transform: fr.transform }, parent);
       svgEl('rect', { x: fr.x, y: fr.y, width: fr.width, height: fr.height, fill: 'rgba(255,255,255,.85)', stroke: '#d9d6cc', 'stroke-width': 4, rx: 20 }, g);
       const d = drawCell(g, { inset: true });
@@ -1410,9 +1421,9 @@ header .sub a:hover { text-decoration: underline; }
 
     // Voltage ladder: where Vm is, and who is pulling it (Na⁺ up toward E_Na, K⁺ down toward E_K).
     function drawLadder(parent, x, y) {
-      const g = svgEl('g', { transform: `translate(${x},${y})`, 'font-size': 11, fill: '#3a3f4a' }, parent);
-      const H = 170, yOf = (V) => H - (clamp(V, -100, 70) + 100) * (H / 170);
-      svgEl('text', { x: 0, y: -10, 'font-weight': 700, 'font-size': 12, text: 'Where is Vm being pulled?' }, g);
+      const g = svgEl('g', { transform: `translate(${x},${y})`, 'font-size': 12.5, fill: '#3a3f4a' }, parent);
+      const H = 196, yOf = (V) => H - (clamp(V, -100, 70) + 100) * (H / 170);
+      svgEl('text', { x: 0, y: -12, 'font-weight': 700, 'font-size': 14, text: 'Where is Vm being pulled?' }, g);
       svgEl('rect', { x: 0, y: 0, width: 14, height: H, rx: 4, fill: '#e9e6dc', stroke: '#c9c4b4' }, g);
       const ticks = {};
       const tick = (V, label, color, key) => {
@@ -1439,7 +1450,7 @@ header .sub a:hover { text-decoration: underline; }
       const kHead = svgEl('path', { d: '', fill: ION_COLOR.K }, g);
       const pointer = svgEl('path', { d: '', fill: '#1f2430' }, g);
       const pline = svgEl('line', { x1: 0, y1: 0, x2: 14, y2: 0, stroke: '#1f2430', 'stroke-width': 3 }, g);
-      const ptext = svgEl('text', { x: -8, y: 0, 'text-anchor': 'end', 'font-weight': 700, 'font-size': 12, fill: '#1f2430', text: '' }, g);
+      const ptext = svgEl('text', { x: -8, y: 0, 'text-anchor': 'end', 'font-weight': 700, 'font-size': 14, fill: '#1f2430', text: '' }, g);
       return {
         update(V, gNaPull, gKPull) {
           const E = sim.E;
@@ -1449,7 +1460,7 @@ header .sub a:hover { text-decoration: underline; }
           pline.setAttribute('y1', y); pline.setAttribute('y2', y);
           pointer.setAttribute('d', `M-8,${y} l-7,-5 l0,10 z`);
           ptext.setAttribute('y', y + 4); ptext.textContent = fmtV(V);
-          const na = Math.min(y - 8, gNaPull * 90), k = Math.min(H - y - 8, gKPull * 90);
+          const na = Math.min(y - 8, gNaPull * 104), k = Math.min(H - y - 8, gKPull * 104);
           naArrow.setAttribute('d', na > 3 ? `M7,${y - 2} L7,${y - na}` : '');
           naHead.setAttribute('d', na > 3 ? `M7,${y - na - 7} l-6,8 l12,0 z` : '');
           kArrow.setAttribute('d', k > 3 ? `M7,${y + 2} L7,${y + k}` : '');
@@ -1461,17 +1472,17 @@ header .sub a:hover { text-decoration: underline; }
 
     // Compact concentration / Nernst table.
     function drawConcTable(parent, x, y) {
-      const lg = svgEl('g', { transform: `translate(${x},${y})`, 'font-size': 11, fill: '#3a3f4a' }, parent);
-      svgEl('text', { x: 0, y: 0, 'font-weight': 700, 'font-size': 12, text: 'Concentrations (mM)' }, lg);
-      svgEl('text', { x: 62, y: 18, 'font-weight': 700, text: 'out' }, lg); svgEl('text', { x: 106, y: 18, 'font-weight': 700, text: 'in' }, lg); svgEl('text', { x: 152, y: 18, 'font-weight': 700, text: 'E (mV)' }, lg);
+      const lg = svgEl('g', { transform: `translate(${x},${y})`, 'font-size': 12.5, fill: '#3a3f4a' }, parent);
+      svgEl('text', { x: 0, y: 0, 'font-weight': 700, 'font-size': 14, text: 'Concentrations (mM)' }, lg);
+      svgEl('text', { x: 66, y: 20, 'font-weight': 700, text: 'out' }, lg); svgEl('text', { x: 114, y: 20, 'font-weight': 700, text: 'in' }, lg); svgEl('text', { x: 162, y: 20, 'font-weight': 700, text: 'E (mV)' }, lg);
       const rows = [['Na', 'Na⁺'], ['K', 'K⁺'], ['Cl', 'Cl⁻'], ['Ca', 'Ca²⁺']].filter(([k]) => sim.conc[k]).map(([k, lab], i) => {
-        const yy = 36 + i * 17;
-        svgEl('circle', { cx: 7, cy: yy - 4, r: 6, fill: ION_COLOR[k] }, lg);
-        svgEl('text', { x: 18, y: yy, text: lab }, lg);
-        return { k, out: svgEl('text', { x: 62, y: yy }, lg), inn: svgEl('text', { x: 106, y: yy }, lg), e: svgEl('text', { x: 152, y: yy }, lg) };
+        const yy = 40 + i * 19;
+        svgEl('circle', { cx: 7, cy: yy - 4, r: 7, fill: ION_COLOR[k] }, lg);
+        svgEl('text', { x: 20, y: yy, text: lab }, lg);
+        return { k, out: svgEl('text', { x: 66, y: yy }, lg), inn: svgEl('text', { x: 114, y: yy }, lg), e: svgEl('text', { x: 162, y: yy }, lg) };
       });
-      svgEl('text', { x: 0, y: 112, 'font-size': 10, fill: '#6b7280', text: 'E = the voltage at which that ion stops moving' }, lg);
-      svgEl('text', { x: 0, y: 125, 'font-size': 10, fill: '#6b7280', text: '(its equilibrium potential). Drawings not to scale.' }, lg);
+      svgEl('text', { x: 0, y: 128, 'font-size': 11.5, fill: '#6b7280', text: 'E = the voltage at which that ion stops moving' }, lg);
+      svgEl('text', { x: 0, y: 143, 'font-size': 11.5, fill: '#6b7280', text: '(its equilibrium potential). Drawings not to scale.' }, lg);
       return {
         update() {
           const E = sim.E;
@@ -1488,7 +1499,9 @@ header .sub a:hover { text-decoration: underline; }
     // ---------------------------------------------------------------- membrane strip (generic)
     // opts: { comp, channels: ['K_leak', ...], inset, ions: {outside:{}, inside:{}}, caption }
     views.membrane = function (opts) {
-      const X0 = 20, X1 = 600, Y_TOP = 232, Y_BOT = 288;
+      // A thicker membrane in a wider strip: the channels and their labels are what students
+      // are reading here, so the strip takes the space and the side panels are pushed right.
+      const X0 = 18, X1 = 644, Y_TOP = 212, Y_BOT = 300, CH_SCALE = 1.3;
       let svg, chans = [], pool, particles, chargePlus, chargeMinus, chargeFlipPlus, chargeFlipMinus, insideRect, inset, electrodeTip, pumpPhase = 0, ladder, table;
       const counters = [], typeCount = {};
       const comp = () => sim.byName[opts.comp || profile.comp];
@@ -1496,7 +1509,7 @@ header .sub a:hover { text-decoration: underline; }
       channelTypes.forEach(t => { typeCount[t] = (typeCount[t] || 0) + 1; });
       const isManualComp = (c) => c.name === profile.comp;
       function layout() {
-        const n = channelTypes.length, spanX0 = X0 + 70, spanX1 = X1 - 60;
+        const n = channelTypes.length, spanX0 = X0 + 76, spanX1 = X1 - 78;
         return channelTypes.map((t, i) => n === 1 ? (spanX0 + spanX1) / 2 : lerp(spanX0, spanX1, i / (n - 1)));
       }
       // current through one drawn channel of a given type (nA; negative = inward)
@@ -1533,35 +1546,36 @@ header .sub a:hover { text-decoration: underline; }
           svgEl('rect', { x: 0, y: 0, width: 900, height: 520, fill: '#f6f5f0' }, svg);
           svgEl('rect', { x: X0, y: 20, width: X1 - X0, height: Y_TOP - 20, fill: '#eef2fa', rx: 10 }, svg);
           insideRect = svgEl('rect', { x: X0, y: Y_BOT, width: X1 - X0, height: 500 - Y_BOT, fill: '#fbf3e6', rx: 10 }, svg);
-          svgEl('text', { x: X0 + 10, y: 40, 'font-size': 13, fill: '#4a5468', 'font-weight': 600, text: 'OUTSIDE the cell' }, svg);
-          svgEl('text', { x: X0 + 10, y: 492, 'font-size': 13, fill: '#6b5a3a', 'font-weight': 600, text: 'INSIDE the cell' }, svg);
+          svgEl('text', { x: X0 + 12, y: 42, 'font-size': 16, fill: '#4a5468', 'font-weight': 600, text: 'OUTSIDE the cell' }, svg);
+          svgEl('text', { x: X0 + 12, y: 494, 'font-size': 16, fill: '#6b5a3a', 'font-weight': 600, text: 'INSIDE the cell' }, svg);
           const xs = layout();
-          drawBilayer(svg, X0, X1, Y_TOP, Y_BOT, xs.map(x => [x - 28, x + 28]));
+          const hole = 28 * CH_SCALE + 5;
+          drawBilayer(svg, X0, X1, Y_TOP, Y_BOT, xs.map(x => [x - hole, x + hole]), CH_SCALE);
           const chLayer = svgEl('g', {}, svg);
           const dense = channelTypes.length > 5;
           chans = channelTypes.map((t, i) => {
-            const ch = drawChannel(chLayer, xs[i], Y_TOP, Y_BOT, t);
+            const ch = drawChannel(chLayer, xs[i], Y_TOP, Y_BOT, t, CH_SCALE);
             const label = dense ? CH[t].label.replace('voltage-gated ', 'V-gated ').replace(' (yours)', '') : CH[t].label;
-            svgEl('text', { x: xs[i], y: Y_BOT + 22 + (dense && i % 2 ? 14 : 0), 'font-size': dense ? 10 : 11, 'text-anchor': 'middle', fill: '#4a4f5a', text: label }, chLayer);
+            svgEl('text', { x: xs[i], y: Y_BOT + 24 + (dense && i % 2 ? 16 : 0), 'font-size': dense ? 12 : 14, 'text-anchor': 'middle', fill: '#4a4f5a', text: label }, chLayer);
             counters.push(fluxCounter(t.endsWith('leak') ? 9 : (t === 'pump' ? 0 : 2.2)));
             return ch;
           });
-          chargePlus = drawChargeRow(svg, X0, X1, Y_TOP - 12, '+', '#b45309');
-          chargeMinus = drawChargeRow(svg, X0, X1, Y_BOT + 46, '−', '#1d4ed8');
-          chargeFlipPlus = drawChargeRow(svg, X0, X1, Y_BOT + 46, '+', '#b45309');
-          chargeFlipMinus = drawChargeRow(svg, X0, X1, Y_TOP - 12, '−', '#1d4ed8');
+          chargePlus = drawChargeRow(svg, X0, X1, Y_TOP - 14, '+', '#b45309', 21);
+          chargeMinus = drawChargeRow(svg, X0, X1, Y_BOT + 52, '−', '#1d4ed8', 21);
+          chargeFlipPlus = drawChargeRow(svg, X0, X1, Y_BOT + 52, '+', '#b45309', 21);
+          chargeFlipMinus = drawChargeRow(svg, X0, X1, Y_TOP - 14, '−', '#1d4ed8', 21);
           const ionLayer = svgEl('g', {}, svg);
           const ions = opts.ions || {};
           const out = Object.assign({ Na: 22, K: 3, Cl: 14, Ca: 6 }, ions.outside || {});
           const inn = Object.assign({ K: 22, Na: 3, Cl: 2, A: 14 }, ions.inside || {});
-          pool = { outside: makeIonPool(ionLayer, { x0: X0, x1: X1, y0: 50, y1: Y_TOP - 22 }, out), inside: makeIonPool(ionLayer, { x0: X0, x1: X1, y0: Y_BOT + 56, y1: 480 }, inn) };
+          pool = { outside: makeIonPool(ionLayer, { x0: X0, x1: X1, y0: 52, y1: Y_TOP - 26 }, out, { r: 10 }), inside: makeIonPool(ionLayer, { x0: X0, x1: X1, y0: Y_BOT + 62, y1: 480 }, inn, { r: 10 }) };
           particles = makeParticles(svgEl('g', {}, svg));
           electrodeTip = svgEl('g', { opacity: 0 }, svg);
-          svgEl('path', { d: `M${X1 - 26},${Y_BOT + 100} L${X1 - 50},24 L${X1 - 38},24 L${X1 - 18},${Y_BOT + 98} Z`, fill: '#dfe6f2', stroke: '#2a2f3a', 'stroke-width': 1.5 }, electrodeTip);
-          svgEl('text', { x: X1 - 54, y: 16, 'font-size': 12, fill: '#4a4f5a', 'text-anchor': 'end', text: 'recording electrode' }, electrodeTip);
+          svgEl('path', { d: `M${X1 - 14},${Y_BOT + 100} L${X1 - 38},24 L${X1 - 26},24 L${X1 - 6},${Y_BOT + 98} Z`, fill: '#dfe6f2', stroke: '#2a2f3a', 'stroke-width': 1.5 }, electrodeTip);
+          svgEl('text', { x: X1 - 42, y: 16, 'font-size': 13, fill: '#4a4f5a', 'text-anchor': 'end', text: 'recording electrode' }, electrodeTip);
           inset = drawInset(svg, opts.inset || opts.comp || profile.comp);
-          ladder = drawLadder(svg, 668, 182);
-          table = drawConcTable(svg, 640, 388);
+          ladder = drawLadder(svg, 706, 160);
+          table = drawConcTable(svg, 682, 372);
           setCaption(opts.caption || '');
         },
         update(dtReal, dtSim) {
@@ -2321,7 +2335,9 @@ header .sub a:hover { text-decoration: underline; }
   // =========================================================================
   // Whole fibre (full size, zoom slide, and inset)
   // =========================================================================
-  const FIB = { x0: 70, x1: 860, cy: 262, h: 84, epX: 465 };
+  // h leaves a 25 px band inside each face for the T-tubules and the terminal cisternae they meet.
+  const FIB = { x0: 70, x1: 860, cy: 262, h: 110, epX: 465 };
+  const MYO_Y = (k) => FIB.cy - 24 + k * 24;   // three myofibril stripes, centred
 
   function drawFibre(parent, opts) {
     opts = opts || {};
@@ -2343,22 +2359,44 @@ header .sub a:hover { text-decoration: underline; }
     parts.myofibril = svgEl('g', { 'data-part': 'myofibril' }, body);
     parts.striations = [];
     for (let k = 0; k < 3; k++) {
-      const y = yTop + 22 + k * 22;
+      const y = MYO_Y(k);
       svgEl('rect', { x: FIB.x0 + 4, y: y - 6, width: W - 8, height: 12, rx: 3, fill: 'rgba(255,255,255,.55)', stroke: 'rgba(42,47,58,.35)' }, parts.myofibril);
       const st = svgEl('g', { stroke: 'rgba(42,47,58,.45)', 'stroke-width': 1.2 }, parts.myofibril);
       parts.striations.push(st);
     }
-    // SR sleeve (a translucent blue band under the top edge) and T-tubule openings
-    parts.sr = svgEl('rect', { 'data-part': 'sr', x: FIB.x0 + 2, y: yTop + 6, width: W - 4, height: 7, rx: 3, fill: SR_BLUE, opacity: 0.4 }, body);
+    // membrane outline (clickable sarcolemma; drawn before the tubules so their mouths sit on top of it)
+    parts.outline = svgEl('rect', { 'data-part': 'sarcolemma', x: FIB.x0, y: yTop, width: W, height: FIB.h, rx: 6, fill: 'none', stroke: '#2a2f3a', 'stroke-width': 3 }, body);
+    // Sarcoplasmic reticulum: a longitudinal sleeve inside each face that swells into a pair of
+    // terminal cisternae beside every T-tubule — the calcium store students are asked to find,
+    // drawn as something they can actually see and click rather than a faint stripe.
+    parts.sr = svgEl('g', { 'data-part': 'sr' }, body);
+    parts.cisternae = [];
+    const TUBE_IN = 26, CIS_H = 17;                       // how far a tubule dives, cistern height
+    const faces = [{ sign: 1, edge: yTop }, { sign: -1, edge: yBot }];
+    for (const f of faces) {
+      const cy = f.edge + f.sign * (TUBE_IN / 2 + 1);
+      svgEl('rect', { x: FIB.x0 + 3, y: cy - 3, width: W - 6, height: 6, rx: 3, fill: SR_BLUE, opacity: 0.35 }, parts.sr);
+      for (let i = 0; i < n; i++) {
+        const x = FIB.x0 + (i + 0.5) * segW;
+        for (const dx of [-13, 4]) parts.cisternae.push(svgEl('rect', { x: x + dx, y: cy - CIS_H / 2, width: 9, height: CIS_H, rx: 4, fill: SR_BLUE, stroke: '#1c6fa8', 'stroke-width': 1 }, parts.sr));
+      }
+    }
+    // T-tubules: inward tunnels of the sarcolemma, on BOTH faces of the fibre (they are folds of
+    // the surface, so every face has them), each with an open mouth so the tunnel reads as a tunnel.
     parts.ttubule = svgEl('g', { 'data-part': 'ttubule' }, body);
     parts.tubes = [];
-    for (let i = 0; i < n; i++) {
-      const x = FIB.x0 + (i + 0.5) * segW;
-      parts.tubes.push(svgEl('path', { d: `M${x},${yTop - 3} l0,20`, stroke: TUBULE, 'stroke-width': 3, 'stroke-linecap': 'round' }, parts.ttubule));
+    parts.tubeX = [];
+    for (const f of faces) {
+      for (let i = 0; i < n; i++) {
+        const x = FIB.x0 + (i + 0.5) * segW;
+        if (f.sign > 0) parts.tubeX.push(x);
+        const d = `M${x},${f.edge - f.sign * 5} l0,${f.sign * (TUBE_IN + 5)}`;
+        parts.tubes.push(svgEl('path', { d, stroke: TUBULE, 'stroke-width': 7, 'stroke-linecap': 'round' }, parts.ttubule));
+        svgEl('path', { d, stroke: '#f4f1e6', 'stroke-width': 2.6, 'stroke-linecap': 'round' }, parts.ttubule);   // lumen: it is a tunnel, not a peg
+        svgEl('ellipse', { cx: x, cy: f.edge, rx: 7, ry: 4, fill: '#f4f1e6', stroke: TUBULE, 'stroke-width': 2 }, parts.ttubule);
+      }
     }
-    svgEl('rect', { x: FIB.x0, y: yTop - 8, width: W, height: 26, fill: 'transparent', 'pointer-events': 'all' }, parts.ttubule);
-    // membrane outline (clickable sarcolemma)
-    parts.outline = svgEl('rect', { 'data-part': 'sarcolemma', x: FIB.x0, y: yTop, width: W, height: FIB.h, rx: 6, fill: 'none', stroke: '#2a2f3a', 'stroke-width': 3 }, body);
+    parts.faces = faces; parts.TUBE_IN = TUBE_IN;
     // motor end plate: a nerve ending stub pressed on the middle of the fibre
     parts.endplate = svgEl('g', { 'data-part': 'endplate' }, body);
     svgEl('path', { d: `M${FIB.epX - 60},40 C${FIB.epX - 30},60 ${FIB.epX - 10},90 ${FIB.epX},${yTop - 26}`, fill: 'none', stroke: '#4a4f5a', 'stroke-width': 5, 'stroke-linecap': 'round' }, parts.endplate);
@@ -2382,10 +2420,49 @@ header .sub a:hover { text-decoration: underline; }
     svgEl('line', { x1: 800, y1: 120, x2: 800, y2: 60, stroke: '#4a4f5a', 'stroke-width': 3 }, parts.electrode);
     svgEl('rect', { x: 790, y: 40, width: 20, height: 22, fill: '#4a4f5a' }, parts.electrode);
     svgEl('text', { x: 816, y: 58, 'font-size': 12, fill: '#4a4f5a', text: 'reference (outside)' }, parts.electrode);
+    // Highlight marks: each structure gets shapes drawn over the structure itself, so "these are
+    // the T-tubules" points at the tubules rather than sweeping an ellipse over part of the membrane.
+    parts.markLayer = svgEl('g', { class: 'marks', 'pointer-events': 'none' }, g);
+    parts.marks = {};
+    const MARK = { stroke: '#2f6fd6', fill: 'none', 'stroke-width': 2.5, 'stroke-dasharray': '7 5' };
+    const mark = (name, tag, attrs) => {
+      const el = svgEl(tag, Object.assign({}, MARK, attrs), parts.markLayer);
+      (parts.marks[name] = parts.marks[name] || []).push(el);
+      return el;
+    };
+    mark('sarcolemma', 'rect', { x: FIB.x0 - 5, y: yTop - 5, width: W + 10, height: FIB.h + 10, rx: 9 });
+    mark('sarcolemma', 'rect', { x: FIB.x0 + 5, y: yTop + 5, width: W - 10, height: FIB.h - 10, rx: 4, 'stroke-width': 1.5, opacity: 0.6 });
+    for (const f of faces) {
+      // a tint down each tunnel, and one dashed band round the row of them
+      for (const x of parts.tubeX)
+        mark('ttubule', 'line', { x1: x, y1: f.edge - f.sign * 8, x2: x, y2: f.edge + f.sign * (TUBE_IN + 5), stroke: '#2f6fd6', 'stroke-width': 13, 'stroke-linecap': 'round', 'stroke-dasharray': 'none', opacity: 0.3 });
+      const tTop = Math.min(f.edge - 9, f.edge + f.sign * (TUBE_IN + 6));
+      mark('ttubule', 'rect', { x: FIB.x0 - 3, y: tTop, width: W + 6, height: TUBE_IN + 15, rx: 9 });
+      const cy = f.edge + f.sign * (TUBE_IN / 2 + 1);
+      for (const x of parts.tubeX)
+        mark('sr', 'rect', { x: x - 15, y: cy - CIS_H / 2 - 3, width: 30, height: CIS_H + 6, rx: 6, fill: '#2f6fd6', stroke: 'none', 'stroke-dasharray': 'none', opacity: 0.22 });
+      mark('sr', 'rect', { x: FIB.x0 - 2, y: cy - CIS_H / 2 - 5, width: W + 4, height: CIS_H + 10, rx: 8 });
+    }
+    for (let k = 0; k < 3; k++) mark('myofibril', 'rect', { x: FIB.x0 + 1, y: MYO_Y(k) - 9, width: W - 2, height: 18, rx: 6 });
+    mark('endplate', 'ellipse', { cx: FIB.epX, cy: yTop - 14, rx: 34, ry: 22 });
+    Object.values(parts.marks).forEach(list => list.forEach(el => el.setAttribute('visibility', 'hidden')));
     // labels
     parts.labels = svgEl('g', { class: 'labels', 'pointer-events': 'none', 'font-size': 13, fill: '#3a3f4a' }, g);
-    [['Sarcolemma (membrane)', 150, yBot + 24], ['T-tubules', 250, yTop - 16], ['Sarcoplasmic reticulum (Ca²⁺ store)', 700, yTop - 16], ['Myofibrils', 700, yBot + 24], ['Motor end plate', FIB.epX + 40, yTop - 30]]
-      .forEach(([t, x, y]) => svgEl('text', { x, y, 'text-anchor': 'middle', text: t }, parts.labels));
+    // Each label carries a leader line to the structure it names; the inner structures are small
+    // enough that a floating word near the fibre is not enough to identify them.
+    [['Sarcolemma (membrane)', 160, yBot + 40, 160, yBot + 2],
+     ['T-tubules', 250, yTop - 32, 233, yTop - 9],
+     ['Sarcoplasmic reticulum (Ca²⁺ store)', 690, yTop - 32, 703, yTop + 13],
+     ['Myofibrils', 700, yBot + 40, 720, MYO_Y(2)],
+     ['Motor end plate', FIB.epX - 132, yTop - 58, FIB.epX - 22, yTop - 18]]
+      .forEach(([t, x, y, lx, ly]) => {
+        const y0 = ly > y ? y + 6 : y - 14;
+        for (const w of [{ stroke: '#f6f5f0', 'stroke-width': 3.5 }, { stroke: '#8b8778', 'stroke-width': 1.2 }])
+          svgEl('line', Object.assign({ x1: x, y1: y0, x2: lx, y2: ly }, w), parts.labels);
+        svgEl('circle', { cx: lx, cy: ly, r: 2.6, fill: '#8b8778' }, parts.labels);
+        for (const w of [{ stroke: '#f6f5f0', 'stroke-width': 4, 'stroke-linejoin': 'round' }, { fill: '#3a3f4a' }])
+          svgEl('text', Object.assign({ x, y, 'text-anchor': 'middle', text: t }, w), parts.labels);
+      });
     // force gauge
     parts.gauge = opts.showForce === false ? null : forceGauge(g, 880, 340, 120, 'Force');
     parts.scale = svgEl('text', { x: FIB.x0, y: 500, 'font-size': 11, fill: '#6b7280', text: 'about 3 cm long, 50 µm thick (not to scale)' }, g);
@@ -2405,14 +2482,15 @@ header .sub a:hover { text-decoration: underline; }
     if (parts._lastPeriod == null || Math.abs(parts._lastPeriod - period) > 0.4) {
       parts._lastPeriod = period;
       parts.striations.forEach((st, k) => {
-        const y = FIB.cy - FIB.h / 2 + 22 + k * 22;
+        const y = MYO_Y(k);
         let d = '';
         for (let x = FIB.x0 + 8; x < FIB.x1 - 4; x += period) d += `M${x.toFixed(1)},${y - 5} l0,10 `;
         if (!st.firstChild) svgEl('path', { d, fill: 'none' }, st); else st.firstChild.setAttribute('d', d);
       });
     }
-    parts.tubes.forEach((t, i) => t.setAttribute('stroke', sim.sensorState(sim.comps[i]) === 'active' ? ION_COLOR.Na : TUBULE));
-    parts.sr.setAttribute('opacity', 0.15 + 0.35 * sim.srLevel);
+    const nc = sim.comps.length;
+    parts.tubes.forEach((t, i) => t.setAttribute('stroke', sim.sensorState(sim.comps[i % nc]) === 'active' ? ION_COLOR.Na : TUBULE));
+    parts.sr.setAttribute('opacity', (0.3 + 0.7 * sim.srLevel).toFixed(3));
     if (parts.gauge) parts.gauge.update(sim.force);
     if (parts.stimFlash) { const st = sim.stim; const on = Object.keys(st).length > 0; parts.stimFlash.setAttribute('opacity', on ? 0.8 : 0); }
     if (app.electrode && !parts._electrodeShown) {
@@ -2450,31 +2528,43 @@ header .sub a:hover { text-decoration: underline; }
       const bg = (s) => svgEl('rect', { x: 0, y: 0, width: 930, height: 520, fill: '#f6f5f0' }, s);
       // slide 0: person lifting a cup
       const s0 = svgEl('g', {}, svg); bg(s0);
-      const hx = 450, hy = 92, skin = '#d9b99b', cloth = '#5b7fb3', ink = '#2f3a4d';
+      const hx = 450, hy = 92, skin = '#d9b99b', cloth = '#5b7fb3', sleeve = '#43648f', ink = '#2f3a4d';
       svgEl('path', { d: `M${hx - 46},${hy + 210} L${hx - 40},${hy + 388} L${hx - 10},${hy + 388} L${hx - 4},${hy + 250} L${hx + 4},${hy + 250} L${hx + 10},${hy + 388} L${hx + 40},${hy + 388} L${hx + 46},${hy + 210} Z`, fill: '#3f4d66', stroke: ink, 'stroke-width': 2.5, 'stroke-linejoin': 'round' }, s0);
       svgEl('path', { d: `M${hx - 62},${hy + 75} C${hx - 30},${hy + 52} ${hx + 30},${hy + 52} ${hx + 62},${hy + 75} L${hx + 52},${hy + 215} L${hx - 52},${hy + 215} Z`, fill: cloth, stroke: ink, 'stroke-width': 2.5, 'stroke-linejoin': 'round' }, s0);
       // left arm down, right arm bent up holding a cup
-      svgEl('path', { d: `M${hx - 62},${hy + 78} L${hx - 92},${hy + 220} L${hx - 70},${hy + 226} L${hx - 44},${hy + 110} Z`, fill: cloth, stroke: ink, 'stroke-width': 2.5, 'stroke-linejoin': 'round' }, s0);
-      svgEl('path', { d: `M${hx + 62},${hy + 78} L${hx + 100},${hy + 170} L${hx + 78},${hy + 180} L${hx + 46},${hy + 110} Z`, fill: cloth, stroke: ink, 'stroke-width': 2.5, 'stroke-linejoin': 'round' }, s0);
-      svgEl('path', { d: `M${hx + 100},${hy + 170} L${hx + 80},${hy + 70} L${hx + 60},${hy + 76} L${hx + 78},${hy + 180} Z`, fill: skin, stroke: ink, 'stroke-width': 2.5, 'stroke-linejoin': 'round' }, s0);
+      svgEl('path', { d: `M${hx - 62},${hy + 78} L${hx - 92},${hy + 220} L${hx - 70},${hy + 226} L${hx - 44},${hy + 110} Z`, fill: sleeve, stroke: ink, 'stroke-width': 2.5, 'stroke-linejoin': 'round' }, s0);
+      // The elbow is held open so the upper arm stays visible: the circle below marks the biceps,
+      // which is what slide 1 zooms into, and a folded-shut forearm would hide it.
+      svgEl('path', { d: `M${hx + 62},${hy + 78} L${hx + 116},${hy + 200} L${hx + 92},${hy + 210} L${hx + 40},${hy + 108} Z`, fill: sleeve, stroke: ink, 'stroke-width': 2.5, 'stroke-linejoin': 'round' }, s0);
+      svgEl('path', { d: `M${hx + 116},${hy + 200} L${hx + 152},${hy + 72} L${hx + 128},${hy + 66} L${hx + 92},${hy + 210} Z`, fill: skin, stroke: ink, 'stroke-width': 2.5, 'stroke-linejoin': 'round' }, s0);
       svgEl('circle', { cx: hx - 82, cy: hy + 232, r: 11, fill: skin, stroke: ink, 'stroke-width': 2 }, s0);
-      svgEl('circle', { cx: hx + 72, cy: hy + 66, r: 11, fill: skin, stroke: ink, 'stroke-width': 2 }, s0);
-      svgEl('path', { d: `M${hx + 60},${hy + 40} l30,0 l-4,26 l-22,0 Z`, fill: '#fff', stroke: ink, 'stroke-width': 2 }, s0);
+      svgEl('circle', { cx: hx + 143, cy: hy + 60, r: 11, fill: skin, stroke: ink, 'stroke-width': 2 }, s0);
+      svgEl('path', { d: `M${hx + 130},${hy + 32} l30,0 l-4,26 l-22,0 Z`, fill: '#fff', stroke: ink, 'stroke-width': 2 }, s0);
       svgEl('rect', { x: hx - 12, y: hy + 30, width: 24, height: 34, fill: skin, stroke: ink, 'stroke-width': 2 }, s0);
       svgEl('ellipse', { cx: hx, cy: hy, rx: 34, ry: 40, fill: skin, stroke: ink, 'stroke-width': 2.5 }, s0);
       svgEl('path', { d: `M${hx - 34},${hy - 6} C${hx - 30},${hy - 50} ${hx + 30},${hy - 50} ${hx + 34},${hy - 6} C${hx + 20},${hy - 22} ${hx - 20},${hy - 22} ${hx - 34},${hy - 6} Z`, fill: '#4a3a2e' }, s0);
-      svgEl('ellipse', { cx: hx + 80, cy: hy + 128, rx: 40, ry: 62, fill: 'none', stroke: '#2f6fd6', 'stroke-width': 2, 'stroke-dasharray': '6 5' }, s0);
+      svgEl('ellipse', { cx: hx + 70, cy: hy + 146, rx: 28, ry: 76, transform: `rotate(-24, ${hx + 70}, ${hy + 146})`, fill: 'none', stroke: '#2f6fd6', 'stroke-width': 2, 'stroke-dasharray': '6 5' }, s0);
+      svgEl('text', { x: hx + 96, y: hy + 250, 'font-size': 13, fill: '#2f6fd6', text: 'the upper arm' }, s0);
       slides.push(s0);
-      // slide 1: upper arm with biceps
+      // slide 1: the same flexed arm as slide 0, turned side-on. The forearm points UP, the way
+      // it does in slide 0, so the biceps is seen pulling it towards the shoulder, not away.
       const s1 = svgEl('g', {}, svg); bg(s1);
-      svgEl('path', { d: 'M200,140 L720,140 L760,200 L720,260 L200,260 Z', fill: '#d9b99b', stroke: ink, 'stroke-width': 3, 'stroke-linejoin': 'round' }, s1);
-      svgEl('path', { d: 'M760,200 L900,420 L850,450 L700,250 Z', fill: '#d9b99b', stroke: ink, 'stroke-width': 3, 'stroke-linejoin': 'round' }, s1);
-      svgEl('path', { d: 'M230,200 C330,120 590,120 700,200 C590,170 330,170 230,200 Z', fill: '#c9605a', stroke: '#7a2e2a', 'stroke-width': 3 }, s1);
-      svgEl('path', { d: 'M230,200 L200,200 M700,200 L760,200', stroke: '#e6e2d6', 'stroke-width': 8, 'stroke-linecap': 'round' }, s1);
-      svgEl('rect', { x: 205, y: 190, width: 540, height: 24, fill: '#efe7d3', stroke: '#8b8778', 'stroke-width': 2, rx: 6 }, s1);
-      svgEl('text', { x: 465, y: 120, 'font-size': 14, 'text-anchor': 'middle', fill: '#7a2e2a', text: 'biceps' }, s1);
-      svgEl('text', { x: 465, y: 240, 'font-size': 12, 'text-anchor': 'middle', fill: '#6b6b60', text: 'bone' }, s1);
-      svgEl('ellipse', { cx: 465, cy: 160, rx: 120, ry: 45, fill: 'none', stroke: '#2f6fd6', 'stroke-width': 2, 'stroke-dasharray': '6 5' }, s1);
+      const a1 = svgEl('g', { transform: 'translate(-40,100)' }, s1);
+      svgEl('circle', { cx: 168, cy: 211, r: 40, fill: skin, stroke: ink, 'stroke-width': 2.5 }, a1);      // shoulder
+      svgEl('path', { d: 'M180,160 L688,160 L722,210 L688,262 L180,262 Z', fill: skin, stroke: ink, 'stroke-width': 3, 'stroke-linejoin': 'round' }, a1);   // upper arm
+      svgEl('path', { d: 'M668,199 L733,41 L797,67 L732,225 Z', fill: skin, stroke: ink, 'stroke-width': 3, 'stroke-linejoin': 'round' }, a1);              // forearm, flexed up
+      svgEl('circle', { cx: 768, cy: 50, r: 16, fill: skin, stroke: ink, 'stroke-width': 2.5 }, a1);       // hand
+      svgEl('rect', { x: 206, y: 197, width: 446, height: 26, rx: 7, fill: '#efe7d3', stroke: '#8b8778', 'stroke-width': 2 }, a1);   // humerus
+      svgEl('circle', { cx: 700, cy: 211, r: 15, fill: '#efe7d3', stroke: '#8b8778', 'stroke-width': 2 }, a1);                       // elbow joint
+      svgEl('path', { d: 'M232,192 L196,202 M668,176 C692,168 700,150 709,126', stroke: '#e6e2d6', 'stroke-width': 9, 'stroke-linecap': 'round' }, a1);   // tendons
+      svgEl('path', { d: 'M232,192 C330,104 566,104 668,176 C566,150 330,152 232,200 Z', fill: '#c9605a', stroke: '#7a2e2a', 'stroke-width': 3, 'stroke-linejoin': 'round' }, a1);
+      svgEl('path', { d: 'M812,176 C852,146 862,106 856,72', fill: 'none', stroke: '#2f6fd6', 'stroke-width': 3, 'stroke-linecap': 'round' }, a1);
+      svgEl('path', { d: 'M856,64 l-9,18 l18,0 Z', fill: '#2f6fd6' }, a1);
+      svgEl('text', { x: 828, y: 214, 'font-size': 13, 'text-anchor': 'middle', fill: '#2f6fd6', text: 'the elbow bends' }, a1);
+      svgEl('text', { x: 440, y: 66, 'font-size': 15, 'font-weight': 700, 'text-anchor': 'middle', fill: '#7a2e2a', text: 'biceps (it shortens)' }, a1);
+      svgEl('text', { x: 420, y: 246, 'font-size': 12, 'text-anchor': 'middle', fill: '#6b6b60', text: 'bone (humerus)' }, a1);
+      svgEl('text', { x: 168, y: 274, 'font-size': 12, 'text-anchor': 'middle', fill: '#6b6b60', text: 'shoulder' }, a1);
+      svgEl('ellipse', { cx: 448, cy: 146, rx: 244, ry: 60, fill: 'none', stroke: '#2f6fd6', 'stroke-width': 2, 'stroke-dasharray': '6 5' }, a1);
       slides.push(s1);
       // slide 2: muscle of fascicles
       const s2 = svgEl('g', {}, svg); bg(s2);
@@ -2531,13 +2621,17 @@ header .sub a:hover { text-decoration: underline; }
 
   // ---------------------------------------------------------------- whole fibre
   views.fibre = function (opts) {
-    let svg, d, halo, onPart = null;
+    let svg, d, onPart = null, ghost = null, shown = 'none';
+    function showMarks(part) {
+      shown = part || 'none';
+      for (const [name, list] of Object.entries(d.parts.marks))
+        list.forEach(el => el.setAttribute('visibility', name === part ? 'visible' : 'hidden'));
+    }
     return {
       mount(el) {
         svg = svgEl('svg', { viewBox: '0 0 930 520' });
         el.appendChild(svg);
         svgEl('rect', { x: 0, y: 0, width: 930, height: 520, fill: '#f6f5f0' }, svg);
-        halo = svgEl('ellipse', { cx: 0, cy: 0, rx: 0, ry: 0, fill: 'none', stroke: '#2f6fd6', 'stroke-width': 3, 'stroke-dasharray': '7 5', opacity: 0 }, svg);
         d = drawFibre(svg, opts);
         for (const el2 of d.g.querySelectorAll('[data-part]')) {
           el2.style.cursor = 'pointer';
@@ -2547,10 +2641,18 @@ header .sub a:hover { text-decoration: underline; }
       },
       update() { updateFibre(d.parts, opts); },
       set onPart(fn) { onPart = fn; },
-      highlight(part) {
-        const yT = FIB.cy - FIB.h / 2;
-        const pos = { sarcolemma: [465, FIB.cy, 410, 60], ttubule: [250, yT + 4, 120, 22], sr: [700, yT + 10, 130, 18], myofibril: [700, FIB.cy + 12, 130, 40], endplate: [FIB.epX, yT - 14, 40, 30], none: [0, 0, 0, 0] }[part] || [0, 0, 0, 0];
-        setAttrs(halo, { cx: pos[0], cy: pos[1], rx: pos[2], ry: pos[3], opacity: part && part !== 'none' ? 1 : 0 });
+      highlight(part) { showMarks(part); },
+      // A ghost of the structure: it appears, pulses, and fades again, so a student who cannot find
+      // a small structure is shown where it is without the outline sitting over the model afterwards.
+      hint(part) {
+        if (!d.parts.marks[part]) return;
+        showMarks(part);
+        if (ghost) clearTimeout(ghost);
+        d.parts.marks[part].forEach(el => {
+          if (el.animate) el.animate([{ opacity: 0 }, { opacity: 1 }, { opacity: 0.25 }, { opacity: 1 }, { opacity: 0 }],
+            { duration: 2600, easing: 'ease-in-out' });
+        });
+        ghost = setTimeout(() => { if (shown !== 'locked') showMarks('none'); ghost = null; }, 2600);
       },
       parts: () => d.parts,
       narrate() {
@@ -3161,20 +3263,41 @@ header .sub a:hover { text-decoration: underline; }
       steps: (function () {
         const parts = [
           ['sarcolemma', 'The impulse travels over this surface. Click it.', 'The sarcolemma is the fibre\'s membrane. Like every cell membrane it is charged, and it can carry an impulse.'],
-          ['ttubule', 'These carry the surface impulse deep into the fibre so the whole thing contracts at once. Click one.', 'Transverse tubules are inward folds of the sarcolemma. Without them the inside of a thick fibre would never hear the signal.'],
-          ['sr', 'This is the calcium store. Click it.', 'The SR wraps every myofibril and holds Ca²⁺ at thousands of times the concentration in the cytosol.'],
+          ['ttubule', 'These tunnels dive inward from the surface — top and bottom — and carry the impulse deep into the fibre so the whole thing contracts at once. Click one.', 'Transverse tubules are inward folds of the sarcolemma. Without them the inside of a thick fibre would never hear the signal.'],
+          ['sr', 'This is the calcium store: the blue sacs lying just inside each surface, on either side of every tunnel. Click one.', 'The sarcoplasmic reticulum wraps every myofibril and holds Ca²⁺ at thousands of times the concentration in the cytosol. The swollen ends pressed against the T-tubules are the terminal cisternae — that is where the Ca²⁺ comes out.'],
           ['myofibril', 'These do the pulling. Click one.', 'Myofibrils are chains of sarcomeres, the contractile units. Everything else exists to switch them on and off.'],
           ['endplate', 'The nerve delivers its command here. Click it.', 'The motor end plate is where the motor nerve meets the fibre. We will leave the nerve out until the end: first we learn what the fibre does when it is triggered.'],
         ];
         const names = { sarcolemma: 'the sarcolemma', ttubule: 'a T-tubule', sr: 'the sarcoplasmic reticulum', myofibril: 'a myofibril', endplate: 'the motor end plate' };
         const does = { sarcolemma: 'It carries the impulse over the surface.', ttubule: 'It carries the impulse inward.', sr: 'It stores calcium.', myofibril: 'It does the pulling.', endplate: 'It is where the nerve delivers its command.' };
+        // A student who cannot see a small structure is shown a ghost of it: the outline appears,
+        // pulses and fades, so nothing is left sitting over the model afterwards. It comes on
+        // request, after a wrong guess, or after a while of looking.
+        let ghostTimer = null;
+        const ghost = (c, part) => { const v = c.view(); if (v && typeof v.hint === 'function') v.hint(part); };
+        const armGhost = (c, part, ms) => {
+          if (ghostTimer) clearTimeout(ghostTimer);
+          const v = c.view();
+          ghostTimer = setTimeout(() => { ghostTimer = null; if (c.view() === v && !c.stepState().done) ghost(c, part); }, ms);
+        };
         const steps = parts.map(([part, prompt, explain], i) => ({
           view: 'fibre', viewOpts: { caption: 'Click the structure described in the panel.', labels: false }, labels: false, electrode: false, record: 'endplate', title: `Find the structure (${i + 1} of 5)`,
           text: `<p>${prompt}</p>`,
-          enter: (c) => { c.view().highlight('none'); c.view().onPart = (p) => {
-            if (p === part) { c.view().highlight(part); c.status(`<b>Yes: ${names[part]}.</b> ${explain}`, true); c.complete(); }
-            else c.status(`That is ${names[p] || p}. ${does[p] || ''} Try again.`, false);
-          }; },
+          actions: [{ label: 'Show me where', run: (c) => { ghost(c, part); c.status(`Watch the outline: that is ${names[part]}. Now click it.`, false); } }],
+          enter: (c) => {
+            if (ghostTimer) { clearTimeout(ghostTimer); ghostTimer = null; }
+            c.view().highlight('none');
+            armGhost(c, part, 20000);
+            c.view().onPart = (p) => {
+              if (p === part) {
+                if (ghostTimer) { clearTimeout(ghostTimer); ghostTimer = null; }
+                c.view().highlight(part); c.status(`<b>Yes: ${names[part]}.</b> ${explain}`, true); c.complete();
+              } else {
+                c.status(`That is ${names[p] || p}. ${does[p] || ''} Try again.`, false);
+                armGhost(c, part, 2500);
+              }
+            };
+          },
           waitFor: () => false, waitHint: 'Click the correct part of the fibre',
           status: '',
         }));

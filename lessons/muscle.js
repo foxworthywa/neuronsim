@@ -150,20 +150,41 @@
       steps: (function () {
         const parts = [
           ['sarcolemma', 'The impulse travels over this surface. Click it.', 'The sarcolemma is the fibre\'s membrane. Like every cell membrane it is charged, and it can carry an impulse.'],
-          ['ttubule', 'These carry the surface impulse deep into the fibre so the whole thing contracts at once. Click one.', 'Transverse tubules are inward folds of the sarcolemma. Without them the inside of a thick fibre would never hear the signal.'],
-          ['sr', 'This is the calcium store. Click it.', 'The SR wraps every myofibril and holds Ca²⁺ at thousands of times the concentration in the cytosol.'],
+          ['ttubule', 'These tunnels dive inward from the surface — top and bottom — and carry the impulse deep into the fibre so the whole thing contracts at once. Click one.', 'Transverse tubules are inward folds of the sarcolemma. Without them the inside of a thick fibre would never hear the signal.'],
+          ['sr', 'This is the calcium store: the blue sacs lying just inside each surface, on either side of every tunnel. Click one.', 'The sarcoplasmic reticulum wraps every myofibril and holds Ca²⁺ at thousands of times the concentration in the cytosol. The swollen ends pressed against the T-tubules are the terminal cisternae — that is where the Ca²⁺ comes out.'],
           ['myofibril', 'These do the pulling. Click one.', 'Myofibrils are chains of sarcomeres, the contractile units. Everything else exists to switch them on and off.'],
           ['endplate', 'The nerve delivers its command here. Click it.', 'The motor end plate is where the motor nerve meets the fibre. We will leave the nerve out until the end: first we learn what the fibre does when it is triggered.'],
         ];
         const names = { sarcolemma: 'the sarcolemma', ttubule: 'a T-tubule', sr: 'the sarcoplasmic reticulum', myofibril: 'a myofibril', endplate: 'the motor end plate' };
         const does = { sarcolemma: 'It carries the impulse over the surface.', ttubule: 'It carries the impulse inward.', sr: 'It stores calcium.', myofibril: 'It does the pulling.', endplate: 'It is where the nerve delivers its command.' };
+        // A student who cannot see a small structure is shown a ghost of it: the outline appears,
+        // pulses and fades, so nothing is left sitting over the model afterwards. It comes on
+        // request, after a wrong guess, or after a while of looking.
+        let ghostTimer = null;
+        const ghost = (c, part) => { const v = c.view(); if (v && typeof v.hint === 'function') v.hint(part); };
+        const armGhost = (c, part, ms) => {
+          if (ghostTimer) clearTimeout(ghostTimer);
+          const v = c.view();
+          ghostTimer = setTimeout(() => { ghostTimer = null; if (c.view() === v && !c.stepState().done) ghost(c, part); }, ms);
+        };
         const steps = parts.map(([part, prompt, explain], i) => ({
           view: 'fibre', viewOpts: { caption: 'Click the structure described in the panel.', labels: false }, labels: false, electrode: false, record: 'endplate', title: `Find the structure (${i + 1} of 5)`,
           text: `<p>${prompt}</p>`,
-          enter: (c) => { c.view().highlight('none'); c.view().onPart = (p) => {
-            if (p === part) { c.view().highlight(part); c.status(`<b>Yes: ${names[part]}.</b> ${explain}`, true); c.complete(); }
-            else c.status(`That is ${names[p] || p}. ${does[p] || ''} Try again.`, false);
-          }; },
+          actions: [{ label: 'Show me where', run: (c) => { ghost(c, part); c.status(`Watch the outline: that is ${names[part]}. Now click it.`, false); } }],
+          enter: (c) => {
+            if (ghostTimer) { clearTimeout(ghostTimer); ghostTimer = null; }
+            c.view().highlight('none');
+            armGhost(c, part, 20000);
+            c.view().onPart = (p) => {
+              if (p === part) {
+                if (ghostTimer) { clearTimeout(ghostTimer); ghostTimer = null; }
+                c.view().highlight(part); c.status(`<b>Yes: ${names[part]}.</b> ${explain}`, true); c.complete();
+              } else {
+                c.status(`That is ${names[p] || p}. ${does[p] || ''} Try again.`, false);
+                armGhost(c, part, 2500);
+              }
+            };
+          },
           waitFor: () => false, waitHint: 'Click the correct part of the fibre',
           status: '',
         }));

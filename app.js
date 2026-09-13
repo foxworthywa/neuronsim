@@ -159,24 +159,26 @@
     };
   }
 
-  function drawBilayer(parent, x0, x1, yTop, yBot, holes) {
+  function drawBilayer(parent, x0, x1, yTop, yBot, holes, scale) {
     // two rows of phospholipid heads with tails; `holes` = list of [xa, xb] to leave empty
+    scale = scale || 1;
     const g = svgEl('g', {}, parent);
     svgEl('rect', { x: x0, y: yTop, width: x1 - x0, height: yBot - yTop, fill: '#f0ead8' }, g);
-    const step = 14;
-    for (let x = x0 + 7; x < x1; x += step) {
+    const step = 14 * scale, r = 6 * scale, tail = 12 * scale;
+    for (let x = x0 + step / 2; x < x1; x += step) {
       if (holes.some(([a, b]) => x > a && x < b)) continue;
-      for (const [cy, dir] of [[yTop + 7, 1], [yBot - 7, -1]]) {
-        svgEl('circle', { cx: x, cy, r: 6, fill: '#c9b98f', stroke: '#8a7a50', 'stroke-width': 1 }, g);
-        svgEl('path', { d: `M${x - 3},${cy + dir * 6} l0,${dir * 12} M${x + 3},${cy + dir * 6} l0,${dir * 12}`, stroke: '#8a7a50', 'stroke-width': 1.5, fill: 'none' }, g);
+      for (const [cy, dir] of [[yTop + r + 1, 1], [yBot - r - 1, -1]]) {
+        svgEl('circle', { cx: x, cy, r, fill: '#c9b98f', stroke: '#8a7a50', 'stroke-width': 1 }, g);
+        svgEl('path', { d: `M${x - r / 2},${cy + dir * r} l0,${dir * tail} M${x + r / 2},${cy + dir * r} l0,${dir * tail}`, stroke: '#8a7a50', 'stroke-width': 1.5, fill: 'none' }, g);
       }
     }
     return g;
   }
 
-  function drawChargeRow(parent, x0, x1, y, sign, color) {
-    const g = svgEl('g', { 'font-size': 18, 'font-weight': 700, fill: color, 'text-anchor': 'middle', 'pointer-events': 'none' }, parent);
-    for (let x = x0 + 20; x < x1; x += 46) svgEl('text', { x, y, text: sign }, g);
+  function drawChargeRow(parent, x0, x1, y, sign, color, size) {
+    size = size || 18;
+    const g = svgEl('g', { 'font-size': size, 'font-weight': 700, fill: color, 'text-anchor': 'middle', 'pointer-events': 'none' }, parent);
+    for (let x = x0 + 20; x < x1; x += size * 2.6) svgEl('text', { x, y, text: sign }, g);
     return g;
   }
 
@@ -276,7 +278,7 @@
     // ---------------------------------------------------------------- whole-cell inset
     function drawCell(parent, opts) { return config.drawCell(parent, opts || {}, kit); }
     function drawInset(parent, region) {
-      const fr = Object.assign({ transform: 'translate(640,6) scale(0.27)', x: -10, y: -10, width: 960, height: 520 }, profile.insetFrame || {});
+      const fr = Object.assign({ transform: 'translate(672,4) scale(0.245)', x: -10, y: -10, width: 960, height: 520 }, profile.insetFrame || {});
       const g = svgEl('g', { transform: fr.transform }, parent);
       svgEl('rect', { x: fr.x, y: fr.y, width: fr.width, height: fr.height, fill: 'rgba(255,255,255,.85)', stroke: '#d9d6cc', 'stroke-width': 4, rx: 20 }, g);
       const d = drawCell(g, { inset: true });
@@ -288,9 +290,9 @@
 
     // Voltage ladder: where Vm is, and who is pulling it (Na⁺ up toward E_Na, K⁺ down toward E_K).
     function drawLadder(parent, x, y) {
-      const g = svgEl('g', { transform: `translate(${x},${y})`, 'font-size': 11, fill: '#3a3f4a' }, parent);
-      const H = 170, yOf = (V) => H - (clamp(V, -100, 70) + 100) * (H / 170);
-      svgEl('text', { x: 0, y: -10, 'font-weight': 700, 'font-size': 12, text: 'Where is Vm being pulled?' }, g);
+      const g = svgEl('g', { transform: `translate(${x},${y})`, 'font-size': 12.5, fill: '#3a3f4a' }, parent);
+      const H = 196, yOf = (V) => H - (clamp(V, -100, 70) + 100) * (H / 170);
+      svgEl('text', { x: 0, y: -12, 'font-weight': 700, 'font-size': 14, text: 'Where is Vm being pulled?' }, g);
       svgEl('rect', { x: 0, y: 0, width: 14, height: H, rx: 4, fill: '#e9e6dc', stroke: '#c9c4b4' }, g);
       const ticks = {};
       const tick = (V, label, color, key) => {
@@ -317,7 +319,7 @@
       const kHead = svgEl('path', { d: '', fill: ION_COLOR.K }, g);
       const pointer = svgEl('path', { d: '', fill: '#1f2430' }, g);
       const pline = svgEl('line', { x1: 0, y1: 0, x2: 14, y2: 0, stroke: '#1f2430', 'stroke-width': 3 }, g);
-      const ptext = svgEl('text', { x: -8, y: 0, 'text-anchor': 'end', 'font-weight': 700, 'font-size': 12, fill: '#1f2430', text: '' }, g);
+      const ptext = svgEl('text', { x: -8, y: 0, 'text-anchor': 'end', 'font-weight': 700, 'font-size': 14, fill: '#1f2430', text: '' }, g);
       return {
         update(V, gNaPull, gKPull) {
           const E = sim.E;
@@ -327,7 +329,7 @@
           pline.setAttribute('y1', y); pline.setAttribute('y2', y);
           pointer.setAttribute('d', `M-8,${y} l-7,-5 l0,10 z`);
           ptext.setAttribute('y', y + 4); ptext.textContent = fmtV(V);
-          const na = Math.min(y - 8, gNaPull * 90), k = Math.min(H - y - 8, gKPull * 90);
+          const na = Math.min(y - 8, gNaPull * 104), k = Math.min(H - y - 8, gKPull * 104);
           naArrow.setAttribute('d', na > 3 ? `M7,${y - 2} L7,${y - na}` : '');
           naHead.setAttribute('d', na > 3 ? `M7,${y - na - 7} l-6,8 l12,0 z` : '');
           kArrow.setAttribute('d', k > 3 ? `M7,${y + 2} L7,${y + k}` : '');
@@ -339,17 +341,17 @@
 
     // Compact concentration / Nernst table.
     function drawConcTable(parent, x, y) {
-      const lg = svgEl('g', { transform: `translate(${x},${y})`, 'font-size': 11, fill: '#3a3f4a' }, parent);
-      svgEl('text', { x: 0, y: 0, 'font-weight': 700, 'font-size': 12, text: 'Concentrations (mM)' }, lg);
-      svgEl('text', { x: 62, y: 18, 'font-weight': 700, text: 'out' }, lg); svgEl('text', { x: 106, y: 18, 'font-weight': 700, text: 'in' }, lg); svgEl('text', { x: 152, y: 18, 'font-weight': 700, text: 'E (mV)' }, lg);
+      const lg = svgEl('g', { transform: `translate(${x},${y})`, 'font-size': 12.5, fill: '#3a3f4a' }, parent);
+      svgEl('text', { x: 0, y: 0, 'font-weight': 700, 'font-size': 14, text: 'Concentrations (mM)' }, lg);
+      svgEl('text', { x: 66, y: 20, 'font-weight': 700, text: 'out' }, lg); svgEl('text', { x: 114, y: 20, 'font-weight': 700, text: 'in' }, lg); svgEl('text', { x: 162, y: 20, 'font-weight': 700, text: 'E (mV)' }, lg);
       const rows = [['Na', 'Na⁺'], ['K', 'K⁺'], ['Cl', 'Cl⁻'], ['Ca', 'Ca²⁺']].filter(([k]) => sim.conc[k]).map(([k, lab], i) => {
-        const yy = 36 + i * 17;
-        svgEl('circle', { cx: 7, cy: yy - 4, r: 6, fill: ION_COLOR[k] }, lg);
-        svgEl('text', { x: 18, y: yy, text: lab }, lg);
-        return { k, out: svgEl('text', { x: 62, y: yy }, lg), inn: svgEl('text', { x: 106, y: yy }, lg), e: svgEl('text', { x: 152, y: yy }, lg) };
+        const yy = 40 + i * 19;
+        svgEl('circle', { cx: 7, cy: yy - 4, r: 7, fill: ION_COLOR[k] }, lg);
+        svgEl('text', { x: 20, y: yy, text: lab }, lg);
+        return { k, out: svgEl('text', { x: 66, y: yy }, lg), inn: svgEl('text', { x: 114, y: yy }, lg), e: svgEl('text', { x: 162, y: yy }, lg) };
       });
-      svgEl('text', { x: 0, y: 112, 'font-size': 10, fill: '#6b7280', text: 'E = the voltage at which that ion stops moving' }, lg);
-      svgEl('text', { x: 0, y: 125, 'font-size': 10, fill: '#6b7280', text: '(its equilibrium potential). Drawings not to scale.' }, lg);
+      svgEl('text', { x: 0, y: 128, 'font-size': 11.5, fill: '#6b7280', text: 'E = the voltage at which that ion stops moving' }, lg);
+      svgEl('text', { x: 0, y: 143, 'font-size': 11.5, fill: '#6b7280', text: '(its equilibrium potential). Drawings not to scale.' }, lg);
       return {
         update() {
           const E = sim.E;
@@ -366,7 +368,9 @@
     // ---------------------------------------------------------------- membrane strip (generic)
     // opts: { comp, channels: ['K_leak', ...], inset, ions: {outside:{}, inside:{}}, caption }
     views.membrane = function (opts) {
-      const X0 = 20, X1 = 600, Y_TOP = 232, Y_BOT = 288;
+      // A thicker membrane in a wider strip: the channels and their labels are what students
+      // are reading here, so the strip takes the space and the side panels are pushed right.
+      const X0 = 18, X1 = 644, Y_TOP = 212, Y_BOT = 300, CH_SCALE = 1.3;
       let svg, chans = [], pool, particles, chargePlus, chargeMinus, chargeFlipPlus, chargeFlipMinus, insideRect, inset, electrodeTip, pumpPhase = 0, ladder, table;
       const counters = [], typeCount = {};
       const comp = () => sim.byName[opts.comp || profile.comp];
@@ -374,7 +378,7 @@
       channelTypes.forEach(t => { typeCount[t] = (typeCount[t] || 0) + 1; });
       const isManualComp = (c) => c.name === profile.comp;
       function layout() {
-        const n = channelTypes.length, spanX0 = X0 + 70, spanX1 = X1 - 60;
+        const n = channelTypes.length, spanX0 = X0 + 76, spanX1 = X1 - 78;
         return channelTypes.map((t, i) => n === 1 ? (spanX0 + spanX1) / 2 : lerp(spanX0, spanX1, i / (n - 1)));
       }
       // current through one drawn channel of a given type (nA; negative = inward)
@@ -411,35 +415,36 @@
           svgEl('rect', { x: 0, y: 0, width: 900, height: 520, fill: '#f6f5f0' }, svg);
           svgEl('rect', { x: X0, y: 20, width: X1 - X0, height: Y_TOP - 20, fill: '#eef2fa', rx: 10 }, svg);
           insideRect = svgEl('rect', { x: X0, y: Y_BOT, width: X1 - X0, height: 500 - Y_BOT, fill: '#fbf3e6', rx: 10 }, svg);
-          svgEl('text', { x: X0 + 10, y: 40, 'font-size': 13, fill: '#4a5468', 'font-weight': 600, text: 'OUTSIDE the cell' }, svg);
-          svgEl('text', { x: X0 + 10, y: 492, 'font-size': 13, fill: '#6b5a3a', 'font-weight': 600, text: 'INSIDE the cell' }, svg);
+          svgEl('text', { x: X0 + 12, y: 42, 'font-size': 16, fill: '#4a5468', 'font-weight': 600, text: 'OUTSIDE the cell' }, svg);
+          svgEl('text', { x: X0 + 12, y: 494, 'font-size': 16, fill: '#6b5a3a', 'font-weight': 600, text: 'INSIDE the cell' }, svg);
           const xs = layout();
-          drawBilayer(svg, X0, X1, Y_TOP, Y_BOT, xs.map(x => [x - 28, x + 28]));
+          const hole = 28 * CH_SCALE + 5;
+          drawBilayer(svg, X0, X1, Y_TOP, Y_BOT, xs.map(x => [x - hole, x + hole]), CH_SCALE);
           const chLayer = svgEl('g', {}, svg);
           const dense = channelTypes.length > 5;
           chans = channelTypes.map((t, i) => {
-            const ch = drawChannel(chLayer, xs[i], Y_TOP, Y_BOT, t);
+            const ch = drawChannel(chLayer, xs[i], Y_TOP, Y_BOT, t, CH_SCALE);
             const label = dense ? CH[t].label.replace('voltage-gated ', 'V-gated ').replace(' (yours)', '') : CH[t].label;
-            svgEl('text', { x: xs[i], y: Y_BOT + 22 + (dense && i % 2 ? 14 : 0), 'font-size': dense ? 10 : 11, 'text-anchor': 'middle', fill: '#4a4f5a', text: label }, chLayer);
+            svgEl('text', { x: xs[i], y: Y_BOT + 24 + (dense && i % 2 ? 16 : 0), 'font-size': dense ? 12 : 14, 'text-anchor': 'middle', fill: '#4a4f5a', text: label }, chLayer);
             counters.push(fluxCounter(t.endsWith('leak') ? 9 : (t === 'pump' ? 0 : 2.2)));
             return ch;
           });
-          chargePlus = drawChargeRow(svg, X0, X1, Y_TOP - 12, '+', '#b45309');
-          chargeMinus = drawChargeRow(svg, X0, X1, Y_BOT + 46, '−', '#1d4ed8');
-          chargeFlipPlus = drawChargeRow(svg, X0, X1, Y_BOT + 46, '+', '#b45309');
-          chargeFlipMinus = drawChargeRow(svg, X0, X1, Y_TOP - 12, '−', '#1d4ed8');
+          chargePlus = drawChargeRow(svg, X0, X1, Y_TOP - 14, '+', '#b45309', 21);
+          chargeMinus = drawChargeRow(svg, X0, X1, Y_BOT + 52, '−', '#1d4ed8', 21);
+          chargeFlipPlus = drawChargeRow(svg, X0, X1, Y_BOT + 52, '+', '#b45309', 21);
+          chargeFlipMinus = drawChargeRow(svg, X0, X1, Y_TOP - 14, '−', '#1d4ed8', 21);
           const ionLayer = svgEl('g', {}, svg);
           const ions = opts.ions || {};
           const out = Object.assign({ Na: 22, K: 3, Cl: 14, Ca: 6 }, ions.outside || {});
           const inn = Object.assign({ K: 22, Na: 3, Cl: 2, A: 14 }, ions.inside || {});
-          pool = { outside: makeIonPool(ionLayer, { x0: X0, x1: X1, y0: 50, y1: Y_TOP - 22 }, out), inside: makeIonPool(ionLayer, { x0: X0, x1: X1, y0: Y_BOT + 56, y1: 480 }, inn) };
+          pool = { outside: makeIonPool(ionLayer, { x0: X0, x1: X1, y0: 52, y1: Y_TOP - 26 }, out, { r: 10 }), inside: makeIonPool(ionLayer, { x0: X0, x1: X1, y0: Y_BOT + 62, y1: 480 }, inn, { r: 10 }) };
           particles = makeParticles(svgEl('g', {}, svg));
           electrodeTip = svgEl('g', { opacity: 0 }, svg);
-          svgEl('path', { d: `M${X1 - 26},${Y_BOT + 100} L${X1 - 50},24 L${X1 - 38},24 L${X1 - 18},${Y_BOT + 98} Z`, fill: '#dfe6f2', stroke: '#2a2f3a', 'stroke-width': 1.5 }, electrodeTip);
-          svgEl('text', { x: X1 - 54, y: 16, 'font-size': 12, fill: '#4a4f5a', 'text-anchor': 'end', text: 'recording electrode' }, electrodeTip);
+          svgEl('path', { d: `M${X1 - 14},${Y_BOT + 100} L${X1 - 38},24 L${X1 - 26},24 L${X1 - 6},${Y_BOT + 98} Z`, fill: '#dfe6f2', stroke: '#2a2f3a', 'stroke-width': 1.5 }, electrodeTip);
+          svgEl('text', { x: X1 - 42, y: 16, 'font-size': 13, fill: '#4a4f5a', 'text-anchor': 'end', text: 'recording electrode' }, electrodeTip);
           inset = drawInset(svg, opts.inset || opts.comp || profile.comp);
-          ladder = drawLadder(svg, 668, 182);
-          table = drawConcTable(svg, 640, 388);
+          ladder = drawLadder(svg, 706, 160);
+          table = drawConcTable(svg, 682, 372);
           setCaption(opts.caption || '');
         },
         update(dtReal, dtSim) {

@@ -1,12 +1,13 @@
 {
   "name": "neuronsim",
-  "version": "0.2.0",
-  "description": "Interactive, model-driven simulation that teaches how neurons signal (receive → integrate → fire → propagate → transmit).",
+  "version": "0.3.0",
+  "description": "Interactive, model-driven simulations that teach how excitable cells signal: a neuron (receive → integrate → fire → propagate → transmit) and a skeletal muscle fibre (shock → impulse → Ca²⁺ → force → tetanus, then the neuromuscular junction).",
   "scripts": {
     "test": "node --test tests/*.test.js",
     "start": "npx --yes serve -l 8080 .",
     "test:ui": "node tests/ui/smoke.js",
-    "build": "node build.js"
+    "build": "node build.js",
+    "test:walk": "node tests/ui/muscle-walk.js muscle.html --serve"
   },
   "license": "MIT",
   "private": true

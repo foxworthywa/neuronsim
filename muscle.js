@@ -107,7 +107,7 @@
           gKLeak: 0, gNaLeak: 0, gL: 0, EL: p.rest,
           V: p.rest, m: 0, h: 1, n: 0, gNa: 0, gK: 0, iNa: 0, iK: 0, iL: 0, iCl: 0, iSyn: 0, iAx: 0, dVdt: 0,
           // EC coupling
-          d: 0, ryr: 0, caSR: 1, ca: p.caRest, tn: 0, xb: 0, cocked: p.cocked0, force: 0,
+          d: 0, dPeak: 0, ryr: 0, caSR: 1, ca: p.caRest, tn: 0, xb: 0, cocked: p.cocked0, force: 0,
           _spiking: false, _caHigh: false,
         });
       }
@@ -207,7 +207,7 @@
       for (const c of this.comps) {
         c.V = p.rest; c.m = r.minf; c.h = r.hinf; c.n = r.ninf;
         c.gNa = 0; c.gK = 0; c.iNa = 0; c.iK = 0; c.iL = 0; c.iCl = 0; c.iSyn = 0; c.iAx = 0; c.dVdt = 0;
-        c.d = 0; c.ryr = 0; c.caSR = 1; c.ca = p.caRest; c.tn = 0; c.xb = 0; c.cocked = p.cocked0; c.force = 0;
+        c.d = 0; c.dPeak = 0; c.ryr = 0; c.caSR = 1; c.ca = p.caRest; c.tn = 0; c.xb = 0; c.cocked = p.cocked0; c.force = 0;
         c._spiking = false; c._caHigh = false;
       }
     }
@@ -256,6 +256,8 @@
       for (let i = 0; i < n; i++) this.schedule.push({ t: this.t + i * dtms, kind: 'command' });
     }
     cancelScheduled() { this.schedule = []; }
+    /** Clear the per-segment peak records (dPeak) so a lesson step can ask "did every tubule activate after this shock?". */
+    resetPeaks() { for (const c of this.comps) c.dPeak = 0; }
     /** The classic Ca²⁺-free bath: Ca²⁺ replaced by enough Mg²⁺ to leave Na⁺ channel gating unchanged. */
     setCaFreeBath(on) {
       const p = this.p;
@@ -386,6 +388,7 @@
         // --- excitation–contraction coupling
         const dinf = 1 / (1 + Math.exp(-(Vnew - p.dHalf) / p.dSlope));
         c.d = expEuler(c.d, dinf, p.tauD, dt);
+        if (c.d > c.dPeak) c.dPeak = c.d;               // frame-independent record for the lesson (see resetPeaks)
         c.ryr = clamp(c.d * (1 - 0.7 * this.dantrolene) + this.ryrLeak * (1 - this.dantrolene), 0, 1);
         const rel = p.kRel * c.ryr * c.caSR;                 // store units / ms
         const uptake = p.vSerca * c.ca * c.ca / (c.ca * c.ca + p.kSerca * p.kSerca) * this.atp;   // µM/ms
@@ -413,11 +416,14 @@
       let fsum = 0; for (const c of comps) fsum += c.force;
       this.force = clamp((fsum / n - xbFloor) / (xbMax - xbFloor) / p.forceNorm, 0, 1.05);
       this.heat += (this.force * 0.02 - this.heat * 0.002) * dt;
-      // end-plate potential peak (the receptor conductance passing its maximum)
+      // end-plate potential peak: the end plate's voltage passing its maximum while the receptors are open
       const g = this.receptor.g;
-      if (g > this._eppMax + 1e-9) { this._eppMax = g; this._eppArmed = g > 0.05 * this.receptor.gmax; }
-      else if (this._eppArmed && g < this._eppMax * 0.98) { this._eppArmed = false; this.events.push({ t: this.t, type: 'epp_peak', V: ep.V }); }
-      if (g < 1e-6) this._eppMax = 0;
+      if (g > 0.05 * this.receptor.gmax) { if (!this._eppArmed) { this._eppArmed = true; this._eppMax = ep.V; } }
+      if (this._eppArmed) {
+        if (ep.V > this._eppMax) this._eppMax = ep.V;
+        else if (ep.V < this._eppMax - 0.3) { this._eppArmed = false; this.events.push({ t: this.t, type: 'epp_peak', V: this._eppMax }); }
+        if (g < 0.01 * this.receptor.gmax) this._eppArmed = false;
+      }
       // twitch peak / relaxed
       const F = this.force;
       if (F > this._forceMax) { this._forceMax = F; if (F > 0.05) this._forcePeakArmed = true; }

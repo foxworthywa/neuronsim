@@ -154,7 +154,7 @@
         text: c('rise.text', `<p>Instead of memorizing the famous curve, we will build it from what the channels do. The lower band of the trace shows the Na⁺ conductance (<span style="color:#e8772e">orange</span>) and K⁺ conductance (<span style="color:#8e5cf0">purple</span>), i.e. how many of each channel are open.</p>
                  <p>Trigger an action potential. The simulation will pause during the rising phase.</p>`),
         actions: [{ label: 'Trigger', cls: 'na', run: (cx) => { setPaused(false); stimPulse(); cx.stepState().data.armed = true; } }],
-        tick: (cx) => { const d = cx.stepState().data; if (d.armed && !runner.state.done && ap().V > -30 && ap().dVdt > 0) { cx.complete(); setPaused(true); cx.mark('rise'); } },
+        tick: (cx) => { const d = cx.stepState().data, V = ap().V; const crossed = d.prevV != null && d.prevV <= -30 && V > -30; d.prevV = V; if (d.armed && !runner.state.done && ((V > -30 && ap().dVdt > 0) || crossed)) { cx.complete(); setPaused(true); cx.mark('rise'); } },
         waitFor: () => false, waitHint: c('rise.waitHint', 'Trigger the action potential'),
         status: () => runner.state.done ? c('rise.statusDone', '<b>Paused mid-rise.</b> gNa is large; K⁺ channels are only starting to open.') : vm(),
       },

@@ -76,6 +76,7 @@ Everything the generic code reads from `config.model`:
 | `probeV(sim, name)` | `name === 'next' ? sim.next.V : undefined` | voltage of a pseudo-compartment for the Vm badge |
 | `extraVoltages(sim)` | `{ next: sim.next.V }` | merged into every trace sample's `s.V` |
 | `insetRegions` | `{ soma: [cx, cy, rx, ry], ..., default: [...] }` | dashed highlight drawn by `drawInset(parent, region)` |
+| `fluxScale` (optional) | `1` | multiplies channel currents before they become ion-traffic particles in the membrane view (a page whose compartments carry much larger currents sets it lower) |
 | `insetFrame` (optional) | `{ transform: 'translate(640,6) scale(0.27)', x: -10, y: -10, width: 960, height: 520 }` | inset box geometry |
 
 Every absolute conductance or current a shared scene sets comes from the profile (`manualG`,

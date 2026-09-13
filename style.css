@@ -127,3 +127,12 @@ kbd.part { background: #eef0f4; border: 1px solid #d6dae2; border-radius: 4px; p
   #trace-wrap { grid-column: 1; grid-row: 2; }
   #panel { grid-column: 1; grid-row: 3; }
 }
+
+/* lab scenario cards (muscle page) */
+.card { border: 1px solid var(--line); border-radius: 10px; background: #fafaf7; }
+.card .card-head { width: 100%; text-align: left; border: none; background: transparent; padding: 8px 10px; font-size: 14px; cursor: pointer; border-radius: 10px; }
+.card .card-head .gate { display: inline-block; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin-right: 6px; }
+.card .card-body { padding: 0 10px 10px; display: flex; flex-direction: column; gap: 8px; }
+.card .card-body .feedback.good { font-size: 13px; }
+header .sub a { color: var(--accent); text-decoration: none; }
+header .sub a:hover { text-decoration: underline; }

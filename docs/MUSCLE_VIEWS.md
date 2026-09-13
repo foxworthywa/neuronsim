@@ -104,3 +104,20 @@ The generic `membrane` view is used for scenes 3–6 with `comp: 'endplate'` (3�
 `comp: 'R3'` (5–6), `inset: 'endplate' | 'R3'`, channels as in the neuron lesson; the membrane
 view's manual channels act on the end-plate segment (`sim.manual`) regardless of `comp`, so
 scenes 3–4 use `comp: 'endplate'`.
+
+## Deviations (as built)
+
+- `motorUnit` was not built; the lesson skips scene 14 (grading force) when the view is absent,
+  so the page has 13 scenes. The scene's copy is kept in `lessons/muscle.js` for when it is added.
+- `fibreWave` ignores `opts.showTubules` (the T-tubule openings are always drawn).
+- `zoomMuscle` fires one real shock (`sim.shock(1.5)`) when the last slide is reached, so the
+  blip and the twitch on that slide come from the model.
+- The `fibre` view's `electrodeAt` option places the recording electrode; `showForce: false`
+  hides the gauge (insets use it).
+- A new profile field, `fluxScale`, scales the membrane view's ion-traffic particles per nA
+  (0.006 for the fibre, whose segments carry ~150× a soma's current); documented in APP_API.md.
+- The model records each segment's peak tubule-sensor activation (`dPeak`, cleared by
+  `resetPeaks()`) so scene 7's "every tubule lit" check is independent of frame timing, and the
+  `epp_peak` event reports the end plate's peak voltage while the receptors are open.
+- Lesson shock buttons in scenes 6 and 7 refuse to fire while the fibre is refractory (status
+  line explains); the half-block comparison in scene 13 refuses until the fibre has relaxed.

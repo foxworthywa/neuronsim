@@ -135,13 +135,22 @@ kbd.part { background: #eef0f4; border: 1px solid #d6dae2; border-radius: 4px; p
   #panel { grid-column: 1; grid-row: 3; }
 }
 
+/* lab scenario cards (muscle page) */
+.card { border: 1px solid var(--line); border-radius: 10px; background: #fafaf7; }
+.card .card-head { width: 100%; text-align: left; border: none; background: transparent; padding: 8px 10px; font-size: 14px; cursor: pointer; border-radius: 10px; }
+.card .card-head .gate { display: inline-block; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin-right: 6px; }
+.card .card-body { padding: 0 10px 10px; display: flex; flex-direction: column; gap: 8px; }
+.card .card-body .feedback.good { font-size: 13px; }
+header .sub a { color: var(--accent); text-decoration: none; }
+header .sub a:hover { text-decoration: underline; }
+
 </style>
 </head>
 <body>
 <header>
   <div>
     <h1>NeuronSim</h1>
-    <div class="sub">How a neuron receives, decides, sends</div>
+    <div class="sub">How a neuron receives, decides, sends · <a href="muscle.html">Muscle module →</a></div>
   </div>
   <div id="progress" title="Scenes"></div>
   <div class="spacer"></div>
@@ -1100,7 +1109,7 @@ kbd.part { background: #eef0f4; border: 1px solid #d6dae2; border-radius: 4px; p
             const state = channelState(t, c);
             setChannelState(ch, state);
             if (state === 'open' && !app.paused) {
-              const I = channelCurrent(t, c, V, E);
+              const I = channelCurrent(t, c, V, E) * (profile.fluxScale || 1);   // profile.fluxScale: per-page particle density (a fibre segment carries ~100× a soma's current)
               const n = Math.min(3, counters[i](I, dtSim));
               for (let k = 0; k < n; k++) {
                 const ion = ch.spec.ion, jitter = rand(-6, 6), dur = rand(650, 1000);
@@ -1653,7 +1662,7 @@ kbd.part { background: #eef0f4; border: 1px solid #d6dae2; border-radius: 4px; p
         text: c('rise.text', `<p>Instead of memorizing the famous curve, we will build it from what the channels do. The lower band of the trace shows the Na⁺ conductance (<span style="color:#e8772e">orange</span>) and K⁺ conductance (<span style="color:#8e5cf0">purple</span>), i.e. how many of each channel are open.</p>
                  <p>Trigger an action potential. The simulation will pause during the rising phase.</p>`),
         actions: [{ label: 'Trigger', cls: 'na', run: (cx) => { setPaused(false); stimPulse(); cx.stepState().data.armed = true; } }],
-        tick: (cx) => { const d = cx.stepState().data; if (d.armed && !runner.state.done && ap().V > -30 && ap().dVdt > 0) { cx.complete(); setPaused(true); cx.mark('rise'); } },
+        tick: (cx) => { const d = cx.stepState().data, V = ap().V; const crossed = d.prevV != null && d.prevV <= -30 && V > -30; d.prevV = V; if (d.armed && !runner.state.done && ((V > -30 && ap().dVdt > 0) || crossed)) { cx.complete(); setPaused(true); cx.mark('rise'); } },
         waitFor: () => false, waitHint: c('rise.waitHint', 'Trigger the action potential'),
         status: () => runner.state.done ? c('rise.statusDone', '<b>Paused mid-rise.</b> gNa is large; K⁺ channels are only starting to open.') : vm(),
       },

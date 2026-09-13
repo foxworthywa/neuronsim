@@ -147,8 +147,9 @@ async function runPage(browser, url, prefix) {
     const untilPaused = async () => { let p = false, n = 0; while (!p && n++ < 40) { await run(250); p = await page.evaluate(`${H}.app.paused`); } return p; };
     await page.locator('#btn-continue').click(); await run(100);
     await answer();
+    const tBefore = (await state()).t;
     await page.locator('#btn-continue').click(); await run(100);
-    if (await page.evaluate(`${H}.app.paused`)) throw new Error('Continue did not resume the simulation');
+    { const s = await state(); if (s.paused && !(s.step === 2 && s.t > tBefore)) throw new Error('Continue did not resume the simulation'); }
     await untilPaused();
     const s2 = await state();
     if (!s2.paused || s2.step !== 2) throw new Error(`AP scene did not pause at the peak: ${JSON.stringify(s2)}`);

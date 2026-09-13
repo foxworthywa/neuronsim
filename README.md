@@ -46,7 +46,7 @@ the pump, inject current, fire inputs repeatedly, and record from any compartmen
 
 ## MuscleSim (`muscle.html`)
 
-Fourteen scenes on one skeletal muscle fibre, same predict → observe → explain rhythm:
+Thirteen scenes on one skeletal muscle fibre, same predict → observe → explain rhythm:
 
 1. Zoom from a person lifting a cup to one fibre; one impulse, one twitch.
 2. Parts of a muscle fibre by *function* (sarcolemma, T-tubules, SR, myofibrils, end plate).
@@ -62,7 +62,7 @@ Fourteen scenes on one skeletal muscle fibre, same predict → observe → expla
 12. Summation and tetanus, discovered by raising the stimulation rate.
 13. How the body delivers the shock: the neuromuscular junction, ACh, the end-plate potential
     and its safety margin.
-14. Grading force: motor units and rate (optional).
+(A fourteenth scene on motor units and grading force is specified but not yet built.)
 
 The **lab** adds clinical scenario cards, each with a prediction: botulinum toxin, magnesium
 sulfate and calcium gluconate, rocuronium with neostigmine or sugammadex, myasthenia gravis with

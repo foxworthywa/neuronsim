@@ -464,7 +464,7 @@
             const state = channelState(t, c);
             setChannelState(ch, state);
             if (state === 'open' && !app.paused) {
-              const I = channelCurrent(t, c, V, E);
+              const I = channelCurrent(t, c, V, E) * (profile.fluxScale || 1);   // profile.fluxScale: per-page particle density (a fibre segment carries ~100× a soma's current)
               const n = Math.min(3, counters[i](I, dtSim));
               for (let k = 0; k < n; k++) {
                 const ion = ch.spec.ion, jitter = rand(-6, 6), dur = rand(650, 1000);

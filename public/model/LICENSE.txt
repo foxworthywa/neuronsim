@@ -1,0 +1,21 @@
+body.glb and parts.json are derived from BodyParts3D.
+
+  BodyParts3D, (c) The Database Center for Life Science, licensed under
+  CC Attribution-Share Alike 2.1 Japan
+  https://creativecommons.org/licenses/by-sa/2.1/jp/deed.en
+  https://dbarchive.biosciencedbc.jp/en/bodyparts3d/
+
+  Mitsuhashi N, Fujieda K, Tamura T, Kawamoto S, Takagi T, Okubo K.
+  BodyParts3D: 3D structure database for anatomical concepts.
+  Nucleic Acids Res. 2009;37(Database issue):D782-5. https://doi.org/10.1093/nar/gkn613
+
+Source used: release 3.0 as binary STL, from https://github.com/Kevin-Mattheus-Moerman/BodyParts3D
+
+Changes made (tools/build-model.mjs):
+  - kept muscles, tendons and the skeleton; left out skin, organs, vessels and nerves
+  - simplified every mesh (about 21 million triangles reduced to about 0.76 million)
+  - removed the anterior rectus sheath: the parts of the external oblique, internal oblique and
+    transversus abdominis meshes lying directly in front of rectus abdominis
+  - rotated into a Y-up coordinate system in metres, and compressed (meshopt)
+
+These derived files are shared under the same license, CC BY-SA 2.1 JP.

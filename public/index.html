@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Muscle Explorer</title>
+  <meta name="description" content="Interactive 3D human muscle explorer and quiz for the ESCC A&amp;P muscle list.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><path d="M9 4c5 3 6 8 6 12s-1 9-6 12M23 4c-5 3-6 8-6 12s1 9 6 12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+      <span class="brand-name">Muscle Explorer</span>
+      <span class="brand-sub">ESCC Muscle List</span>
+    </div>
+    <div class="modes" role="tablist" aria-label="Mode">
+      <button role="tab" id="tab-explore" aria-selected="true" aria-controls="explore">Explore</button>
+      <button role="tab" id="tab-quiz" aria-selected="false" aria-controls="quiz">Quiz</button>
+    </div>
+    <button class="icon-btn" id="btn-help" title="How to use / credits" aria-label="How to use and credits">?</button>
+  </header>
+
+  <main class="layout">
+    <section class="stage" id="stage" aria-label="3D model">
+      <div class="loading" id="loading">
+        <div class="loading-box">
+          <div>Loading the model…</div>
+          <div class="bar"><div class="bar-fill" id="load-bar"></div></div>
+          <div class="loading-note" id="load-note">About 4.5 MB</div>
+        </div>
+      </div>
+
+      <div class="views" role="group" aria-label="Views">
+        <button data-view="anterior" title="Anterior view">Front</button>
+        <button data-view="posterior" title="Posterior view">Back</button>
+        <button data-view="right" title="Body's right side">Right</button>
+        <button data-view="left" title="Body's left side">Left</button>
+        <button data-view="superior" title="Superior view">Top</button>
+        <button data-action="reset" title="Whole body">Reset</button>
+      </div>
+
+      <div class="layers" role="group" aria-label="Layers">
+        <label class="peel">
+          <span class="peel-label">Peel away</span>
+          <input type="range" id="peel" min="0" max="2" value="0" step="1" aria-describedby="peel-value">
+          <span class="peel-value" id="peel-value">Superficial</span>
+        </label>
+        <label class="check"><input type="checkbox" id="show-bones" checked> Bones</label>
+        <label class="check"><input type="checkbox" id="show-context" checked> Muscles not on the list <span class="swatch grey" aria-hidden="true"></span></label>
+        <button class="link-btn" id="btn-show-all" hidden>Show everything</button>
+      </div>
+
+      <div class="hint" id="hint">Drag to rotate · Scroll or pinch to zoom · Right-drag or two fingers to pan · Double-click to rotate around a spot</div>
+      <div class="tooltip" id="tooltip" role="status" hidden></div>
+      <div class="tag3d" id="tag3d" hidden></div>
+      <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+    </section>
+
+    <aside class="panel">
+      <!-- Explore -->
+      <div id="explore" role="tabpanel" aria-labelledby="tab-explore">
+        <div class="card" id="card" hidden></div>
+        <div class="search">
+          <input type="search" id="search" placeholder="Search muscles…" autocomplete="off" aria-label="Search muscles">
+        </div>
+        <nav id="list" class="list" aria-label="Muscle list"></nav>
+      </div>
+
+      <!-- Quiz -->
+      <div id="quiz" role="tabpanel" aria-labelledby="tab-quiz" hidden></div>
+    </aside>
+  </main>
+
+  <dialog id="help">
+    <form method="dialog" class="help-body">
+      <h2>How to use Muscle Explorer</h2>
+      <ul>
+        <li><b>Rotate</b>: drag. <b>Zoom</b>: scroll or pinch. <b>Pan</b>: right-drag or two-finger drag.</li>
+        <li><b>Double-click</b> (or double-tap) a spot to make it the centre of rotation.</li>
+        <li><b>Click a muscle</b> to name it. Its partner on the other side lights up too, but rotation stays centred on the side you clicked.</li>
+        <li>Muscles from the course list are <span class="chip red">red</span>. Other muscles are <span class="chip grey">grey</span>. You don't need to know them.</li>
+        <li>Deep muscles: pick one from the list and anything covering it turns see-through. You can also use <b>Peel away</b>, or click a covering muscle and press <b>Hide</b>.</li>
+        <li><b>Quiz</b> tests you on the sections you choose: find it on the model, name it, or pick what it does.</li>
+      </ul>
+      <h3>Credits</h3>
+      <p>3D anatomy: <b>BodyParts3D</b>, © The Database Center for Life Science, licensed under
+        <a href="https://creativecommons.org/licenses/by-sa/2.1/jp/deed.en" target="_blank" rel="noopener">CC Attribution-Share Alike 2.1 Japan</a>.
+        Mitsuhashi N, et al. BodyParts3D: 3D structure database for anatomical concepts. <i>Nucleic Acids Res.</i> 2009;37:D782–5.
+        STL conversion by K. M. Moerman (<a href="https://github.com/Kevin-Mattheus-Moerman/BodyParts3D" target="_blank" rel="noopener">github.com/Kevin-Mattheus-Moerman/BodyParts3D</a>).</p>
+      <p>Changes to the original models: meshes were simplified, and the anterior rectus sheath (the parts of the obliques and
+        transversus abdominis lying in front of rectus abdominis) was removed so rectus abdominis is visible. The modified model
+        is shared under the same license.</p>
+      <p>Muscle list and functions: ESCC Muscle List. Built with <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a>.
+        <a href="https://github.com/foxworthywa/muscle-explorer" target="_blank" rel="noopener">Source code</a>.</p>
+      <div class="help-actions"><button class="btn primary" value="close">Got it</button></div>
+    </form>
+  </dialog>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

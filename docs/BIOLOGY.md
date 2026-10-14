@@ -3,7 +3,8 @@
 These are treated as immutable. Each model must keep its own section true: `engine.js`
 (the neuron) the sections up to *Propagation*, checked by `tests/biology.test.js`;
 `muscle.js` the *Skeletal muscle* section, checked by `tests/muscle.test.js`. The ion table
-applies to both.
+applies to both. `heart/engine.js` keeps the *Heart and circulation* section at the end true,
+checked by `tests/heart.test.js`.
 
 ## Ion gradients (mammalian neuron, 37 °C)
 
@@ -118,3 +119,49 @@ applies to both.
 - Botulinum toxin blocks vesicle fusion; dantrolene reduces SR Ca²⁺ release; organophosphates
   inhibit acetylcholinesterase, and the inhibition becomes irreversible (aging) unless an oxime
   reactivates the enzyme first.
+
+---
+
+# Heart and circulation (HeartSim)
+
+Treated the same way: `heart/engine.js` must keep these true, and `tests/heart.test.js` checks them.
+Targets and model details: `HEART_MODULE.md`.
+
+## Flow and valves
+
+- Blood moves only from higher to lower pressure. Valves are passive: an AV valve (tricuspid,
+  bicuspid) is open exactly when atrial pressure exceeds ventricular pressure; a semilunar valve
+  opens when ventricular pressure exceeds arterial pressure and shuts after a small backflow.
+- The bicuspid and aortic valves are never open together in a healthy heart.
+- With both valves shut, ventricular volume does not change (isovolumetric contraction and
+  relaxation).
+- Order every beat: atria contract → bicuspid shuts (S1) → aortic opens → aortic shuts (S2) →
+  bicuspid opens. Heart sounds come from valves shutting, not opening.
+- The incisura (dicrotic notch) appears in aortic pressure as the aortic valve shuts.
+
+## The loop
+
+- The circulation is closed: total blood volume is conserved except for explicit infusion or
+  hemorrhage.
+- Left and right ventricles pump the same volume per minute. A mismatch moves blood between the
+  pulmonary and systemic circuits until Frank–Starling restores the match; a weakened left
+  ventricle leaves pulmonary venous pressure raised.
+- About two-thirds of the blood volume sits in the systemic veins.
+
+## The ventricle as a pump
+
+- Resting adult: ≈ 120/80 mmHg, MAP 85–100, EDV 110–130 mL, ESV 40–60 mL, EF 55–65 %,
+  CO 4.5–6 L/min; pulmonary artery ≈ 25/10 mmHg; LA 5–12, RA 0–8 mmHg (means).
+- Most ventricular filling is passive; the atrial contraction adds 10–30 % of EDV at rest.
+- Frank–Starling: more filling → larger EDV → larger stroke volume, with no nervous input.
+- Afterload: higher arterial resistance → larger ESV, smaller stroke volume (acutely).
+- Contractility: a stronger squeeze → smaller ESV, larger stroke volume and EF.
+- A faster heart rate shortens diastole proportionally more than systole; pacing very fast without
+  sympathetic help raises output far less than it raises rate.
+
+## Arteries
+
+- MAP ≈ CO × TPR + right atrial pressure.
+- Arterial pressure falls between beats as blood runs off into the tissues; the elastic aorta keeps
+  it from falling to zero.
+- A stiffer aorta widens pulse pressure at a similar MAP.

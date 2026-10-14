@@ -18,6 +18,18 @@ link handed to students mid-semester keeps working exactly as it did the day it 
 freeze a later release, copy the current `dist/*.html` into a new `v2/` folder and add it to
 `FROZEN` in `build.js`.
 
+**HeartSim (BIO 142), Part A: the heart as a pump:** https://foxworthywa.github.io/neuronsim/heart.html.
+A separate page in `heart/` with its own engine (`heart/engine.js`, a closed-loop lumped
+circulation) and lesson runner (`lib/lesson.js`). Six scenes: the real heart (a beating frontal
+section) and its parts; following a red blood cell, then morphing the anatomy into the circulation
+diagram; pressure and valves, squeezing the ventricle yourself; the cardiac cycle with heart
+sounds; the pressure–volume loop, stroke volume and ejection fraction; Frank–Starling. A patient
+case (Dana, two weeks after a heart attack) runs through it and ends with her fluid retention and a
+diuretic. The last screen gives the student's results and a completion code (instructors check it
+at `heart.html#verify`); the graded work is a worksheet (`assignments/heart-part-A.md`). Design and
+model: `docs/HEART_MODULE.md`. Tests: `tests/heart.test.js` (physiology) and `npm run test:heart`
+(walks all 54 steps in Chromium).
+
 No build step. Open `index.html` in a browser (or serve the folder with any static server).
 
 ```

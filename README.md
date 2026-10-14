@@ -29,7 +29,7 @@ Copy any of them anywhere, double-click it, or upload it to a course site. Regen
 
 ```
 index.html            landing page
-lib/lesson.js         shared lesson runner: scenes, questions + targeted feedback, gating, lab record
+lib/lesson.js         shared lesson runner: scenes, questions + targeted feedback, gating, answer record
 lib/base.css          shared layout and styles
 neuron/               NeuronSim: engine.js (model), app.js (views + lesson), index.html
 heart/                HeartSim:  engine.js (model), app.js (views + lesson), index.html
@@ -57,11 +57,12 @@ Six scenes, each **predict → observe → explain**:
    and ejection fraction.
 6. **More in, more out.** Preload (IV fluid), afterload (constricted arterioles), and a heart
    attack weakening the left ventricle: blood dams in the lungs until Frank–Starling rebalances
-   the two sides.
+   the two sides; then Dana's fluid retention and her diuretic.
 
-It ends with a **lab record** for Canvas: the student's first answer to every prediction, their
-measurements and experiment results, and a check code. Instructors verify a pasted record at
-`heart/index.html#verify` (or `dist/heart.html#verify`). Student assignment text: `assignments/`.
+A fictional patient, Dana (two weeks after a heart attack), runs through the lab: her case opens
+it, and her heart attack, fluid retention and diuretic are the last experiments. Part A ends with
+the student's results and a completion code (checked at `heart/index.html#verify`); the graded
+work is a reasoning worksheet (`assignments/heart-part-A.md`).
 
 The model (`heart/engine.js`) is a closed-loop lumped circulation: four time-varying-elastance
 chambers (exponential passive filling curve for the ventricles), one-way valves (the semilunar

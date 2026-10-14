@@ -166,7 +166,7 @@ header a.home:hover { text-decoration: underline; }
   #trace { height: 250px; }
   #meters { position: absolute; left: 12px; top: 44px; display: none; gap: 8px; flex-wrap: wrap; max-width: 60%; }
   #meters.on { display: flex; }
-  #meters.shifted { left: 190px; }
+  #meters.shifted { left: 190px; max-width: 75%; flex-wrap: nowrap; }
   #meters .m { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 4px 9px; font-size: 12px; color: var(--muted); }
   #meters .m b { display: block; font-size: 16px; color: var(--ink); font-variant-numeric: tabular-nums; }
   #meters .m.hot { border-color: var(--o2rich); background: #fff5f4; }
@@ -175,11 +175,19 @@ header a.home:hover { text-decoration: underline; }
   .record input[type=text] { font: inherit; width: 100%; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; }
   .record label { font-size: 13px; color: var(--muted); display: block; margin: 4px 0 2px; }
   .record .row { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
-  #verify { position: fixed; inset: 0; background: rgba(31, 36, 48, .45); display: none; align-items: center; justify-content: center; z-index: 10; }
-  #verify.on { display: flex; }
-  #verify .box { background: #fff; border-radius: 12px; padding: 16px 18px; width: min(720px, 92vw); display: flex; flex-direction: column; gap: 8px; }
-  #verify textarea { height: 300px; font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace; }
-  #verify .result { font-weight: 600; }
+  .dialog { position: fixed; inset: 0; background: rgba(31, 36, 48, .45); display: none; align-items: center; justify-content: center; z-index: 10; }
+  .dialog.on { display: flex; }
+  .dialog .box { background: #fff; border-radius: 12px; padding: 16px 18px; width: min(640px, 92vw); max-height: 90vh; overflow: auto; display: flex; flex-direction: column; gap: 8px; }
+  .dialog input { font: inherit; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; }
+  .dialog .result { font-weight: 600; }
+  .dialog p { margin: 0 0 6px; }
+  .case { border-left: 4px solid #c23b33; background: #fff6f5; border-radius: 8px; padding: 8px 12px; margin: 6px 0; font-size: 14px; }
+  .case p { margin: 0 0 6px; }
+  .case p:last-child { margin-bottom: 0; }
+  .case-h { font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: #9e2a24; font-weight: 700; margin-bottom: 4px; }
+  .record textarea { height: 170px; }
+  .record .code { margin-top: 6px; font-size: 15px; }
+  .record .warn { color: #8a4b0f; background: #fff3d6; border-radius: 8px; padding: 6px 10px; margin: 8px 0 0; font-size: 14px; }
   #stage [tabindex]:focus { outline: none; }
   #stage [tabindex]:focus-visible { outline: 3px solid #f0b429; }
   #trace-head { flex-wrap: wrap; row-gap: 2px; }
@@ -196,6 +204,7 @@ header a.home:hover { text-decoration: underline; }
   <nav id="progress" aria-label="Scenes"></nav>
   <div class="spacer"></div>
   <a class="home" href="index.html">All models</a>
+  <button id="btn-case" type="button" title="Reopen the patient case">Dana's case</button>
   <label class="sub">Speed
     <select id="speed" title="How much simulated time passes per second of real time">
       <option value="0.1">10 % of real time</option>
@@ -231,13 +240,21 @@ header a.home:hover { text-decoration: underline; }
     <canvas id="trace" role="img" aria-label="Live traces of heart pressures and left-ventricle volume"></canvas>
   </div>
 </main>
-<div id="verify" role="dialog" aria-modal="true" aria-labelledby="verify-title">
+<div id="verify" class="dialog" role="dialog" aria-modal="true" aria-labelledby="verify-title">
   <div class="box">
-    <h2 id="verify-title" style="margin:0;font-size:16px">Check a lab record (instructor)</h2>
-    <p style="margin:0;font-size:14px;color:var(--muted)">Paste a student's whole lab record, including the line with the check code. The code is recomputed from the text above it, so an edited record will not match.</p>
-    <textarea id="verify-text" aria-label="Lab record"></textarea>
+    <h2 id="verify-title" style="margin:0;font-size:16px">Check a completion code (instructor)</h2>
+    <p style="margin:0;font-size:14px;color:var(--muted)">Type the student's name as they entered it and the code from their worksheet. Capitals and extra spaces in the name do not matter.</p>
+    <label class="sub" for="verify-name">Student's name</label><input type="text" id="verify-name">
+    <label class="sub" for="verify-code">Completion code</label><input type="text" id="verify-code" placeholder="A-XXXXX-XXXXX">
     <div class="result" id="verify-result" role="status"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" id="verify-close">Close</button><button type="button" class="primary" id="verify-check">Check</button></div>
+  </div>
+</div>
+<div id="case" class="dialog" role="dialog" aria-modal="true" aria-labelledby="case-title">
+  <div class="box">
+    <h2 id="case-title" style="margin:0;font-size:16px">Dana's case</h2>
+    <div id="case-body" style="font-size:15px"></div>
+    <div style="display:flex;justify-content:flex-end"><button type="button" class="primary" id="case-close">Close</button></div>
   </div>
 </div>
 <script>
@@ -915,14 +932,17 @@ header a.home:hover { text-decoration: underline; }
     ghost: null,           // a saved loop drawn dashed for comparison
     meters: null,          // () => [[label, value, hot], …]
     soundOn: true,
+    lung: { acc: 0, T: 0, mean: 7 },
     userSpeed: null,
     lastFrame: null,
   };
   window.__heartsim = { sim, app, goto: (s, k) => runner.goto(s, k), runner: () => runner, lesson: () => LESSON };
 
   function resetSim() {
+    sim.p = HeartSim.defaultParams();   // undo every experiment (arterioles, heart attack, …)
     sim.reset(8);
     app.history = []; app.markers = []; app.sounds = []; app.loops = []; app.curLoop = []; app.ghost = null;
+    app.lung = { acc: 0, T: 0, mean: sim.P.pulVen };
     // Two beats already on the traces and one complete PV loop, so comparisons work at once.
     // Exactly two beat intervals, so we stop on a beat boundary with no contraction under way.
     if (sim.mode !== 'manual') advanceSim(2 * sim.rr, false);
@@ -947,6 +967,9 @@ header a.home:hover { text-decoration: underline; }
       }
       if (ev.length) events = events.concat(ev);
       recordSample();
+      // mean lung (pulmonary venous) pressure over each beat-length of time
+      const L = app.lung; L.acc += sim.P.pulVen * hh; L.T += hh;
+      if (L.T >= sim.rr) { L.mean = L.acc / L.T; L.acc = 0; L.T = 0; }
     }
     if (app.sounds.length > 40) app.sounds.splice(0, app.sounds.length - 40);
     return events;
@@ -1886,6 +1909,13 @@ header a.home:hover { text-decoration: underline; }
       sim.triggerBeat(); app.markers.push({ t: sim.t + sim.p.atrialDelay, label: 'atria contract' });
     }
   }
+  // The patient whose case runs through Part A (fictional). Her numbers are the model's.
+  const CASE_HTML = `<p><b>Dana Brooks, 62,</b> had a heart attack two weeks ago: a blocked coronary artery killed part of the muscle of her <b>left ventricle</b>.</p>
+      <p>Today she is back in the clinic. She gets out of breath climbing one flight of stairs, and she has started sleeping propped up on three pillows because lying flat makes her breathless. Her doctor hears <b>crackles at the bottom of both lungs</b>, but her heart sounds are normal, with no murmur.</p>
+      <p>Her <b>echocardiogram</b> (ultrasound of the heart) report: <i>"Left ventricle dilated. End-diastolic volume 180 mL. Ejection fraction 40 %."</i></p>
+      <p>She is started on a <b>diuretic</b>, a drug that makes the kidneys remove extra fluid from the body.</p>`;
+  const CASE_QUESTIONS = `<ol style="margin:4px 0 0 18px;padding:0"><li>Her heart is damaged, so why does she have a <i>lung</i> problem?</li><li>What do "EDV 180 mL" and "EF 40 %" mean, and how do they compare with a healthy heart?</li><li>How does a diuretic help her, and why could a large IV fluid bolus be dangerous for her?</li></ol>`;
+  const caseNote = (html) => `<div class="case"><div class="case-h">Back to Dana</div>${html}</div>`;
   let lvFail = {};   // state of the weakened-LV experiment, shown by the meters in later steps too
   const beatsSince = (c) => { const d = c.stepState().data; if (d.beat0 == null) d.beat0 = sim.beats; return sim.beats - d.beat0; };
   const fmt = (x, d) => (x == null ? '—' : x.toFixed(d || 0));
@@ -1930,9 +1960,22 @@ header a.home:hover { text-decoration: underline; }
         {
           view: 'circuit', viewOpts: { layout: 'anatomy', labels: [], caption: 'A real heart, cut in a frontal section and seen from the front. It is beating.' }, reset: true, mode: 'sinus', remount: true,
           traces: { pressures: ['aorta', 'pulTrunk'], volume: false, valves: false },
+          title: 'Why this matters: a patient',
+          enter: (c) => { c.view().A.setLabels([]); c.view().highlight(null); c.view().onStop = null; },
+          text: `<div class="case"><div class="case-h">Dana's case</div>${CASE_HTML}</div>
+                 <p>By the end of this lab you will be able to answer three questions about Dana (they are on your worksheet):</p>${CASE_QUESTIONS}
+                 <p style="margin-top:8px">You can reopen her case at any time with the <b>Dana's case</b> button at the top.</p>`,
+          question: { prompt: 'Before you start, make a guess: why might a damaged heart make someone short of breath?', options: [
+            { t: 'Blood backs up into the lungs', ok: true, fb: 'Keep your guess in mind. You will test it in scene 6.' },
+            { t: 'The heart sends less oxygen to the body, so the person breathes harder', ok: true, fb: 'Keep your guess in mind. You will test it in scene 6.' },
+            { t: 'The heart attack also damaged the lungs', ok: true, fb: 'Keep your guess in mind. You will test it in scene 6.' },
+          ] },
+        },
+        {
+          view: 'circuit',
           title: 'Meet the heart',
           enter: (c) => { c.view().A.setLabels([]); c.view().highlight(null); c.view().onStop = null; },
-          text: `<p>This is the heart as you would see it in a textbook figure or a lab model, cut open from top to bottom (a <b>frontal section</b>). The lungs sit on either side.</p>
+          text: `<p>This is the heart as you would see it in a textbook figure or a lab model, cut open from front to back (a <b>frontal section</b>). The lungs sit on either side.</p>
                  <p>It is the simulation, not a picture: the valves open and shut because the model's pressures push them, and the white dots move with the model's blood flow.</p>`,
           question: { prompt: 'The person is facing you. Which side of the picture is the person\'s left side?', options: [
             { t: 'Your right', ok: true, fb: 'Anatomical drawings show the body facing you, like a person standing in front of you. Their left is on your right. So the "left" ventricle is on the right of the picture.' },
@@ -2028,7 +2071,8 @@ header a.home:hover { text-decoration: underline; }
           view: 'circuit', title: 'Same volume, different job',
           enter: (c) => { const v = c.view(); if (v.layout() !== 'diagram') v.setLayout('diagram'); v.highlight(null); },
           meters: () => [['Pulmonary trunk', `${r0((sim.stats.R || {}).sys || 0)}/${r0((sim.stats.R || {}).dia || 0)} mmHg`], ['Aorta', `${r0((sim.stats.L || {}).sys || 0)}/${r0((sim.stats.L || {}).dia || 0)} mmHg`]],
-          text: `<p>The trace at the bottom shows the pressure in the two arteries leaving the heart: the <b>aorta</b> and the <b>pulmonary trunk</b>.</p>`,
+          text: `<p>The trace at the bottom shows the pressure in the two arteries leaving the heart: the <b>aorta</b> and the <b>pulmonary trunk</b>.</p>`
+            + caseNote(`Dana's heart attack damaged her <b>left</b> ventricle: the pump that has to generate the high pressure for the whole body. Her right ventricle is fine. Keep the two-pumps-in-series idea in mind; it is the key to her breathlessness.`),
           question: { prompt: 'Both ventricles pump the same volume. Why is the left ventricle\'s wall about three times thicker?', options: [
             { t: 'It must push blood out against a much higher pressure', ok: true, fb: 'About 120/80 mmHg in the aorta vs about 25/10 in the pulmonary trunk. The lungs are close by and offer little resistance; the rest of the body offers much more. Same volume, much more force.' },
             { t: 'It pumps more blood per beat', fb: 'Check the previous answer: the volumes are the same. Look at the two pressure traces instead.' },
@@ -2217,7 +2261,8 @@ header a.home:hover { text-decoration: underline; }
         },
         {
           view: 'heart', title: 'Heart sounds',
-          text: `<p>Each beat you heard two sounds: <b>S1</b> ("lub") and <b>S2</b> ("dub"). They are marked under the valve bars at the bottom.</p>`,
+          text: `<p>Each beat you heard two sounds: <b>S1</b> ("lub") and <b>S2</b> ("dub"). They are marked under the valve bars at the bottom.</p>`
+            + caseNote(`Dana's doctor heard a normal S1 and S2 and no murmur (the whooshing sound of blood leaking through a valve that does not shut, or squeezing through one that does not open fully). Her valves open and shut normally. Her problem is the muscle.`),
           question: { prompt: 'What makes the two heart sounds?', options: [
             { t: 'Valves shutting: S1 the AV valves (bicuspid, tricuspid), S2 the semilunar valves (aortic, pulmonary)', ok: true, fb: 'Sudden closure sets the blood and valve leaflets vibrating. Valves opening is silent in a healthy heart, which is why there are two sounds per beat and not four.' },
             { t: 'The atria and then the ventricles contracting', fb: 'Look at where S1 and S2 sit on the traces: exactly where a valve shut, not where contraction began.' },
@@ -2293,6 +2338,14 @@ header a.home:hover { text-decoration: underline; }
             explain: () => `EF ≈ ${r0(100 * (statsL().edv - statsL().esv) / statsL().edv)} %. Even a healthy heart leaves about 40 % of its blood behind each beat: a reserve it can use when it squeezes harder.`,
             hint: (c, v) => v < 1.5 ? 'Give it as a percentage (e.g. 0.6 → 60 %).' : 'Divide your stroke volume by EDV and multiply by 100.' },
         },
+        {
+          view: 'heart', title: 'Dana\'s echo report',
+          text: caseNote(`Her echocardiogram: <i>"End-diastolic volume 180 mL. Ejection fraction 40 %."</i> Compare with the healthy heart you just measured.`),
+          question: { type: 'number', prompt: 'How much blood does Dana\'s left ventricle eject with each beat?', unit: 'mL', recordAs: 'danaSV',
+            answer: () => 72, tol: 2,
+            explain: () => `40 % of 180 mL = 72 mL: about the same as the healthy heart. But her ventricle has to stretch to 180 mL (healthy: about 118 mL) to manage it, because the damaged muscle pushes out only 40 % of what it holds. Scene 6 shows how her heart got there, and what it costs her.`,
+            hint: (c, v) => v > 150 ? 'Stroke volume is the part of EDV that is ejected: EF × EDV.' : 'EF = SV ÷ EDV, so SV = EF × EDV. Use 0.40 for 40 %.' },
+        },
       ],
     },
     // ------------------------------------------------------------- 5. Frank–Starling
@@ -2342,130 +2395,163 @@ header a.home:hover { text-decoration: underline; }
           status: (c) => { const d = c.stepState().data; if (d.armedAt == null) return ''; const s = statsL(); return `${c.stepState().done ? '<b>Observed:</b> ' : ''}ESV ${r0(d.base.esv)} → ${r0(s.esv)} mL · SV ${r0(d.base.sv)} → ${r0(s.sv)} mL · mean aortic ${r0(d.base.mean)} → ${r0(s.mean)} mmHg. The loop got taller and narrower: the aortic valve opens later and shuts sooner.`; },
         },
         {
-          view: 'heart', viewOpts: { pv: true, caption: 'A heart attack has just damaged part of the left ventricle.' }, title: 'When one side weakens', reset: true, remount: true,
+          view: 'heart', viewOpts: { pv: true, caption: 'Dana\'s heart: a heart attack has just damaged part of her left ventricle.' }, title: 'Dana\'s heart attack', reset: true, remount: true,
           meters: () => {
             const L = sim.stats.L || {}, R = sim.stats.R || {}, d = lvFail;
             const diff = L.sv && R.sv ? Math.abs(R.sv - L.sv) / L.sv : 0;
-            return [['Right ventricle', `${fmt(R.sv, 1)} mL/beat`, diff > 0.02], ['Left ventricle', `${fmt(L.sv, 1)} mL/beat`, diff > 0.02], ['Lung vein pressure', `${fmt(d.pv, 1)} mmHg`, d.pv0 != null && d.pv > d.pv0 + 1.5], ['LV EDV', `${fmt(L.edv)} mL`]];
+            return [['Right ventricle', `${fmt(R.sv, 1)} mL/beat`, diff > 0.02], ['Left ventricle', `${fmt(L.sv, 1)} mL/beat`, diff > 0.02], ['Lung vein pressure', `${fmt(app.lung.mean, 1)} mmHg`, d.pv0 != null && app.lung.mean > d.pv0 + 1.5], ['LV EDV', `${fmt(L.edv)} mL`]];
           },
-          enter: (c) => { const d = lvFail = c.stepState().data; d.armedAt = null; d.pvAcc = 0; d.pvT = 0; d.pv = sim.P.pulVen; d.pv0 = null; },
-          tick: (c, events, dtSim) => {
-            // mean pulmonary venous pressure over each beat-length of simulated time
-            const d = c.stepState().data; d.pvAcc += sim.P.pulVen * dtSim; d.pvT += dtSim;
-            if (d.pvT >= sim.rr) { d.pv = d.pvAcc / d.pvT; d.pvAcc = 0; d.pvT = 0; }
-          },
-          text: `<p>A heart attack kills part of the left ventricle's muscle: it now squeezes 60 % less hard. The right ventricle is unharmed.</p>`,
+          enter: (c) => { const d = lvFail = c.stepState().data; d.armedAt = null; d.pv0 = null; },
+          text: `<p>Two weeks ago, Dana's heart attack killed part of her left ventricle's muscle: it now squeezes 60 % less hard. Her right ventricle is unharmed. Start from a healthy heart and give it her damage.</p>`,
           question: { prompt: 'For the first beat after the damage, the right ventricle still pumps its usual ~70 mL but the left pumps much less. Where does the difference go?', options: [
             { t: 'It backs up in the lungs (and the left atrium)', ok: true, fb: 'The right ventricle keeps delivering blood that the weakened left ventricle does not pass on. Weaken the LV and watch the meters.' },
             { t: 'Into the body tissues', fb: 'The body gets blood only from the left ventricle, which is now pumping less. Follow the extra blood from the right ventricle.' },
             { t: 'Nowhere: the right ventricle slows down to match', fb: 'Nothing tells the right ventricle about the damage; nerves are off in this model. Where does its output go next?' },
           ] },
-          actions: [{ label: 'Weaken the left ventricle', cls: 'blood', run: (c) => { const d = c.stepState().data; if (d.armedAt != null) return; saveBaseline(c, 'before the heart attack'); d.edv0 = statsL().edv; d.pv0 = d.pv; sim.p.chambers.LV.Emax *= 0.4; d.armedAt = sim.beats; } }],
+          actions: [{ label: 'Weaken the left ventricle', cls: 'blood', run: (c) => { const d = c.stepState().data; if (d.armedAt != null) return; saveBaseline(c, 'before the heart attack'); d.edv0 = statsL().edv; d.sv0 = statsL().sv; d.pv0 = app.lung.mean; sim.p.chambers.LV.Emax *= 0.4; d.armedAt = sim.beats; } }],
           waitFor: (c) => {
             const d = c.stepState().data, L = sim.stats.L, R = sim.stats.R;
             if (d.armedAt == null) return false;
             if (L && R && R.sv > L.sv * 1.05) d.sawMismatch = true;
             return d.sawMismatch && sim.beats - d.armedAt >= 10 && Math.abs(R.sv - L.sv) / L.sv < 0.02;
           },
-          onDone: (c) => { const d = c.stepState().data; c.recordValue('lvFailure', { pv0: d.pv0, pv1: d.pv, edv0: d.edv0, edv1: statsL().edv }); },
+          onDone: (c) => { const d = c.stepState().data, L = statsL(); c.recordValue('lvFailure', { pv0: d.pv0, pv1: app.lung.mean, edv0: d.edv0, edv1: L.edv, sv0: d.sv0, sv1: L.sv, ef1: L.ef, sys: L.sys, dia: L.dia }); },
           waitHint: 'Weaken the left ventricle and watch until the two sides match again',
-          status: (c) => { const d = c.stepState().data; if (d.armedAt == null) return ''; return c.stepState().done ? `<b>Observed:</b> for a few beats the right side out-pumped the left and blood built up in the lungs; lung vein pressure rose from ${fmt(d.pv0, 1)} to ${fmt(d.pv, 1)} mmHg. Then the outputs matched again.` : 'Watch the two outputs and the lung vein pressure.'; },
+          status: (c) => { const d = c.stepState().data; if (d.armedAt == null) return ''; return c.stepState().done ? `<b>Observed:</b> for a few beats the right side out-pumped the left and blood built up in the lungs; lung vein pressure rose from ${fmt(d.pv0, 1)} to ${fmt(app.lung.mean, 1)} mmHg. Then the outputs matched again.` : 'Watch the two outputs and the lung vein pressure.'; },
         },
         {
           view: 'heart', title: 'What rebalanced the two sides?',
           question: { prompt: 'Within a few beats both sides pumped the same volume again, with no nerves or hormones involved. What made the weak left ventricle pump more?', options: [
-            { t: 'The blood backing up stretched it (bigger EDV), and stretched muscle squeezes harder: Frank–Starling', ok: true, fb: 'The same law as with the IV fluid, now keeping the two pumps matched beat by beat. But the price is a permanently higher pressure in the lungs. In <b>left heart failure</b> this pressure pushes fluid out of the lung capillaries, and patients become short of breath.' },
+            { t: 'The blood backing up stretched it (bigger EDV), and stretched muscle squeezes harder: Frank–Starling', ok: true, fb: 'The same law as with the IV fluid, now keeping the two pumps matched beat by beat. The price is a higher pressure in the lungs. But look at her blood pressure and output: both are lower than before the heart attack. Her body will not leave it there.' },
             { t: 'The right ventricle slowed down', fb: 'The heart rate is the same for both sides. Look at what happened to LV EDV.' },
             { t: 'The damaged muscle healed', fb: 'The weakening is still in place. Look at what happened to LV EDV and the loop.' },
           ] },
         },
         {
-          view: 'heart', title: 'Lab record', continueLabel: 'Done',
-          text: `<p><b>Part A complete.</b> Type your name, then copy your lab record and paste it into the Canvas assignment (or download it and upload the file).</p>
-                 <p>The record lists your first answer to each prediction, your measurements and your experiments, with a check code your instructor can verify.</p>`,
-          extra: (el, c) => renderRecordBox(el, c),
+          view: 'heart', viewOpts: { pv: true, caption: 'Dana\'s heart in the weeks after the heart attack.' }, title: 'Two weeks later',
+          meters: () => { const L = sim.stats.L || {}, pv = app.lung.mean; return [[pv > 18 ? 'Lung veins: fluid leaking!' : 'Lung vein pressure', `${fmt(pv, 1)} mmHg`, pv > 18], ['Blood pressure', `${r0(L.sys || 0)}/${r0(L.dia || 0)} mmHg`], ['Stroke volume', `${fmt(L.sv)} mL`], ['LV EDV', `${fmt(L.edv)} mL`]]; },
+          enter: (c) => {
+            c.stepState().data.armedAt = null;
+            if (c.stepState().done) return;
+            // let the heart settle after the heart attack, and record where it settled
+            advanceSim(40 * sim.rr, false);
+            const L = statsL(), v = c.record.values.lvFailure;
+            if (v) Object.assign(v, { pv1: app.lung.mean, edv1: L.edv, sv1: L.sv, ef1: L.ef, sys: L.sys, dia: L.dia });
+          },
+          text: `<p>With her weaker heart, Dana's blood pressure and output fell. Her kidneys sense this and respond the only way they can: they hold on to salt and water (you will see how in the kidney lab). Over two weeks she has kept about <b>600 mL</b> of extra fluid in her blood.</p>
+                 <p>Watch the lung vein pressure. Above about <b>18 mmHg</b>, fluid is forced out of the lung capillaries into the air spaces (<b>pulmonary edema</b>).</p>`,
+          question: { prompt: 'Predict: what will the 600 mL of extra fluid do?', options: [
+            { t: 'Raise her stroke volume and blood pressure, but also the pressure in her lungs', ok: true, fb: 'Fast-forward the two weeks and look at the meters.' },
+            { t: 'Raise her stroke volume and lower the pressure in her lungs', fb: 'Where does extra blood returning to a weak left ventricle wait before it can be pumped out? Test it.' },
+            { t: 'Nothing, because the damaged ventricle cannot use extra blood', fb: 'The damaged muscle still follows Frank–Starling. Test it.' },
+          ] },
+          actions: [{ label: 'Fast-forward two weeks: the kidneys retain 600 mL', cls: 'blood', run: (c) => { const d = c.stepState().data; if (d.armedAt != null || c.stepState().done) return; saveBaseline(c, 'after the heart attack'); d.pv0 = app.lung.mean; sim.infuse(600); advanceSim(40 * sim.rr, false); d.armedAt = sim.beats; } }],
+          waitFor: (c) => { const d = c.stepState().data; return d.armedAt != null && sim.beats - d.armedAt >= 2; },
+          onDone: (c) => { const d = c.stepState().data, L = statsL(); c.recordValue('retention', { pv0: d.pv0, pv1: app.lung.mean, sv0: d.base.sv, sv1: L.sv, sys0: d.base.sys, dia0: d.base.dia, sys1: L.sys, dia1: L.dia, edv1: L.edv, ef1: L.ef }); },
+          waitHint: 'Fast-forward two weeks and look at the meters',
+          status: (c) => { const d = c.stepState().data; if (d.armedAt == null) return ''; const L = statsL(); return c.stepState().done ? `<b>Observed:</b> stroke volume ${r0(d.base.sv)} → ${r0(L.sv)} mL and blood pressure ${r0(d.base.sys)}/${r0(d.base.dia)} → ${r0(L.sys)}/${r0(L.dia)} mmHg (Frank–Starling at work), but lung vein pressure ${fmt(d.pv0, 1)} → ${fmt(app.lung.mean, 1)} mmHg: fluid is now leaking into her lungs. Her EDV (${r0(L.edv)} mL) and EF (${r0(100 * L.ef)} %) now match her echo report.` : 'Watch the meters.'; },
+        },
+        {
+          view: 'heart', title: 'The diuretic',
+          meters: () => { const L = sim.stats.L || {}, pv = app.lung.mean; return [[pv > 18 ? 'Lung veins: fluid leaking!' : 'Lung vein pressure', `${fmt(pv, 1)} mmHg`, pv > 18], ['Blood pressure', `${r0(L.sys || 0)}/${r0(L.dia || 0)} mmHg`], ['Stroke volume', `${fmt(L.sv)} mL`], ['LV EDV', `${fmt(L.edv)} mL`]]; },
+          enter: (c) => { c.stepState().data.armedAt = null; },
+          text: caseNote(`The crackles in Dana's lungs are that leaked fluid, and lying flat makes it worse because blood from her legs returns to her chest. Her doctor starts a <b>diuretic</b>: her kidneys pass about <b>400 mL</b> of the extra fluid out as urine.`),
+          question: { prompt: 'Predict: what will removing 400 mL do?', options: [
+            { t: 'Lung pressure falls below the leak line, and stroke volume falls a little', ok: true, fb: 'Give the diuretic and watch the meters.' },
+            { t: 'Lung pressure falls and stroke volume rises', fb: 'Less blood returning means less stretch. What does Frank–Starling say about stroke volume then? Test it.' },
+            { t: 'Lung pressure stays high: the fluid is already in the lungs', fb: 'The pressure in the lung vessels depends on how much blood is backed up behind the left ventricle. Test it.' },
+          ] },
+          actions: [{ label: 'Give the diuretic and fast-forward a few days (−400 mL)', cls: 'blood', run: (c) => { const d = c.stepState().data; if (d.armedAt != null || c.stepState().done) return; saveBaseline(c, 'before the diuretic'); d.pv0 = app.lung.mean; sim.hemorrhage(400); advanceSim(40 * sim.rr, false); d.armedAt = sim.beats; } }],
+          waitFor: (c) => { const d = c.stepState().data; return d.armedAt != null && sim.beats - d.armedAt >= 2; },
+          onDone: (c) => { const d = c.stepState().data, L = statsL(); c.recordValue('diuretic', { pv0: d.pv0, pv1: app.lung.mean, sv0: d.base.sv, sv1: L.sv, sys1: L.sys, dia1: L.dia }); },
+          waitHint: 'Give the diuretic and look at the meters',
+          status: (c) => { const d = c.stepState().data; if (d.armedAt == null) return ''; const L = statsL(); return c.stepState().done ? `<b>Observed:</b> lung vein pressure ${fmt(d.pv0, 1)} → ${fmt(app.lung.mean, 1)} mmHg, below the leak line. Stroke volume ${r0(d.base.sv)} → ${r0(L.sv)} mL: a small price, paid through Frank–Starling, for dry lungs.` : 'Watch the meters.'; },
+        },
+        {
+          view: 'heart', title: 'Part A complete', continueLabel: 'Done',
+          text: `<p>You now have what you need to answer Dana's three questions on your worksheet:</p>${CASE_QUESTIONS}
+                 <p style="margin-top:8px">Your results from this lab are below. Copy them onto your worksheet. Then type your name to get your <b>completion code</b> and put it on the worksheet too.</p>`,
+          extra: (el, c) => renderCompletion(el, c),
         },
       ],
     },
   ];
 
   // =========================================================================
-  // Lab record (pasted into Canvas) and the instructor's check
+  // Completion: the student's results (for the worksheet) and a completion code
   // =========================================================================
-  const RECORD_SALT = 'heartsim-partA-v1';
-  function recordText(name) {
-    const r = runner.runner.record, lines = [];
-    const now = new Date();
-    lines.push('HeartSim · Part A: The heart as a pump · lab record');
-    lines.push(`Student: ${name || '(no name entered)'}`);
-    lines.push(`Finished: ${now.toLocaleString()}`);
-    lines.push('');
-    lines.push('Predictions and questions (✓ = right first time; otherwise your first answer and the number of tries)');
-    const keys = Object.keys(r.answers).sort((a, b) => {
-      const sa = LESSON.findIndex(s => s.id === a.split('.')[0]), sb = LESSON.findIndex(s => s.id === b.split('.')[0]);
-      return sa - sb || (+a.split('.')[1]) - (+b.split('.')[1]);
-    });
-    let n = 0, firstRight = 0;
-    for (const k of keys) {
-      const a = r.answers[k]; n++; if (a.firstCorrect) firstRight++;
-      lines.push(`${String(n).padStart(2)}. [Scene ${a.scene}] ${a.prompt}`);
-      lines.push(a.firstCorrect ? `    ✓ ${a.first}` : `    first answer: ${a.first} · ${a.done ? `right after ${a.attempts} tries` : 'not yet answered correctly'}`);
-    }
-    const total = LESSON.reduce((s, sc) => s + sc.steps.filter(st => st.question).length, 0);
-    lines.push(`Answered ${n} of ${total} questions; ${firstRight} right first time.`);
-    lines.push('');
-    lines.push('Measurements');
-    const v = r.values;
-    if (v.SV) lines.push(`  Stroke volume read from your PV loop: ${v.SV.entered} mL (model ${fmt(v.SV.model, 1)} mL)`);
-    if (v.EF) lines.push(`  Ejection fraction: ${v.EF.entered} % (model ${fmt(v.EF.model, 1)} %)`);
-    lines.push('Experiments');
-    if (v.preload) lines.push(`  +500 mL IV fluid: EDV ${r0(v.preload.edv0)} → ${r0(v.preload.edv1)} mL, SV ${r0(v.preload.sv0)} → ${r0(v.preload.sv1)} mL`);
-    if (v.afterload) lines.push(`  Arterioles constricted: ESV ${r0(v.afterload.esv0)} → ${r0(v.afterload.esv1)} mL, SV ${r0(v.afterload.sv0)} → ${r0(v.afterload.sv1)} mL, mean aortic ${r0(v.afterload.map0)} → ${r0(v.afterload.map1)} mmHg`);
-    if (v.lvFailure) lines.push(`  Weakened LV: lung vein pressure ${fmt(v.lvFailure.pv0, 1)} → ${fmt(v.lvFailure.pv1, 1)} mmHg, LV EDV ${r0(v.lvFailure.edv0)} → ${r0(v.lvFailure.edv1)} mL`);
-    if (!v.preload && !v.afterload && !v.lvFailure) lines.push('  (none completed)');
-    const body = lines.join('\n');
-    return body + '\n\nCheck code: ' + Lesson.checkCode(body, RECORD_SALT);
+  // The code comes from the student's name and is shown only once every question in Part A has
+  // been answered. It shows the lab was finished; the worksheet carries the grade. It deters
+  // casual sharing but is not security (anyone can read this page's source).
+  const CODE_SALT = 'heartsim-partA-complete-v1';
+  const normName = (n) => String(n || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  const completionCode = (name) => 'A-' + Lesson.checkCode(normName(name), CODE_SALT);
+  function questionsLeft() {
+    const r = runner.runner.record, left = [];
+    LESSON.forEach((sc, si) => sc.steps.forEach((st, ki) => {
+      const a = r.answers[`${sc.id}.${ki}`];
+      if (st.question && !(a && a.done)) left.push(si + 1);
+    }));
+    return [...new Set(left)];
   }
-  function renderRecordBox(el, c) {
+  function resultsLines() {
+    const v = runner.runner.record.values, L = [];
+    const pct = (x) => x == null ? '—' : `${r0(100 * x)} %`;
+    L.push('HeartSim Part A: my results');
+    L.push('Healthy heart (scene 5)');
+    if (v.SV) L.push(`  Stroke volume I measured from the PV loop: ${v.SV.entered} mL`);
+    if (v.EF) L.push(`  Ejection fraction I calculated: ${v.EF.entered} %`);
+    if (v.danaSV) L.push(`  Dana's stroke volume from her echo report: ${v.danaSV.entered} mL`);
+    L.push('Experiments (scene 6)');
+    if (v.preload) L.push(`  +500 mL IV fluid (healthy heart): EDV ${r0(v.preload.edv0)} → ${r0(v.preload.edv1)} mL; stroke volume ${r0(v.preload.sv0)} → ${r0(v.preload.sv1)} mL`);
+    if (v.afterload) L.push(`  Arterioles constricted: ESV ${r0(v.afterload.esv0)} → ${r0(v.afterload.esv1)} mL; stroke volume ${r0(v.afterload.sv0)} → ${r0(v.afterload.sv1)} mL; mean aortic pressure ${r0(v.afterload.map0)} → ${r0(v.afterload.map1)} mmHg`);
+    if (v.lvFailure) L.push(`  Dana's heart attack: stroke volume ${r0(v.lvFailure.sv0)} → ${r0(v.lvFailure.sv1)} mL; LV EDV ${r0(v.lvFailure.edv0)} → ${r0(v.lvFailure.edv1)} mL; EF ${pct(v.lvFailure.ef1)}; blood pressure ${r0(v.lvFailure.sys)}/${r0(v.lvFailure.dia)} mmHg; lung vein pressure ${fmt(v.lvFailure.pv0, 1)} → ${fmt(v.lvFailure.pv1, 1)} mmHg`);
+    if (v.retention) L.push(`  Two weeks of fluid retention (+600 mL): stroke volume ${r0(v.retention.sv0)} → ${r0(v.retention.sv1)} mL; blood pressure ${r0(v.retention.sys0)}/${r0(v.retention.dia0)} → ${r0(v.retention.sys1)}/${r0(v.retention.dia1)} mmHg; LV EDV ${r0(v.retention.edv1)} mL; EF ${pct(v.retention.ef1)}; lung vein pressure ${fmt(v.retention.pv0, 1)} → ${fmt(v.retention.pv1, 1)} mmHg`);
+    if (v.diuretic) L.push(`  Diuretic (−400 mL): stroke volume ${r0(v.diuretic.sv0)} → ${r0(v.diuretic.sv1)} mL; blood pressure ${r0(v.diuretic.sys1)}/${r0(v.diuretic.dia1)} mmHg; lung vein pressure ${fmt(v.diuretic.pv0, 1)} → ${fmt(v.diuretic.pv1, 1)} mmHg`);
+    return L;
+  }
+  function renderCompletion(el, c) {
     el.className = 'extra record';
     el.innerHTML = '';
-    const lab = htmlEl('label', { for: 'rec-name' }, 'Your name');
+    const ta = htmlEl('textarea', { readonly: 'readonly', 'aria-label': 'Your results' });
+    ta.value = resultsLines().join('\n');
+    const row = htmlEl('div', { class: 'row' });
+    const copy = htmlEl('button', { type: 'button' }, 'Copy my results');
+    copy.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(ta.value); c.status('<b>Copied.</b> Paste them into your worksheet.', true); }
+      catch (e) { ta.focus(); ta.select(); c.status('Selected: press Ctrl+C (⌘C on a Mac) to copy.', false); }
+    });
+    row.appendChild(copy);
+    el.appendChild(ta); el.appendChild(row);
+    const left = questionsLeft();
+    if (left.length) {
+      el.appendChild(htmlEl('p', { class: 'warn' }, `<b>Not finished yet:</b> answer the remaining questions in scene${left.length > 1 ? 's' : ''} ${left.join(', ')} to get your completion code. (Use the numbered buttons at the top.)`));
+      return;
+    }
+    el.appendChild(htmlEl('label', { for: 'rec-name' }, 'Your name, as it appears in Canvas'));
     const name = htmlEl('input', { type: 'text', id: 'rec-name', autocomplete: 'name' });
     name.value = c.record.name || '';
-    const ta = htmlEl('textarea', { readonly: 'readonly', 'aria-label': 'Your lab record' });
-    const update = () => { c.record.name = name.value.trim(); ta.value = recordText(c.record.name); };
+    const code = htmlEl('div', { class: 'code', 'aria-live': 'polite' });
+    const update = () => { c.record.name = name.value.trim(); code.innerHTML = c.record.name ? `Completion code: <b>${completionCode(c.record.name)}</b>` : 'Type your name to see your completion code.'; };
     name.addEventListener('input', update);
-    const row = htmlEl('div', { class: 'row' });
-    const copy = htmlEl('button', { type: 'button', class: 'primary' }, 'Copy lab record');
-    copy.addEventListener('click', async () => {
-      update();
-      try { await navigator.clipboard.writeText(ta.value); c.status('<b>Copied.</b> Paste it into the Canvas assignment.', true); }
-      catch (e) { ta.focus(); ta.select(); c.status('Select-all is done: press Ctrl+C (⌘C on a Mac) to copy.', false); }
-    });
-    const dl = htmlEl('button', { type: 'button' }, 'Download as .txt');
-    dl.addEventListener('click', () => {
-      update();
-      const blob = new Blob([ta.value], { type: 'text/plain' });
-      const a = htmlEl('a', { href: URL.createObjectURL(blob), download: `heartsim-partA-${(c.record.name || 'record').replace(/\W+/g, '_')}.txt` });
-      document.body.appendChild(a); a.click(); a.remove();
-    });
-    row.appendChild(copy); row.appendChild(dl);
-    el.appendChild(lab); el.appendChild(name); el.appendChild(ta); el.appendChild(row);
+    el.appendChild(name); el.appendChild(code);
     update();
+    c.complete();
   }
-  function verifyRecord(text) {
-    const m = text.replace(/\r\n/g, '\n').match(/^([\s\S]*?)\n\s*\nCheck code:\s*([A-Z0-9]{5}-[A-Z0-9]{5})\s*$/m);
-    if (!m) return { ok: false, msg: 'No check code found. Paste the whole record, including the last line.' };
-    const ok = Lesson.checkCode(m[1], RECORD_SALT) === m[2];
-    return { ok, msg: ok ? '✓ The record matches its check code (not edited after it was made).' : '✗ The check code does not match: the record was edited, or is incomplete.' };
-  }
-  function openVerify() {
-    $('#verify').classList.add('on'); $('#verify-text').focus();
-  }
-  $('#verify-check').addEventListener('click', () => { const r = verifyRecord($('#verify-text').value); $('#verify-result').textContent = r.msg; $('#verify-result').style.color = r.ok ? 'var(--good)' : 'var(--bad)'; });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') document.querySelectorAll('.dialog.on').forEach(d => d.classList.remove('on')); });
+  function openCase() { $('#case').classList.add('on'); $('#case-close').focus(); }
+  $('#case-body').innerHTML = CASE_HTML + '<p style="margin:8px 0 2px"><b>Questions you will answer on your worksheet:</b></p>' + CASE_QUESTIONS;
+  $('#btn-case').addEventListener('click', openCase);
+  $('#case-close').addEventListener('click', () => $('#case').classList.remove('on'));
+  function openVerify() { $('#verify').classList.add('on'); $('#verify-name').focus(); }
+  $('#verify-check').addEventListener('click', () => {
+    const ok = completionCode($('#verify-name').value) === $('#verify-code').value.trim().toUpperCase();
+    $('#verify-result').textContent = ok ? '✓ This code matches this name.' : '✗ This code does not match this name (check the spelling of the name).';
+    $('#verify-result').style.color = ok ? 'var(--good)' : 'var(--bad)';
+  });
   $('#verify-close').addEventListener('click', () => $('#verify').classList.remove('on'));
-  window.__heartsim.verifyRecord = verifyRecord;
-  window.__heartsim.recordText = (n) => recordText(n);
+  window.__heartsim.completionCode = completionCode;
+  window.__heartsim.results = () => resultsLines().join('\n');
 
   // =========================================================================
   // Start

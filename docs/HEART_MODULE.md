@@ -296,7 +296,7 @@ Each milestone is usable in a course on its own.
   generic runner in `lib/lesson.js`. NeuronSim still runs its own copy of the runner; moving it
   onto `lib/` is a separate, behaviour-preserving refactor for later.
 - **M1 · Mechanics + Part A.** ✅ Closed-loop engine with sinus, single-beat and manual activation;
-  19 physiology tests; scenes 1–5; lab record for Canvas. A1 can be assigned.
+  19 physiology tests; Part A scenes; results + completion code for Canvas. A1 can be assigned.
 - **M2 · Electrics + Part B.** Cells, conduction, ECG, coupling, autonomic; scenes 6–9.
 - **M3 · Vessels + Part C.** Venous reservoirs, baroreflex; scenes 10–11.
 - **M4 · Lab and cases.** Lesions, drugs, sounds/murmurs, mystery-patient mode, check codes,
@@ -305,17 +305,31 @@ Each milestone is usable in a course on its own.
 ## Decisions (instructor, Oct 2026)
 
 1. **Vocabulary:** "bicuspid valve" in everything students see. Code identifiers still say `mitral`.
-2. **Submission:** through Canvas. Each Part ends with a **lab record**: the student's first answer
-   to every prediction, attempts, measurements and experiment results, plus a check code. Students
-   paste it into a Canvas text-entry assignment or upload the downloaded .txt. Instructors check a
-   record at `heart/#verify` (paste the record; the code is recomputed from the text). Assignment
-   text: `assignments/` (the answer key and rubric are kept out of this public repository).
+2. **Submission and grading:** through Canvas, graded by AI from a rubric. Part A ends with the
+   student's **results** (copy button) and a **completion code** (from their name, shown only once
+   every question is answered; instructors check it at `heart.html#verify`). The graded work is a
+   **worksheet** of short-answer reasoning, synthesis and transfer questions (40 points) built
+   around a patient case; the same questions are in `assignments/heart-part-A.md` for a Canvas
+   text-entry assignment. The answer key and AI-grading rubric are kept outside this public repo.
+   In-simulation predictions are never graded.
 3. **Length:** about 30–40 min per Part; Parts A–C together make one lab.
 4. **Naming:** the repo becomes a collection of models (done in the file layout; renaming the
    GitHub repository and Pages URL is still to do).
 5. **Sound:** heart sounds on by default, with a toggle and a visual twin on the traces.
 
 ## Part A as built (differences from the plan above)
+
+- **A patient case runs through Part A** (instructor feedback: students need to see why the graphs
+  matter). Dana Brooks, 62, two weeks after a heart attack: breathless, crackles in both lungs,
+  echo "EDV 180 mL, EF 40 %", started on a diuretic. Scene 1 opens with her case and three
+  questions; a "Dana's case" button reopens it; short "Back to Dana" notes follow in scenes 2, 4
+  and 5 (she computes Dana's stroke volume from the echo report); scene 6's heart attack is hers,
+  followed by two weeks of fluid retention (+600 mL, fast-forwarded) and a diuretic (−400 mL).
+  The model's numbers are her numbers: after the heart attack SV 58 mL, EF 40 %, BP 99/66; after
+  retention SV 74 mL, BP 125/86, EDV 183 mL, lung vein pressure 22.6 mmHg (above the ~18 mmHg leak
+  line); after the diuretic SV 64 mL, BP 110/74, lung vein pressure 14.5 mmHg.
+- Every reset now restores the default physiology too (a bug let the constricted arterioles carry
+  into the heart-attack experiment).
 
 - **A new first scene, "The real heart"** (instructor feedback: the box diagram alone does not
   look like a heart). A beating frontal section (lungs either side, great vessels; the person's

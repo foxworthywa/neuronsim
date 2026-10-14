@@ -15,7 +15,7 @@
   #trace { height: 250px; }
   #meters { position: absolute; left: 12px; top: 44px; display: none; gap: 8px; flex-wrap: wrap; max-width: 60%; }
   #meters.on { display: flex; }
-  #meters.shifted { left: 190px; }
+  #meters.shifted { left: 190px; max-width: 75%; flex-wrap: nowrap; }
   #meters .m { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 4px 9px; font-size: 12px; color: var(--muted); }
   #meters .m b { display: block; font-size: 16px; color: var(--ink); font-variant-numeric: tabular-nums; }
   #meters .m.hot { border-color: var(--o2rich); background: #fff5f4; }
@@ -24,11 +24,19 @@
   .record input[type=text] { font: inherit; width: 100%; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; }
   .record label { font-size: 13px; color: var(--muted); display: block; margin: 4px 0 2px; }
   .record .row { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
-  #verify { position: fixed; inset: 0; background: rgba(31, 36, 48, .45); display: none; align-items: center; justify-content: center; z-index: 10; }
-  #verify.on { display: flex; }
-  #verify .box { background: #fff; border-radius: 12px; padding: 16px 18px; width: min(720px, 92vw); display: flex; flex-direction: column; gap: 8px; }
-  #verify textarea { height: 300px; font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace; }
-  #verify .result { font-weight: 600; }
+  .dialog { position: fixed; inset: 0; background: rgba(31, 36, 48, .45); display: none; align-items: center; justify-content: center; z-index: 10; }
+  .dialog.on { display: flex; }
+  .dialog .box { background: #fff; border-radius: 12px; padding: 16px 18px; width: min(640px, 92vw); max-height: 90vh; overflow: auto; display: flex; flex-direction: column; gap: 8px; }
+  .dialog input { font: inherit; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; }
+  .dialog .result { font-weight: 600; }
+  .dialog p { margin: 0 0 6px; }
+  .case { border-left: 4px solid #c23b33; background: #fff6f5; border-radius: 8px; padding: 8px 12px; margin: 6px 0; font-size: 14px; }
+  .case p { margin: 0 0 6px; }
+  .case p:last-child { margin-bottom: 0; }
+  .case-h { font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: #9e2a24; font-weight: 700; margin-bottom: 4px; }
+  .record textarea { height: 170px; }
+  .record .code { margin-top: 6px; font-size: 15px; }
+  .record .warn { color: #8a4b0f; background: #fff3d6; border-radius: 8px; padding: 6px 10px; margin: 8px 0 0; font-size: 14px; }
   #stage [tabindex]:focus { outline: none; }
   #stage [tabindex]:focus-visible { outline: 3px solid #f0b429; }
   #trace-head { flex-wrap: wrap; row-gap: 2px; }
@@ -45,6 +53,7 @@
   <nav id="progress" aria-label="Scenes"></nav>
   <div class="spacer"></div>
   <a class="home" href="../">All models</a>
+  <button id="btn-case" type="button" title="Reopen the patient case">Dana's case</button>
   <label class="sub">Speed
     <select id="speed" title="How much simulated time passes per second of real time">
       <option value="0.1">10 % of real time</option>
@@ -80,13 +89,21 @@
     <canvas id="trace" role="img" aria-label="Live traces of heart pressures and left-ventricle volume"></canvas>
   </div>
 </main>
-<div id="verify" role="dialog" aria-modal="true" aria-labelledby="verify-title">
+<div id="verify" class="dialog" role="dialog" aria-modal="true" aria-labelledby="verify-title">
   <div class="box">
-    <h2 id="verify-title" style="margin:0;font-size:16px">Check a lab record (instructor)</h2>
-    <p style="margin:0;font-size:14px;color:var(--muted)">Paste a student's whole lab record, including the line with the check code. The code is recomputed from the text above it, so an edited record will not match.</p>
-    <textarea id="verify-text" aria-label="Lab record"></textarea>
+    <h2 id="verify-title" style="margin:0;font-size:16px">Check a completion code (instructor)</h2>
+    <p style="margin:0;font-size:14px;color:var(--muted)">Type the student's name as they entered it and the code from their worksheet. Capitals and extra spaces in the name do not matter.</p>
+    <label class="sub" for="verify-name">Student's name</label><input type="text" id="verify-name">
+    <label class="sub" for="verify-code">Completion code</label><input type="text" id="verify-code" placeholder="A-XXXXX-XXXXX">
     <div class="result" id="verify-result" role="status"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" id="verify-close">Close</button><button type="button" class="primary" id="verify-check">Check</button></div>
+  </div>
+</div>
+<div id="case" class="dialog" role="dialog" aria-modal="true" aria-labelledby="case-title">
+  <div class="box">
+    <h2 id="case-title" style="margin:0;font-size:16px">Dana's case</h2>
+    <div id="case-body" style="font-size:15px"></div>
+    <div style="display:flex;justify-content:flex-end"><button type="button" class="primary" id="case-close">Close</button></div>
   </div>
 </div>
 <script src="../lib/lesson.js"></script>

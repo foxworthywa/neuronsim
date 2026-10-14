@@ -1,6 +1,6 @@
 # HEART_MODULE.md — heart and circulation
 
-**Status:** Part A (scenes 1–5) is built: `heart/` (engine, app), `lib/` (shared lesson runner),
+**Status:** Part A (six scenes; see "Part A as built") is built: `heart/` (engine, app), `lib/` (shared lesson runner),
 `tests/heart.test.js`. Parts B and C, the lab and the case mode are still design.
 
 The second module, aimed at BIO 142 (A&P II), especially the online-only sections. It follows
@@ -316,6 +316,22 @@ Each milestone is usable in a course on its own.
 5. **Sound:** heart sounds on by default, with a toggle and a visual twin on the traces.
 
 ## Part A as built (differences from the plan above)
+
+- **A new first scene, "The real heart"** (instructor feedback: the box diagram alone does not
+  look like a heart). A beating frontal section (lungs either side, great vessels; the person's
+  left on the viewer's right) whose four valves open and shut from the model and whose chambers
+  swell with model volumes. Students answer an orientation question, then find the four chambers
+  and four valves from functional descriptions, then compare how the valves move.
+- **Scene 2 follows the red blood cell through the real heart**, then a "Simplify into a
+  diagram" button morphs the anatomy into the box diagram (chambers slide and stretch into their
+  boxes; the student can switch back and forth). The box diagram now shows each atrium sitting
+  on its ventricle with the AV valve between them, and semilunar valves at the outflows.
+- **Scene 3 opens by straightening the left side out of the real heart** (right side fades,
+  LA/LV slide into a line and cross-fade into the line diagram), then a "How to read this
+  picture" step with six numbered markers (chamber size = volume, muscle wall, valves, flow dots,
+  pressure bars, the valve rule). The line view keeps a small real-heart inset in its corner.
+- Steps the student has completed stay completed when revisited with Back, and one-beat steps
+  start a fresh beat if the one they wait on has ended, so no step can deadlock.
 
 - Scene 1 traces the loop in 8 clicks (RA → RV → pulmonary trunk → lungs → pulmonary veins → LA →
   LV → aorta); a token changes colour in the lungs. A third question (why the LV wall is thicker)

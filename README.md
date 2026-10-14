@@ -38,20 +38,24 @@ docs/                 PRODUCT, PEDAGOGY, BIOLOGY, VISUAL_STYLE, NEURON_MODULE, H
 assignments/          Canvas assignment text (student-facing; answer keys are kept out of this public repo)
 ```
 
-## HeartSim Part A: the heart as a pump (~35 min)
+## HeartSim Part A: the heart as a pump (~40–45 min)
 
-Five scenes, each **predict → observe → explain**:
+Six scenes, each **predict → observe → explain**:
 
-1. **Two pumps, one loop.** Follow a red blood cell around the circulation; arteries vs. veins;
-   both sides pump the same volume, against very different pressures.
-2. **Pressure moves blood.** The heartbeat is off and the student squeezes the ventricle by hand,
-   discovering that pressure alone opens and shuts the valves. Isovolumetric phases; the aorta
-   draining between beats.
-3. **Building the cardiac cycle.** One beat at a time, pausing at each valve event; heart sounds
+1. **The real heart.** A beating frontal section (its four valves driven by the model): orient
+   (whose left?), then find the chambers and valves by their function.
+2. **Two pumps, one loop.** Follow a red blood cell through the real heart, lungs and body; then
+   watch the anatomy slide apart into the box diagram (and back) to see that it is the same
+   heart. Arteries vs. veins; both sides pump the same volume, against very different pressures.
+3. **Pressure moves blood.** The left side is straightened out of the real heart into a line
+   (a small inset keeps showing where it came from), with a guided key to reading it. The
+   heartbeat is off and the student squeezes the ventricle by hand, discovering that pressure
+   alone opens and shuts the valves.
+4. **Building the cardiac cycle.** One beat at a time, pausing at each valve event; heart sounds
    S1/S2 are heard when the model's valves shut; the four phases.
-4. **How much per beat?** The pressure–volume loop: identify its sides, measure stroke volume
+5. **How much per beat?** The pressure–volume loop: identify its sides, measure stroke volume
    and ejection fraction.
-5. **More in, more out.** Preload (IV fluid), afterload (constricted arterioles), and a heart
+6. **More in, more out.** Preload (IV fluid), afterload (constricted arterioles), and a heart
    attack weakening the left ventricle: blood dams in the lungs until Frank–Starling rebalances
    the two sides.
 

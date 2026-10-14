@@ -1,0 +1,2060 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HeartSim — The heart as a pump</title>
+<style>
+/* Shared base styles for the models (layout: stage + side panel + trace strip). See docs/VISUAL_STYLE.md. */
+:root {
+  --bg: #f6f5f0;
+  --panel: #ffffff;
+  --ink: #1f2430;
+  --muted: #5f6675;
+  --line: #d9d6cc;
+  --accent: #2f6fd6;
+  --accent-ink: #ffffff;
+  --good: #2f9e5b;
+  --bad: #d24b3f;
+  --warn: #c98a1b;
+  --na: #e8772e;
+  --k: #8e5cf0;
+  --cl: #3cae6c;
+  --ca: #2d8fd5;
+  --anion: #8f97a6;
+  --nt: #d63c8a;
+  --membrane: #2a2f3a;
+  --outside: #f2f5fb;
+  --inside: #fbf3e6;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+}
+header {
+  display: flex; align-items: center; gap: 14px; padding: 8px 16px;
+  background: var(--panel); border-bottom: 1px solid var(--line);
+}
+header h1 { font-size: 17px; margin: 0; font-weight: 650; letter-spacing: .2px; }
+header .sub { color: var(--muted); font-size: 13px; }
+header .spacer { flex: 1; }
+header button, .panel button, .actions button, .lab button {
+  font: inherit; font-size: 14px; padding: 6px 12px; border-radius: 8px;
+  border: 1px solid var(--line); background: #fff; color: var(--ink); cursor: pointer;
+}
+header button:hover, .panel button:hover, .actions button:hover, .lab button:hover { border-color: #b8b4a6; background: #faf9f5; }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button.primary:hover { background: #2a62bd; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+header select { font: inherit; font-size: 13px; padding: 4px 6px; border-radius: 6px; border: 1px solid var(--line); background: #fff; }
+#progress { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+#progress button {
+  width: 26px; height: 26px; padding: 0; border-radius: 50%; font-size: 12px; color: var(--muted);
+  border: 1px solid var(--line); background: #fff;
+}
+#progress button.done { background: #e2ecfb; border-color: #b9cdf0; color: #2f4f86; }
+#progress button.current { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 380px; grid-template-rows: minmax(0, 1fr) auto; gap: 10px; padding: 10px 16px 14px; }
+#stage-wrap { grid-column: 1; grid-row: 1; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; position: relative; overflow: hidden; min-height: 420px; display: flex; flex-direction: column; }
+#stage-top { display: flex; align-items: center; gap: 10px; padding: 6px 12px 4px; }
+#stage { flex: 1; min-height: 0; width: 100%; display: block; background: var(--bg); }
+#stage svg { width: 100%; height: 100%; display: block; }
+#stage-caption { flex: 1; font-size: 13px; color: var(--muted); }
+#vm-badge { font-size: 13px; font-variant-numeric: tabular-nums; background: #fff; border: 1px solid var(--line); padding: 3px 10px; border-radius: 8px; white-space: nowrap; }
+#vm-badge b { font-size: 16px; }
+#narrator { margin: 4px 10px 10px; font-size: 14px; line-height: 1.35; background: #fbfaf6; border: 1px solid var(--line); border-left: 4px solid var(--accent); padding: 7px 12px; border-radius: 8px; min-height: 44px; color: var(--ink); }
+#narrator:empty { visibility: hidden; }
+#narrator b { font-weight: 650; }
+#narrator .dir { font-weight: 700; letter-spacing: .3px; }
+#paused-badge { position: absolute; left: 50%; bottom: 70px; transform: translateX(-50%); font-size: 12px; background: #fff3d6; border: 1px solid #ecd9a6; color: #7a5a10; padding: 3px 10px; border-radius: 999px; display: none; }
+
+#panel { grid-column: 2; grid-row: 1 / span 2; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
+#panel h2 { margin: 0; font-size: 16px; }
+#panel .scene-label { font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); }
+#panel .text p { margin: 0 0 8px; }
+#panel .text p:last-child { margin-bottom: 0; }
+.question { border: 1px solid #cfdcf3; background: #f3f7fe; border-radius: 10px; padding: 10px 12px; }
+.question .prompt { font-weight: 600; margin-bottom: 8px; }
+.question .options { display: flex; flex-direction: column; gap: 6px; }
+.question .options button { text-align: left; }
+.question .options button.correct { border-color: var(--good); background: #eaf7ee; }
+.question .options button.wrong { border-color: var(--bad); background: #fdeeec; }
+.feedback { margin-top: 8px; padding: 8px 10px; border-radius: 8px; font-size: 14px; }
+.feedback.good { background: #eaf7ee; border: 1px solid #bfe3ca; }
+.feedback.bad { background: #fdeeec; border: 1px solid #f0c3bd; }
+.actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.actions button.na { border-color: var(--na); color: #a04d12; }
+.actions button.k { border-color: var(--k); color: #5b39a8; }
+.actions button.cl { border-color: var(--cl); color: #23724a; }
+.actions button.ca { border-color: var(--ca); color: #1c5f92; }
+.actions button.held { background: #fff1e6; }
+.status { font-size: 13px; color: var(--muted); }
+.status.ok { color: var(--good); }
+.nav { margin-top: auto; display: flex; gap: 8px; justify-content: space-between; align-items: center; padding-top: 8px; border-top: 1px solid var(--line); }
+.hint { font-size: 13px; color: var(--muted); }
+.ion { display: inline-block; padding: 0 5px; border-radius: 999px; color: #fff; font-size: 12px; font-weight: 600; }
+.ion.na { background: var(--na); } .ion.k { background: var(--k); } .ion.cl { background: var(--cl); } .ion.ca { background: var(--ca); } .ion.nt { background: var(--nt); }
+kbd.part { background: #eef0f4; border: 1px solid #d6dae2; border-radius: 4px; padding: 0 5px; font: inherit; font-size: 13px; }
+
+#trace-wrap { grid-column: 1; grid-row: 2; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px 6px; }
+#trace-head { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+#trace-head label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+#trace { width: 100%; height: 200px; display: block; }
+#trace.with-g { height: 250px; }
+.legend { display: inline-flex; gap: 10px; align-items: center; }
+.legend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 4px; }
+
+.lab { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.lab .row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.lab .row label { flex: 1; }
+.lab .row input[type=range] { flex: 2; }
+.lab .row .val { width: 62px; text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+.lab h3 { margin: 6px 0 0; font-size: 13px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
+
+.loop-diagram { display: flex; flex-direction: column; gap: 4px; align-items: stretch; font-size: 13px; }
+.loop-diagram .node { padding: 5px 8px; border-radius: 8px; border: 1px solid var(--line); background: #fafaf7; text-align: center; transition: background .2s, border-color .2s; }
+.loop-diagram .node.hot { background: #fff1e6; border-color: var(--na); font-weight: 600; }
+.loop-diagram .arrow { text-align: center; color: var(--muted); line-height: 1; }
+
+@media (max-height: 640px) {
+  body { height: auto; min-height: 100vh; overflow: auto; }
+  main { display: flex; flex-direction: column; }
+  #stage-wrap { min-height: 420px; }
+}
+@media (max-width: 980px) {
+  body { height: auto; min-height: 100vh; overflow: auto; }
+  main { grid-template-columns: 1fr; grid-template-rows: auto auto auto; }
+  #stage-wrap { grid-column: 1; grid-row: 1; min-height: 340px; }
+  #trace-wrap { grid-column: 1; grid-row: 2; }
+  #panel { grid-column: 1; grid-row: 3; }
+}
+
+/* --- additions used by the shared lesson runner (lib/lesson.js) ---------------------------- */
+:focus-visible { outline: 3px solid #f0b429; outline-offset: 2px; }
+/* answered questions stay readable: only the chosen answer keeps its colour */
+.question .options button:disabled { opacity: 1; color: var(--muted); background: #f7f7f4; }
+.question .options button.correct:disabled { color: var(--ink); background: #eaf7ee; border-color: var(--good); }
+.numrow { display: flex; gap: 6px; align-items: center; }
+.numrow input { font: inherit; width: 110px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; }
+.numrow .unit { color: var(--muted); }
+.actions button.blood { border-color: #c23b33; color: #8f2620; }
+.actions button.blood.held { background: #fdecea; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }
+header a.home { color: var(--muted); font-size: 13px; text-decoration: none; }
+header a.home:hover { text-decoration: underline; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+@media (max-width: 700px) {
+  header { flex-wrap: wrap; gap: 6px 10px; padding: 8px 12px; }
+  header .spacer { display: none; }
+  #progress { order: 3; width: 100%; }
+  main { padding: 8px 10px 12px; }
+  #stage-wrap { min-height: 300px; }
+}
+
+</style>
+<style>
+  :root {
+    --o2rich: #d23c35;     /* oxygen-rich blood */
+    --o2poor: #7b2d5b;     /* oxygen-poor blood: dark plum, never blue (blue is Ca²⁺) */
+    --muscle: #c98b7c;
+    --muscle-dark: #8c4a3e;
+  }
+  #trace { height: 250px; }
+  #meters { position: absolute; left: 12px; top: 44px; display: none; gap: 8px; flex-wrap: wrap; max-width: 60%; }
+  #meters.on { display: flex; }
+  #meters .m { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 4px 9px; font-size: 12px; color: var(--muted); }
+  #meters .m b { display: block; font-size: 16px; color: var(--ink); font-variant-numeric: tabular-nums; }
+  #meters .m.hot { border-color: var(--o2rich); background: #fff5f4; }
+  #vm-badge { min-width: 150px; text-align: center; }
+  .record textarea { width: 100%; height: 220px; font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; border: 1px solid var(--line); border-radius: 8px; padding: 8px; resize: vertical; }
+  .record input[type=text] { font: inherit; width: 100%; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; }
+  .record label { font-size: 13px; color: var(--muted); display: block; margin: 4px 0 2px; }
+  .record .row { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+  #verify { position: fixed; inset: 0; background: rgba(31, 36, 48, .45); display: none; align-items: center; justify-content: center; z-index: 10; }
+  #verify.on { display: flex; }
+  #verify .box { background: #fff; border-radius: 12px; padding: 16px 18px; width: min(720px, 92vw); display: flex; flex-direction: column; gap: 8px; }
+  #verify textarea { height: 300px; font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace; }
+  #verify .result { font-weight: 600; }
+  #stage [tabindex]:focus { outline: none; }
+  #stage [tabindex]:focus-visible { outline: 3px solid #f0b429; }
+  #trace-head { flex-wrap: wrap; row-gap: 2px; }
+  #trace-head .legend { flex-wrap: wrap; font-size: 12px; gap: 8px; }
+  .phase-key { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; margin-right: 3px; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>HeartSim</h1>
+    <div class="sub">Part A · The heart as a pump</div>
+  </div>
+  <nav id="progress" aria-label="Scenes"></nav>
+  <div class="spacer"></div>
+  <a class="home" href="index.html">All models</a>
+  <label class="sub">Speed
+    <select id="speed" title="How much simulated time passes per second of real time">
+      <option value="0.1">10 % of real time</option>
+      <option value="0.2">20 %</option>
+      <option value="0.25" selected>25 %</option>
+      <option value="0.5">50 %</option>
+      <option value="1">real time</option>
+    </select>
+  </label>
+  <button id="btn-sound" type="button" aria-pressed="true" title="Heart sounds on/off">Sound: on</button>
+  <button id="btn-pause" type="button" title="Pause / resume the simulation clock (P)">Pause</button>
+</header>
+<main>
+  <div id="stage-wrap">
+    <div id="stage-top">
+      <div id="stage-caption"></div>
+      <div id="vm-badge" aria-live="off"><span id="badge-label">Heart</span> <b id="badge-value">—</b></div>
+    </div>
+    <div id="stage"></div>
+    <div id="meters" aria-live="off"></div>
+    <div id="paused-badge">Paused — predict first, then continue</div>
+    <div id="narrator" aria-live="off"></div>
+    <div id="sr-live" class="sr-only" aria-live="polite"></div>
+  </div>
+  <aside id="panel" aria-label="Lesson"></aside>
+  <div id="trace-wrap">
+    <div id="trace-head">
+      <span id="trace-title">Pressures and volume</span>
+      <span class="legend" id="trace-legend"></span>
+      <span style="flex:1"></span>
+      <span id="sim-clock" style="font-variant-numeric: tabular-nums">t = 0.00 s</span>
+    </div>
+    <canvas id="trace" role="img" aria-label="Live traces of heart pressures and left-ventricle volume"></canvas>
+  </div>
+</main>
+<div id="verify" role="dialog" aria-modal="true" aria-labelledby="verify-title">
+  <div class="box">
+    <h2 id="verify-title" style="margin:0;font-size:16px">Check a lab record (instructor)</h2>
+    <p style="margin:0;font-size:14px;color:var(--muted)">Paste a student's whole lab record, including the line with the check code. The code is recomputed from the text above it, so an edited record will not match.</p>
+    <textarea id="verify-text" aria-label="Lab record"></textarea>
+    <div class="result" id="verify-result" role="status"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" id="verify-close">Close</button><button type="button" class="primary" id="verify-check">Check</button></div>
+  </div>
+</div>
+<script>
+/*
+ * Lesson runner shared by the models (see docs/PEDAGOGY.md).
+ *
+ * A lesson is a list of scenes; each scene a list of steps. A step can show text, ask a question
+ * (multiple choice with targeted feedback, or a number read off the model), offer actions
+ * (click or hold), and wait for an activity to be done in the simulation. Continue is enabled only
+ * when the question is answered correctly and the activity is done.
+ *
+ * The runner also keeps a record of what the student did: their first answer to every question
+ * (their prediction), how many tries it took, and values they measured. Models turn that into a
+ * lab record for the LMS.
+ *
+ * Stage, traces and simulation belong to each model; the model passes a `host` with
+ * applyStep(), which the runner calls whenever a step is entered.
+ */
+(function (root) {
+  'use strict';
+
+  function htmlEl(tag, attrs, html) {
+    const e = document.createElement(tag);
+    if (attrs) for (const k in attrs) {
+      if (attrs[k] == null) continue;
+      if (k === 'class') e.className = attrs[k]; else e.setAttribute(k, attrs[k]);
+    }
+    if (html != null) e.innerHTML = html;
+    return e;
+  }
+
+  // A button that acts while held: pointer, or Space/Enter on the keyboard.
+  function makeHoldButton(b, down, up) {
+    let held = false;
+    const start = (e) => { if (held) return; held = true; if (e) e.preventDefault(); b.classList.add('held'); down(); };
+    const stop = () => { if (!held) return; held = false; b.classList.remove('held'); up(); };
+    b.addEventListener('pointerdown', start);
+    b.addEventListener('pointerup', stop); b.addEventListener('pointerleave', stop); b.addEventListener('pointercancel', stop);
+    b.addEventListener('keydown', (e) => { if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat) start(e); });
+    b.addEventListener('keyup', (e) => { if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); stop(); } });
+    b.addEventListener('blur', stop);
+    b.addEventListener('click', (e) => e.preventDefault());
+  }
+
+  function createRunner(opts) {
+    const { lesson, panel, progress, host } = opts;
+    const inheritKeys = opts.inheritKeys || ['view', 'viewOpts', 'speed'];
+    const runner = {
+      scene: 0, step: 0, state: null, freeMode: false,
+      record: { started: new Date(), answers: {}, values: {}, notes: [], visited: new Set() },
+    };
+
+    const ctx = Object.assign({
+      complete() { if (runner.state && !runner.state.done) { runner.state.done = true; refreshNav(); } },
+      status(msg, ok) { const s = panel.querySelector('.status'); if (s) { s.innerHTML = msg; s.classList.toggle('ok', !!ok); } },
+      next() { goto(runner.scene, runner.step + 1); },
+      refresh() { renderPanel(); },
+      stepState: () => runner.state,
+      recordValue(key, value) { runner.record.values[key] = value; },
+      note(text) { runner.record.notes.push(text); },
+      record: runner.record,
+    }, host.ctx || {});
+
+    function currentStep() { return lesson[runner.scene].steps[runner.step]; }
+    function stepKey(si, ki) { return `${lesson[si].id}.${ki}`; }
+
+    function goto(si, ki) {
+      if (si >= lesson.length) si = lesson.length - 1;
+      if (ki >= lesson[si].steps.length) { if (si + 1 < lesson.length) { si++; ki = 0; } else ki = lesson[si].steps.length - 1; }
+      if (ki < 0) { if (si > 0) { si--; ki = lesson[si].steps.length - 1; } else ki = 0; }
+      runner.freeMode = false;
+      const sceneChanged = si !== runner.scene || runner.state == null;
+      runner.scene = si; runner.step = ki;
+      runner.record.visited.add(stepKey(si, ki));
+      const scene = lesson[si], step = scene.steps[ki];
+      runner.state = { done: !step.waitFor, answered: !step.question, attempts: 0, data: {} };
+      // Steps inherit view settings from earlier steps of the same scene, so jumping into the
+      // middle of a scene (or stepping back into it) shows the right picture.
+      const eff = {};
+      for (let j = 0; j <= ki; j++) for (const k of inheritKeys) if (scene.steps[j][k] != null) eff[k] = scene.steps[j][k];
+      if (eff.speed == null && scene.speed != null) eff.speed = scene.speed;
+      host.applyStep({ scene, step, eff, sceneChanged, si, ki });
+      if (step.enter) step.enter(ctx);
+      renderPanel();
+      renderProgress();
+    }
+
+    function renderProgress() {
+      if (!progress) return;
+      progress.innerHTML = '';
+      lesson.forEach((s, i) => {
+        const b = htmlEl('button', { title: s.title, 'aria-label': `Scene ${i + 1}: ${s.title}` }, String(i + 1));
+        b.className = runner.freeMode ? '' : (i < runner.scene ? 'done' : i === runner.scene ? 'current' : '');
+        if (i === runner.scene && !runner.freeMode) b.setAttribute('aria-current', 'step');
+        b.addEventListener('click', () => goto(i, 0));
+        progress.appendChild(b);
+      });
+    }
+
+    function renderPanel() {
+      const scene = lesson[runner.scene], step = currentStep(), st = runner.state;
+      panel.innerHTML = '';
+      panel.appendChild(htmlEl('div', { class: 'scene-label' }, `${opts.partLabel ? opts.partLabel + ' · ' : ''}Scene ${runner.scene + 1} of ${lesson.length} · ${scene.title}`));
+      panel.appendChild(htmlEl('h2', {}, step.title || scene.title));
+      const text = typeof step.text === 'function' ? step.text(ctx) : step.text;
+      if (text) panel.appendChild(htmlEl('div', { class: 'text' }, text));
+      if (step.question) panel.appendChild(renderQuestion(step.question, st));
+      if (step.actions && step.actions.length) {
+        const a = htmlEl('div', { class: 'actions' });
+        for (const act of step.actions) {
+          const b = htmlEl('button', { class: act.cls || '', type: 'button' }, act.label);
+          if (act.hold) makeHoldButton(b, () => act.down(ctx), () => act.up(ctx));
+          else b.addEventListener('click', () => { act.run(ctx); });
+          if (act.disabled && act.disabled(ctx)) b.disabled = true;
+          a.appendChild(b);
+        }
+        panel.appendChild(a);
+      }
+      panel.appendChild(htmlEl('div', { class: 'status', role: 'status' }, step.status ? (typeof step.status === 'function' ? step.status(ctx) : step.status) : ''));
+      if (step.extra) { const ex = htmlEl('div', { class: 'extra' }); step.extra(ex, ctx); panel.appendChild(ex); }
+      const nav = htmlEl('div', { class: 'nav' });
+      const back = htmlEl('button', { type: 'button' }, '← Back');
+      back.addEventListener('click', () => goto(runner.scene, runner.step - 1));
+      if (runner.scene === 0 && runner.step === 0) back.disabled = true;
+      const hint = htmlEl('span', { class: 'hint' }, '');
+      const last = runner.scene === lesson.length - 1 && runner.step === scene.steps.length - 1;
+      const cont = htmlEl('button', { class: 'primary', id: 'btn-continue', type: 'button' }, step.continueLabel || 'Continue →');
+      cont.addEventListener('click', () => {
+        if (step.onContinue) step.onContinue(ctx);
+        if (step.continueTo) step.continueTo(ctx); else if (!last) goto(runner.scene, runner.step + 1);
+      });
+      if (last && !step.continueTo) cont.style.display = 'none';
+      nav.appendChild(back); nav.appendChild(hint); nav.appendChild(cont);
+      panel.appendChild(nav);
+      refreshNav();
+    }
+
+    function refreshNav() {
+      const st = runner.state, step = currentStep(), b = panel.querySelector('#btn-continue'), hint = panel.querySelector('.nav .hint');
+      if (!b || !st) return;
+      const ok = st.answered && st.done;
+      b.disabled = !ok;
+      if (hint) hint.textContent = ok ? '' : (!st.answered ? 'Answer the question to continue' : (step.waitHint || 'Complete the activity to continue'));
+    }
+
+    // Records the student's first answer (their prediction) and how many tries it took.
+    function noteAnswer(q, given, correct) {
+      const key = stepKey(runner.scene, runner.step);
+      let r = runner.record.answers[key];
+      if (!r) r = runner.record.answers[key] = { scene: runner.scene + 1, prompt: stripHtml(q.prompt), first: given, firstCorrect: correct, attempts: 0, done: false };
+      if (!r.done) { r.attempts++; if (correct) { r.done = true; r.final = given; } }
+    }
+
+    function renderQuestion(q, st) {
+      const box = htmlEl('div', { class: 'question' });
+      const promptId = 'q-' + Math.random().toString(36).slice(2, 8);
+      box.appendChild(htmlEl('div', { class: 'prompt', id: promptId }, q.prompt));
+      const fb = htmlEl('div', { class: 'feedback', style: 'display:none', role: 'status' });
+      const prior = runner.record.answers[stepKey(runner.scene, runner.step)];
+      if (q.type === 'number') {
+        const row = htmlEl('div', { class: 'numrow' });
+        const inp = htmlEl('input', { type: 'number', inputmode: 'decimal', step: 'any', 'aria-labelledby': promptId });
+        const unit = htmlEl('span', { class: 'unit' }, q.unit || '');
+        const check = htmlEl('button', { type: 'button' }, 'Check');
+        const submit = () => {
+          const v = parseFloat(inp.value);
+          if (!isFinite(v)) { fb.className = 'feedback bad'; fb.innerHTML = 'Type a number first.'; fb.style.display = 'block'; return; }
+          st.attempts++;
+          const target = q.answer(ctx), tol = typeof q.tol === 'function' ? q.tol(ctx) : q.tol;
+          const ok = Math.abs(v - target) <= tol;
+          noteAnswer(q, `${v} ${q.unit || ''}`.trim(), ok);
+          if (q.recordAs) ctx.recordValue(q.recordAs, { entered: v, model: target });
+          if (ok) {
+            fb.className = 'feedback good'; fb.innerHTML = '<b>Right.</b> ' + (typeof q.explain === 'function' ? q.explain(ctx, v) : (q.explain || ''));
+            inp.disabled = true; check.disabled = true; st.answered = true;
+            if (q.onCorrect) q.onCorrect(ctx, v);
+            refreshNav();
+          } else {
+            fb.className = 'feedback bad'; fb.innerHTML = '<b>Not quite.</b> ' + (q.hint ? q.hint(ctx, v, target) : 'Read the value again from the graph.');
+          }
+          fb.style.display = 'block';
+        };
+        check.addEventListener('click', submit);
+        inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
+        row.appendChild(inp); row.appendChild(unit); row.appendChild(check);
+        box.appendChild(row); box.appendChild(fb);
+        if (prior && prior.done) { inp.value = parseFloat(prior.final); inp.disabled = true; check.disabled = true; st.answered = true; fb.className = 'feedback good'; fb.innerHTML = '<b>Answered.</b>'; fb.style.display = 'block'; }
+        return box;
+      }
+      const opts = htmlEl('div', { class: 'options', role: 'group', 'aria-labelledby': promptId });
+      q.options.forEach((o) => {
+        const b = htmlEl('button', { type: 'button' }, o.t);
+        b.addEventListener('click', () => {
+          st.attempts++;
+          noteAnswer(q, stripHtml(o.t), !!o.ok);
+          Array.from(opts.children).forEach(c => c.classList.remove('wrong'));
+          if (o.ok) {
+            b.classList.add('correct');
+            Array.from(opts.children).forEach(c => { c.disabled = true; });
+            fb.className = 'feedback good'; fb.innerHTML = '<b>Right.</b> ' + (o.fb || q.explain || '');
+            st.answered = true;
+            if (q.onCorrect) q.onCorrect(ctx);
+            refreshNav();
+          } else {
+            b.classList.add('wrong');
+            fb.className = 'feedback bad'; fb.innerHTML = '<b>Not quite.</b> ' + (o.fb || '');
+          }
+          fb.style.display = 'block';
+        });
+        opts.appendChild(b);
+      });
+      box.appendChild(opts); box.appendChild(fb);
+      if (prior && prior.done) {
+        st.answered = true;
+        Array.from(opts.children).forEach(c => { c.disabled = true; if (stripHtml(c.innerHTML) === prior.final) c.classList.add('correct'); });
+        const right = q.options.find(o => o.ok);
+        fb.className = 'feedback good'; fb.innerHTML = '<b>Right.</b> ' + ((right && right.fb) || q.explain || ''); fb.style.display = 'block';
+      }
+      return box;
+    }
+
+    // Called every animation frame by the model with the simulation events since the last frame.
+    function tick(events, dtSim) {
+      if (runner.freeMode || !runner.state) return;
+      const step = currentStep();
+      if (step.tick) step.tick(ctx, events, dtSim);
+      if (step.waitFor && !runner.state.done && step.waitFor(ctx, events)) {
+        runner.state.done = true;
+        if (step.onDone) step.onDone(ctx);
+        refreshNav();
+      }
+      if (typeof step.status === 'function') {
+        const s = panel.querySelector('.status');
+        if (s) { const html = step.status(ctx); if (s.innerHTML !== html) s.innerHTML = html; }
+      }
+    }
+
+    function enterFreeMode() { runner.freeMode = true; renderProgress(); }
+
+    return { goto, tick, ctx, runner, currentStep, refreshNav, renderPanel, renderProgress, enterFreeMode };
+  }
+
+  function stripHtml(s) { return String(s).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim(); }
+
+  // Short check code over the text of a lab record (FNV-1a). It deters casual editing of a pasted
+  // record; it is not security.
+  function checkCode(text, salt) {
+    let h1 = 0x811c9dc5, h2 = 0x01000193 ^ 0x5bd1e995;
+    const s = (salt || '') + '|' + text.replace(/\r\n/g, '\n').trim();
+    for (let i = 0; i < s.length; i++) {
+      const c = s.charCodeAt(i);
+      h1 = Math.imul(h1 ^ c, 0x01000193) >>> 0;
+      h2 = Math.imul(h2 ^ c, 0x5bd1e995) >>> 0;
+    }
+    const a = h1.toString(36).toUpperCase().padStart(7, '0').slice(-5), b = h2.toString(36).toUpperCase().padStart(7, '0').slice(-5);
+    return `${a}-${b}`;
+  }
+
+  root.Lesson = { createRunner, htmlEl, makeHoldButton, stripHtml, checkCode };
+})(typeof self !== 'undefined' ? self : this);
+
+</script>
+<script>
+/*
+ * HeartSim engine — a closed-loop, lumped model of the heart and circulation.
+ *
+ * Everything the student sees (valves opening, chambers filling and emptying, the pressure and
+ * volume traces, the PV loop) is rendered from the state held here. Nothing in the UI sets a
+ * pressure or opens a valve directly; valves move only because of the pressures across them.
+ *
+ * Structure (see docs/HEART_MODULE.md):
+ *   systemic veins → RA → tricuspid → RV → pulmonary valve → pulmonary arteries → lungs
+ *   → pulmonary veins → LA → bicuspid (mitral) → LV → aortic valve → systemic arteries → body → …
+ *
+ * - Chambers are time-varying elastances: P = E(t)·(V − V₀), E(t) = Emin + (Emax − Emin)·e(t),
+ *   where e(t) ∈ [0, 1] is the activation (how hard the muscle is squeezing). The relaxed
+ *   ventricles instead follow an exponential pressure–volume curve (A, B), so an over-filled
+ *   ventricle stiffens and blood backs up into the veins and lungs behind it.
+ * - Vessels are compliances with an unstressed volume: P = (V − Vu) / C.
+ * - AV valves (tricuspid, bicuspid) are one-way resistances. Semilunar valves (aortic, pulmonary)
+ *   also have inertance and close only after a small backflow, which produces the incisura
+ *   (dicrotic notch) in aortic pressure. Characteristic impedance Zc makes the aortic-root
+ *   pressure differ from the arterial compliance pressure while blood is moving.
+ * - Volume is conserved exactly except for explicit infuse() / hemorrhage().
+ *
+ * Milestone M1: activation comes from a simple clock (sinus), a button (single beat) or the
+ * student's own squeeze (manual). In M2 the clock is replaced by the pacemaker and conduction
+ * cell models, with the same activation interface.
+ *
+ * Units: time ms in the API (seconds inside the integrator), pressure mmHg, volume mL,
+ * flow mL/s, elastance mmHg/mL, compliance mL/mmHg, resistance mmHg·s/mL, inertance mmHg·s²/mL.
+ *
+ * Works both as a browser global (window.HeartSim) and as a CommonJS module, so the tests in
+ * tests/ run against exactly the same code as the page.
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.HeartSim = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  const H = 0.05; // integration step, ms
+
+  // ---------------------------------------------------------------------------
+  // Default physiology: healthy adult, supine, at rest (targets in docs/HEART_MODULE.md)
+  // ---------------------------------------------------------------------------
+  function defaultParams() {
+    return {
+      hr: 75,             // beats per minute (sinus clock)
+      pr: 160,            // ms from atrial to ventricular depolarization (stands in for AV conduction until M2)
+      atrialDelay: 105,    // ms from atrial depolarization (the beat) to atrial contraction
+      emd: 30,            // ms from ventricular depolarization to contraction (electromechanical delay)
+      aRise: 85, aFall: 140, // ms; atrial contraction and relaxation
+      chambers: {
+        LA: { Emax: 0.55, Emin: 0.15, V0: 4 },
+        LV: { Emax: 2.9,  Emin: 0.075, V0: 10, A: 0.82, B: 0.022 },
+        RA: { Emax: 0.35, Emin: 0.10, V0: 4 },
+        RV: { Emax: 0.7,  Emin: 0.045, V0: 10, A: 0.5,  B: 0.022 },
+      },
+      vessels: {
+        sysArt: { C: 2.1,  Vu: 620 },
+        sysVen: { C: 75,   Vu: 3110 },
+        pulArt: { C: 3.8,  Vu: 100 },
+        pulVen: { C: 12,   Vu: 220 },
+      },
+      R: {
+        sys: 1.0,         // total peripheral resistance (arterioles)
+        ven: 0.025,       // systemic veins → RA
+        pul: 0.075,       // pulmonary vascular resistance
+        pulVen: 0.01,     // pulmonary veins → LA
+      },
+      valves: {
+        tricuspid: { R: 0.004, Rback: Infinity, K: 0 },
+        mitral:    { R: 0.004, Rback: Infinity, K: 0 },
+        pulmonary: { R: 0.003, Rback: Infinity, K: 0, Zc: 0.02, L: 0.0003, Vclose: 0.6 },
+        aortic:    { R: 0.003, Rback: Infinity, K: 0, Zc: 0.035, L: 0.0005, Vclose: 0.8 },
+      },
+      manual: { tauOn: 70, tauOff: 90 },   // ms; how quickly a hand squeeze builds and fades
+      totalVolume: 5000,
+    };
+  }
+
+  // Normalised activation for a chamber that was activated `tau` ms ago.
+  // Raised-cosine rise over `rise` ms, then relaxation over `fall` ms.
+  function activation(tau, rise, fall) {
+    if (tau < 0) return 0;
+    if (tau < rise) return 0.5 * (1 - Math.cos(Math.PI * tau / rise));
+    if (tau < rise + fall) return 0.5 * (1 + Math.cos(Math.PI * (tau - rise) / fall));
+    return 0;
+  }
+
+  const VALVES = ['tricuspid', 'pulmonary', 'mitral', 'aortic'];
+  const UPSTREAM = { tricuspid: 'RA', pulmonary: 'RV', mitral: 'LA', aortic: 'LV' };
+
+  class Heart {
+    constructor(opts) {
+      this.p = defaultParams();
+      if (opts && opts.params) deepAssign(this.p, opts.params);
+      this.reset(opts && opts.settle === false ? 0 : 8);
+    }
+
+    /** Reset to the default resting state. `settleBeats` beats are run silently so the student
+     *  starts from a steady state rather than from initial guesses. */
+    reset(settleBeats) {
+      const p = this.p;
+      this.t = 0;                 // ms
+      this.mode = 'sinus';        // 'sinus' | 'single' | 'manual'
+      this.nextBeat = 0;
+      this.onset = { atria: -1e9, ventricles: -1e9 };
+      this.pendingVentricular = null;
+      this.squeezeTarget = 0;
+      this.eManual = 0;
+      this.e = { LA: 0, LV: 0, RA: 0, RV: 0 };
+      // Initial volumes (mL): close to the resting steady state.
+      this.V = { RA: 40, RV: 90, LA: 50, LV: 95, sysArt: 790, sysVen: 3500, pulArt: 140, pulVen: 310 };
+      const sum = Object.values(this.V).reduce((a, b) => a + b, 0);
+      this.V.sysVen += p.totalVolume - sum;
+      this.Q = { sys: 0, ven: 0, tricuspid: 0, pulmonary: 0, pul: 0, pulVen: 0, mitral: 0, aortic: 0 };
+      this.valveOpen = { tricuspid: false, pulmonary: false, mitral: false, aortic: false };
+      this.backflow = { pulmonary: 0, aortic: 0 };
+      this.lastValveEvent = { left: null, right: null };
+      this.events = [];
+      this.beats = 0;
+      this.infused = 0;
+      this.cycle = { L: newCycle(), R: newCycle() };
+      this.stats = { L: null, R: null };
+      this.P = {};
+      this.computePressures();
+      if (settleBeats) {
+        this.advance(settleBeats * 60000 / p.hr);
+        this.events = [];   // the student's clock starts here, at the start of a beat
+      }
+    }
+
+    get rr() { return 60000 / this.p.hr; }
+
+    /** Systolic timing scales with the square root of the beat interval (shorter at fast rates). */
+    timing() {
+      const s = Math.sqrt(Math.min(this.rr, 1500) / 800);
+      return { vRise: 270 * s, vFall: 140 * s, aRise: this.p.aRise, aFall: this.p.aFall };
+    }
+
+    setMode(mode) {
+      this.mode = mode;
+      if (mode === 'sinus') this.nextBeat = this.t;
+      if (mode === 'manual') { this.squeezeTarget = 0; this.eManual = this.e.LV; }
+    }
+    /** One beat on demand (atria, then ventricles after the PR delay). */
+    triggerBeat() { this.startBeat(); }
+    /** Manual mode: how hard the student is squeezing the ventricles, 0–1. */
+    squeeze(level) { this.squeezeTarget = Math.max(0, Math.min(1, level)); }
+    /** Aortic stiffening (aging, atherosclerosis): compliance falls and characteristic impedance
+     *  rises (∝ √stiffness, because pulse-wave velocity rises). factor 1 = normal. */
+    setAorticStiffness(factor) {
+      const base = defaultParams();
+      this.p.vessels.sysArt.C = base.vessels.sysArt.C / factor;
+      this.p.valves.aortic.Zc = base.valves.aortic.Zc * Math.sqrt(factor);
+    }
+    infuse(mL) { this.V.sysVen += mL; this.infused += mL; }
+    hemorrhage(mL) { this.V.sysVen = Math.max(this.p.vessels.sysVen.Vu * 0.5, this.V.sysVen - mL); this.infused -= mL; }
+    totalVolume() { return Object.values(this.V).reduce((a, b) => a + b, 0); }
+
+    startBeat() {
+      this.onset.atria = this.t + this.p.atrialDelay;
+      this.pendingVentricular = this.t + this.p.pr + this.p.emd;
+      this.beats++;
+      this.events.push({ type: 'beat', t: this.t });
+    }
+
+    /** Advance the model by dtMs milliseconds. */
+    advance(dtMs) {
+      let remaining = dtMs;
+      while (remaining > 1e-9) {
+        const h = Math.min(H, remaining);
+        this.step(h);
+        remaining -= h;
+      }
+    }
+
+    computePressures() {
+      const p = this.p, c = p.chambers, v = p.vessels, P = this.P, V = this.V, e = this.e;
+      for (const k of ['LA', 'LV', 'RA', 'RV']) {
+        const ch = c[k], x = V[k] - ch.V0;
+        if (ch.A) {
+          // Ventricles: relaxed wall follows an exponential (stiffening) curve; the active wall a
+          // linear end-systolic elastance. Activation blends between the two.
+          const passive = ch.A * (Math.exp(ch.B * x) - 1);
+          P[k] = e[k] * ch.Emax * x + (1 - e[k]) * passive;
+        } else {
+          P[k] = (ch.Emin + (ch.Emax - ch.Emin) * e[k]) * x;
+        }
+      }
+      for (const k of ['sysArt', 'sysVen', 'pulArt', 'pulVen']) P[k] = (V[k] - v[k].Vu) / v[k].C;
+      // Pressure just above each semilunar valve (what a catheter in the aortic root would read).
+      P.aorta = P.sysArt + p.valves.aortic.Zc * this.Q.aortic;
+      P.pulTrunk = P.pulArt + p.valves.pulmonary.Zc * this.Q.pulmonary;
+    }
+
+    step(hMs) {
+      const p = this.p, t = this.t;
+      // --- activation -----------------------------------------------------------
+      if (this.mode === 'sinus' && t >= this.nextBeat) { this.startBeat(); this.nextBeat += this.rr; }
+      if (this.pendingVentricular != null && t >= this.pendingVentricular) { this.onset.ventricles = this.pendingVentricular; this.pendingVentricular = null; }
+      const tm = this.timing();
+      if (this.mode === 'manual') {
+        const tau = this.squeezeTarget > this.eManual ? p.manual.tauOn : p.manual.tauOff;
+        this.eManual += (this.squeezeTarget - this.eManual) * (1 - Math.exp(-hMs / tau));
+        this.e.LV = this.e.RV = this.eManual;
+        this.e.LA = this.e.RA = 0;
+      } else {
+        const ea = activation(t - this.onset.atria, tm.aRise, tm.aFall);
+        const ev = activation(t - this.onset.ventricles, tm.vRise, tm.vFall);
+        this.e.LA = this.e.RA = ea;
+        this.e.LV = this.e.RV = ev;
+      }
+      this.computePressures();
+      const P = this.P, Q = this.Q, R = p.R, va = p.valves, h = hMs / 1000;
+
+      // --- flows ----------------------------------------------------------------
+      Q.sys = (P.sysArt - P.sysVen) / R.sys;
+      Q.ven = (P.sysVen - P.RA) / R.ven;
+      Q.pul = (P.pulArt - P.pulVen) / R.pul;
+      Q.pulVen = (P.pulVen - P.LA) / R.pulVen;
+      Q.tricuspid = this.avValve('tricuspid', P.RA - P.RV);
+      Q.mitral = this.avValve('mitral', P.LA - P.LV);
+      Q.pulmonary = this.semilunar('pulmonary', P.RV, P.pulArt, h);
+      Q.aortic = this.semilunar('aortic', P.LV, P.sysArt, h);
+
+      // --- volumes (every flow leaves one compartment and enters the next) ------
+      const V = this.V;
+      V.RA += (Q.ven - Q.tricuspid) * h;
+      V.RV += (Q.tricuspid - Q.pulmonary) * h;
+      V.pulArt += (Q.pulmonary - Q.pul) * h;
+      V.pulVen += (Q.pul - Q.pulVen) * h;
+      V.LA += (Q.pulVen - Q.mitral) * h;
+      V.LV += (Q.mitral - Q.aortic) * h;
+      V.sysArt += (Q.aortic - Q.sys) * h;
+      V.sysVen += (Q.sys - Q.ven) * h;
+
+      this.t += hMs;
+      this.computePressures();
+      this.trackCycle('L', h);
+      this.trackCycle('R', h);
+    }
+
+    // AV valve: opens whenever the atrium is above the ventricle. A regurgitant valve leaks back
+    // through Rback when closed. K adds the extra (quadratic) pressure drop of a stenotic orifice.
+    avValve(name, dP) {
+      const v = this.p.valves[name];
+      let q;
+      if (dP > 0) q = flowThrough(dP, v.R, v.K);
+      else q = isFinite(v.Rback) ? dP / v.Rback : 0;
+      this.setValve(name, dP > 0);
+      return q;
+    }
+
+    // Semilunar valve with inertance: opens when the ventricle exceeds the artery, keeps moving
+    // blood by momentum after the pressures cross, and snaps shut after a small backflow.
+    semilunar(name, Pup, Pdown, h) {
+      const v = this.p.valves[name];
+      let q = this.Q[name];
+      if (!this.valveOpen[name]) {
+        if (Pup > Pdown) { this.setValve(name, true); this.backflow[name] = 0; q = 0; }
+        else return isFinite(v.Rback) ? (Pup - Pdown) / (v.Rback + v.Zc) : 0;
+      }
+      const Rtot = v.R + v.Zc + v.K * Math.abs(q);
+      q += (Pup - Pdown - Rtot * q) / v.L * h;
+      if (q < 0) {
+        this.backflow[name] += -q * h;
+        if (this.backflow[name] > v.Vclose) { this.setValve(name, false); return isFinite(v.Rback) ? (Pup - Pdown) / (v.Rback + v.Zc) : 0; }
+      }
+      return q;
+    }
+
+    setValve(name, open) {
+      if (this.valveOpen[name] === open) return;
+      this.valveOpen[name] = open;
+      const side = name === 'mitral' || name === 'aortic' ? 'left' : 'right';
+      this.lastValveEvent[side] = { valve: name, open, t: this.t };
+      this.events.push({ type: 'valve', valve: name, open, side, t: this.t, P: { ...this.P }, V: { ...this.V } });
+      // Heart sounds: S1 when the AV valves close, S2 when the semilunar valves close.
+      if (!open && name === 'mitral') this.events.push({ type: 'sound', sound: 'S1', t: this.t });
+      if (!open && name === 'aortic') this.events.push({ type: 'sound', sound: 'S2', t: this.t });
+    }
+
+    /** Phase of the left (or right) ventricle, read from its two valves. */
+    phase(side) {
+      const [inV, outV] = side === 'right' ? ['tricuspid', 'pulmonary'] : ['mitral', 'aortic'];
+      if (this.valveOpen[outV]) return 'ejection';
+      if (this.valveOpen[inV]) return 'filling';
+      const last = this.lastValveEvent[side || 'left'];
+      if (last && last.valve === outV) return 'isovolumetric relaxation';
+      return 'isovolumetric contraction';
+    }
+
+    // Per-beat bookkeeping, measured the way a clinician would: EDV when the AV valve closes,
+    // ESV when the outflow valve closes, SV as the volume that actually went out through the
+    // outflow valve. A cycle runs from one AV-valve closure to the next.
+    trackCycle(side, h) {
+      const c = this.cycle[side];
+      const [ven, inV, outV, art] = side === 'L' ? ['LV', 'mitral', 'aortic', 'aorta'] : ['RV', 'tricuspid', 'pulmonary', 'pulTrunk'];
+      const V = this.V[ven];
+      c.vMax = Math.max(c.vMax, V); c.vMin = Math.min(c.vMin, V);
+      c.pVentMax = Math.max(c.pVentMax, this.P[ven]);
+      c.pArtMax = Math.max(c.pArtMax, this.P[art]); c.pArtMin = Math.min(c.pArtMin, this.P[art]);
+      c.pArtInt += this.P[art] * h; c.dur += h;
+      c.fwd += Math.max(0, this.Q[outV]) * h; c.back += Math.max(0, -this.Q[outV]) * h;
+      if (this.valveOpen[outV]) c.wasEjecting = true;
+      if (c.wasEjecting && !this.valveOpen[outV] && c.esv == null) c.esv = V;
+      if (!this.valveOpen[inV] && c.inWasOpen) {
+        // AV valve just closed: end of this cycle (end-diastole of the next).
+        if (c.edv != null && c.esv != null && c.dur > 0.15) {
+          const prevEdv = c.edv;
+          this.stats[side] = {
+            edv: prevEdv, esv: c.esv, sv: c.fwd - c.back, ef: (prevEdv - c.esv) / prevEdv,
+            sys: c.pArtMax, dia: c.pArtMin, mean: c.pArtInt / c.dur, pVentMax: c.pVentMax,
+            hr: 60 / c.dur, co: (c.fwd - c.back) * 60 / c.dur / 1000, t: this.t,
+          };
+          if (side === 'L') this.events.push({ type: 'beatStats', t: this.t, L: this.stats.L, R: this.stats.R });
+        }
+        const next = newCycle(); next.edv = V; this.cycle[side] = next; next.inWasOpen = false;
+        return;
+      }
+      c.inWasOpen = this.valveOpen[inV];
+    }
+
+    takeEvents() { const e = this.events; this.events = []; return e; }
+
+    /** Fraction of total blood volume in each region (for the "where is the blood" question). */
+    distribution() {
+      const tot = this.totalVolume(), V = this.V;
+      return {
+        sysVen: V.sysVen / tot, sysArt: V.sysArt / tot, pulmonary: (V.pulArt + V.pulVen) / tot,
+        heart: (V.LA + V.LV + V.RA + V.RV) / tot,
+      };
+    }
+  }
+
+  function newCycle() {
+    return { edv: null, esv: null, vMax: -Infinity, vMin: Infinity, pVentMax: -Infinity, pArtMax: -Infinity, pArtMin: Infinity, pArtInt: 0, dur: 0, fwd: 0, back: 0, wasEjecting: false, inWasOpen: true };
+  }
+
+  // Flow through an orifice with linear resistance R plus a quadratic (stenotic) term K:
+  // dP = R·Q + K·Q²  →  Q = (−R + √(R² + 4K·dP)) / 2K
+  function flowThrough(dP, R, K) {
+    if (!K) return dP / R;
+    return (-R + Math.sqrt(R * R + 4 * K * dP)) / (2 * K);
+  }
+
+  function deepAssign(target, src) {
+    for (const k in src) {
+      if (src[k] && typeof src[k] === 'object' && !Array.isArray(src[k])) { if (!target[k]) target[k] = {}; deepAssign(target[k], src[k]); }
+      else target[k] = src[k];
+    }
+    return target;
+  }
+
+  return { Heart, defaultParams, activation, VALVES, UPSTREAM };
+});
+
+</script>
+<script>
+/* HeartSim app: views, traces, heart sounds and the Part A lesson. The simulation lives in
+ * engine.js; the lesson runner in ../lib/lesson.js. Everything drawn here is read from the model. */
+(function () {
+  'use strict';
+
+  // =========================================================================
+  // Utilities
+  // =========================================================================
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  const $ = (sel) => document.querySelector(sel);
+  const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const htmlEl = Lesson.htmlEl;
+  const r0 = (x) => Math.round(x);
+  function svgEl(tag, attrs, parent) {
+    const e = document.createElementNS(SVG_NS, tag);
+    if (attrs) for (const k in attrs) {
+      if (k === 'text') e.textContent = attrs[k];
+      else if (attrs[k] != null) e.setAttribute(k, attrs[k]);
+    }
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  function setAttrs(e, attrs) { for (const k in attrs) e.setAttribute(k, attrs[k]); }
+
+  const COL = {
+    rich: '#d23c35', poor: '#7b2d5b', muscle: '#c98b7c', muscleDark: '#8c4a3e', wall: '#2a2f3a',
+    LA: '#b7791f', LV: '#1f2430', aorta: '#c23b33', RA: '#9a6fb0', RV: '#5b4a8a', pulTrunk: '#7b2d5b', vol: '#0f766e',
+    open: '#2f9e5b', shut: '#8f97a6',
+  };
+  const PHASE_FILL = { 'filling': '#e9f4e6', 'isovolumetric contraction': '#fdf0d9', 'ejection': '#fbe1de', 'isovolumetric relaxation': '#ebe7f7' };
+  const PHASE_SHORT = { 'filling': 'filling', 'isovolumetric contraction': 'isovol. contraction', 'ejection': 'ejection', 'isovolumetric relaxation': 'isovol. relaxation' };
+  const TRACE_LABEL = { LA: 'left atrium', LV: 'left ventricle', aorta: 'aorta', RA: 'right atrium', RV: 'right ventricle', pulTrunk: 'pulmonary trunk' };
+
+  // =========================================================================
+  // Shared state
+  // =========================================================================
+  const sim = new HeartSim.Heart();
+  const app = {
+    speed: 0.25,           // simulated ms per real ms
+    paused: false,
+    view: null, viewName: null,
+    history: [],           // samples for the traces
+    window: 2400,          // ms of simulated time visible on the traces
+    markers: [],           // {t, label}
+    sounds: [],            // {t, sound}
+    traces: { pressures: ['LA', 'LV', 'aorta'], volume: true, valves: true, phases: false },
+    loops: [], curLoop: [],// PV loops, split at bicuspid closure
+    ghost: null,           // a saved loop drawn dashed for comparison
+    meters: null,          // () => [[label, value, hot], …]
+    soundOn: true,
+    userSpeed: null,
+    lastFrame: null,
+  };
+  window.__heartsim = { sim, app, goto: (s, k) => runner.goto(s, k), runner: () => runner, lesson: () => LESSON };
+
+  function resetSim() {
+    sim.reset(8);
+    app.history = []; app.markers = []; app.sounds = []; app.loops = []; app.curLoop = []; app.ghost = null;
+    // Two beats already on the traces and one complete PV loop, so comparisons work at once.
+    // Exactly two beat intervals, so we stop on a beat boundary with no contraction under way.
+    if (sim.mode !== 'manual') advanceSim(2 * sim.rr, false);
+  }
+
+  // Advance the model in ≤1 ms chunks, recording samples, splitting PV loops at bicuspid
+  // closure and collecting heart sounds. Returns the events.
+  function advanceSim(dtSim, audible) {
+    let events = [], remaining = dtSim;
+    while (remaining > 1e-9) {
+      const hh = Math.min(1, remaining);
+      sim.advance(hh); remaining -= hh;
+      const ev = sim.takeEvents();
+      for (const e of ev) {
+        if (e.type === 'valve' && e.valve === 'mitral' && !e.open) {
+          // keep only complete loops (from one bicuspid closure to the next, through ejection)
+          const cl = app.curLoop;
+          if (cl.length > 20 && cl[0].phase === 'isovolumetric contraction' && cl.some(q => q.phase === 'ejection') && cl.some(q => q.phase === 'filling')) { app.loops.push(cl); if (app.loops.length > 6) app.loops.shift(); }
+          app.curLoop = [];
+        }
+        if (e.type === 'sound') { app.sounds.push({ t: e.t, sound: e.sound }); if (audible !== false) playSound(e.sound); }
+      }
+      if (ev.length) events = events.concat(ev);
+      recordSample();
+    }
+    if (app.sounds.length > 40) app.sounds.splice(0, app.sounds.length - 40);
+    return events;
+  }
+
+  // =========================================================================
+  // Heart sounds (synthesized at the valve-closure events the engine emits)
+  // =========================================================================
+  const audio = { ctx: null };
+  function ensureAudio() {
+    try {
+      if (!audio.ctx) audio.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audio.ctx.state === 'suspended') audio.ctx.resume();
+    } catch (e) { audio.ctx = null; }
+  }
+  document.addEventListener('pointerdown', ensureAudio, { once: false });
+  document.addEventListener('keydown', ensureAudio, { once: false });
+  function playSound(kind) {
+    if (!app.soundOn || !audio.ctx || audio.ctx.state !== 'running') return;
+    const c = audio.ctx, t0 = c.currentTime;
+    // "lub" (S1): lower and longer; "dub" (S2): higher and shorter. A damped tone plus a soft thump.
+    const [f0, f1, dur, vol] = kind === 'S1' ? [120, 70, 0.14, 0.55] : [170, 110, 0.09, 0.45];
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(f0, t0); o.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
+    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g).connect(c.destination); o.start(t0); o.stop(t0 + dur + 0.02);
+  }
+
+  // =========================================================================
+  // Views
+  // =========================================================================
+  const stage = $('#stage');
+  const views = {};
+  function mountView(name, opts) {
+    stage.innerHTML = '';
+    app.view = views[name](opts || {});
+    app.viewName = name;
+    $('#stage-caption').textContent = (opts && opts.caption) || '';
+  }
+
+  // Dots that drift along a straight channel at a speed proportional to the model's flow there.
+  function makeStream(parent, x0, x1, y, halfH, n, color) {
+    const g = svgEl('g', { 'pointer-events': 'none' }, parent);
+    const dots = [];
+    for (let i = 0; i < n; i++) dots.push({ u: i / n, dy: (Math.random() * 2 - 1) * halfH * 0.7, el: svgEl('circle', { r: 3.2, fill: '#fff', opacity: 0, stroke: color, 'stroke-width': 1 }, g) });
+    return {
+      g, x0, x1, y,
+      update(Q, dtSim) {
+        const len = Math.abs(x1 - x0), v = Q * 0.55 * dtSim / 1000 / len; // 0.55 px per mL
+        const op = clamp(Math.abs(Q) / 60, 0, 0.9);
+        for (const d of dots) {
+          d.u = ((d.u + v) % 1 + 1) % 1;
+          setAttrs(d.el, { cx: lerp(x0, x1, d.u), cy: this.y + d.dy, opacity: op });
+        }
+      },
+    };
+  }
+
+  // A valve drawn as two leaflets hinged on the channel walls. openness 0 = shut, 1 = wide open.
+  function makeValve(parent, x, yTop, yBot, len, kind) {
+    const g = svgEl('g', {}, parent);
+    const a = svgEl('line', { stroke: COL.wall, 'stroke-width': kind === 'semilunar' ? 5 : 4, 'stroke-linecap': 'round' }, g);
+    const b = svgEl('line', { stroke: COL.wall, 'stroke-width': kind === 'semilunar' ? 5 : 4, 'stroke-linecap': 'round' }, g);
+    const ring = svgEl('rect', { x: x - 26, y: yTop - 8, width: 52, height: yBot - yTop + 16, rx: 10, fill: 'none', stroke: '#f0b429', 'stroke-width': 3, opacity: 0 }, g);
+    const v = { g, open: 0, ring };
+    v.set = (openness) => {
+      v.open = openness;
+      const ang = lerp(84, 14, openness) * Math.PI / 180; // angle from the channel axis
+      setAttrs(a, { x1: x, y1: yTop, x2: x + len * Math.cos(ang), y2: yTop + len * Math.sin(ang) });
+      setAttrs(b, { x1: x, y1: yBot, x2: x + len * Math.cos(ang), y2: yBot - len * Math.sin(ang) });
+    };
+    v.highlight = (on) => ring.setAttribute('opacity', on ? 1 : 0);
+    v.set(0);
+    return v;
+  }
+
+  // ------------------------------------------------------------- circuit (scene 1)
+  views.circuit = function (opts) {
+    const svg = svgEl('svg', { viewBox: '0 0 1000 560', role: 'img', 'aria-label': 'The circulation: right heart pumps blood to the lungs, left heart pumps it to the body' }, stage);
+    const defs = svgEl('defs', {}, svg);
+    const grad = svgEl('linearGradient', { id: 'bodygrad', x1: '1', x2: '0', y1: '0', y2: '0' }, defs);
+    svgEl('stop', { offset: '0%', 'stop-color': COL.rich }, grad); svgEl('stop', { offset: '100%', 'stop-color': COL.poor }, grad);
+    const grad2 = svgEl('linearGradient', { id: 'lunggrad', x1: '0', x2: '1', y1: '0', y2: '0' }, defs);
+    svgEl('stop', { offset: '0%', 'stop-color': COL.poor }, grad2); svgEl('stop', { offset: '100%', 'stop-color': COL.rich }, grad2);
+    const parts = {};
+    const clickable = (el, stop, label) => {
+      el.setAttribute('data-stop', stop); el.style.cursor = 'pointer';
+      el.setAttribute('tabindex', '0'); el.setAttribute('role', 'button'); el.setAttribute('aria-label', label);
+      el.addEventListener('click', () => view.onStop && view.onStop(stop));
+      el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); view.onStop && view.onStop(stop); } });
+      parts[stop] = el;
+    };
+    // vessels (drawn first, under the heart)
+    const vessel = (d, color, stop, label) => {
+      const g = svgEl('g', {}, svg);
+      svgEl('path', { d, fill: 'none', stroke: color, 'stroke-width': 18, 'stroke-linejoin': 'round', opacity: 0.9 }, g);
+      const hit = svgEl('path', { d, fill: 'none', stroke: 'transparent', 'stroke-width': 30 }, g);
+      const p = svgEl('path', { d, fill: 'none', stroke: 'none' }, g);
+      if (stop) clickable(g, stop, label);
+      return { g, path: p, hit };
+    };
+    const V = {
+      cava: vessel('M300,490 L210,490 L210,245 L330,245', COL.poor, 'cava', 'Venae cavae'),
+      trunk: vessel('M470,320 L500,320 L500,110', COL.poor, 'trunk', 'Pulmonary trunk and arteries'),
+      pv: vessel('M670,70 L750,70 L750,245 L670,245', COL.rich, 'pv', 'Pulmonary veins'),
+      aorta: vessel('M670,355 L800,355 L800,490 L700,490', COL.rich, 'aorta', 'Aorta'),
+    };
+    // lungs and body
+    const lungs = svgEl('g', {}, svg);
+    svgEl('rect', { x: 330, y: 30, width: 340, height: 80, rx: 18, fill: 'url(#lunggrad)', opacity: 0.85 }, lungs);
+    svgEl('text', { x: 500, y: 66, 'text-anchor': 'middle', fill: '#fff', 'font-size': 16, 'font-weight': 650, text: 'Lungs' }, lungs);
+    svgEl('text', { x: 500, y: 88, 'text-anchor': 'middle', fill: '#fff', 'font-size': 12, text: 'pulmonary capillaries: blood picks up O₂, gives off CO₂' }, lungs);
+    clickable(lungs, 'lungs', 'Lungs');
+    const body = svgEl('g', {}, svg);
+    svgEl('rect', { x: 300, y: 450, width: 400, height: 80, rx: 18, fill: 'url(#bodygrad)', opacity: 0.85 }, body);
+    svgEl('text', { x: 500, y: 486, 'text-anchor': 'middle', fill: '#fff', 'font-size': 16, 'font-weight': 650, text: 'Body tissues' }, body);
+    svgEl('text', { x: 500, y: 508, 'text-anchor': 'middle', fill: '#fff', 'font-size': 12, text: 'systemic capillaries: cells take O₂, give off CO₂' }, body);
+    clickable(body, 'body', 'Body tissues');
+    // heart chambers
+    const chamber = (x, y, w, h, color, stop, label, wall) => {
+      const g = svgEl('g', {}, svg);
+      svgEl('rect', { x, y, width: w, height: h, rx: 14, fill: color, stroke: COL.muscleDark, 'stroke-width': wall }, g);
+      svgEl('text', { x: x + w / 2, y: y + h / 2 + 5, 'text-anchor': 'middle', fill: '#fff', 'font-size': 14, 'font-weight': 650, text: label.split(' (')[0] }, g);
+      clickable(g, stop, label);
+      return g;
+    };
+    chamber(330, 200, 140, 90, COL.poor, 'RA', 'Right atrium', 4);
+    chamber(330, 300, 140, 110, COL.poor, 'RV', 'Right ventricle', 6);
+    chamber(530, 200, 140, 90, COL.rich, 'LA', 'Left atrium', 4);
+    chamber(530, 300, 140, 110, COL.rich, 'LV', 'Left ventricle', 14);
+    svgEl('text', { x: 400, y: 190, 'text-anchor': 'middle', 'font-size': 13, fill: '#5f6675', text: 'RIGHT HEART' }, svg);
+    svgEl('text', { x: 600, y: 190, 'text-anchor': 'middle', 'font-size': 13, fill: '#5f6675', text: 'LEFT HEART' }, svg);
+    svgEl('text', { x: 500, y: 438, 'text-anchor': 'middle', 'font-size': 11, fill: '#5f6675', text: 'drawn as if facing the person: their right is on your left' }, svg);
+    // flowing dots along each vessel, speed ∝ model flow in that vessel
+    const flows = [];
+    for (const [k, qKey] of [['cava', 'ven'], ['trunk', 'pulmonary'], ['pv', 'pulVen'], ['aorta', 'aortic']]) {
+      const path = V[k].path, L = path.getTotalLength(), dots = [];
+      for (let i = 0; i < 9; i++) dots.push({ u: i / 9, el: svgEl('circle', { r: 3.5, fill: '#fff', opacity: 0.85, 'pointer-events': 'none' }, svg) });
+      flows.push({ path, L, dots, qKey });
+    }
+    const bodyDots = [], lungDots = [];
+    for (let i = 0; i < 12; i++) bodyDots.push({ u: i / 12, el: svgEl('circle', { r: 3, fill: '#fff', opacity: 0.7, 'pointer-events': 'none' }, svg) });
+    for (let i = 0; i < 12; i++) lungDots.push({ u: i / 12, el: svgEl('circle', { r: 3, fill: '#fff', opacity: 0.7, 'pointer-events': 'none' }, svg) });
+    // the student's red blood cell
+    const token = svgEl('g', { 'pointer-events': 'none', opacity: 0 }, svg);
+    const tokenDisc = svgEl('ellipse', { rx: 13, ry: 9, fill: COL.poor, stroke: '#fff', 'stroke-width': 3 }, token);
+    const STOP_POS = { body: [380, 470], cava: [210, 360], RA: [400, 218], RV: [400, 322], trunk: [500, 200], lungs: [380, 48], pv: [750, 160], LA: [600, 218], LV: [600, 322], aorta: [800, 420] };
+    const STOP_O2 = { body: 'poor', cava: 'poor', RA: 'poor', RV: 'poor', trunk: 'poor', lungs: 'rich', pv: 'rich', LA: 'rich', LV: 'rich', aorta: 'rich' };
+    let tok = { x: 500, y: 470, tx: 500, ty: 470 };
+    const view = {
+      svg, parts, onStop: null,
+      showToken(stop) { token.setAttribute('opacity', 1); const p = STOP_POS[stop]; tok.tx = p[0]; tok.ty = p[1]; tokenDisc.setAttribute('fill', STOP_O2[stop] === 'rich' ? COL.rich : COL.poor); },
+      highlight(stop) {
+        for (const k in parts) parts[k].style.filter = '';
+        if (stop && parts[stop]) parts[stop].style.filter = 'drop-shadow(0 0 6px #f0b429) drop-shadow(0 0 2px #f0b429)';
+      },
+      update(dtReal, dtSim) {
+        for (const f of flows) {
+          const Q = sim.Q[f.qKey];
+          for (const d of f.dots) {
+            d.u = (d.u + Q * 0.9 * dtSim / 1000 / f.L + 1) % 1;
+            const p = f.path.getPointAtLength(d.u * f.L);
+            setAttrs(d.el, { cx: p.x, cy: p.y });
+          }
+        }
+        const qb = sim.Q.sys, ql = sim.Q.pul;
+        bodyDots.forEach((d, i) => { d.u = (d.u + qb * 0.9 * dtSim / 1000 / 400 + 1) % 1; setAttrs(d.el, { cx: 690 - d.u * 380, cy: i % 2 ? 459 : 521 }); });
+        lungDots.forEach((d, i) => { d.u = (d.u + ql * 0.9 * dtSim / 1000 / 340 + 1) % 1; setAttrs(d.el, { cx: 340 + d.u * 320, cy: i % 2 ? 39 : 101 }); });
+        const k = 1 - Math.exp(-dtReal / 120);
+        tok.x += (tok.tx - tok.x) * k; tok.y += (tok.ty - tok.y) * k;
+        token.setAttribute('transform', `translate(${tok.x},${tok.y})`);
+      },
+      narrate() {
+        const L = sim.stats.L, R = sim.stats.R;
+        if (!L || !R) return null;
+        return {
+          html: `Each beat the <b>right</b> ventricle sends <b>${r0(R.sv)} mL</b> to the lungs and the <b>left</b> ventricle sends <b>${r0(L.sv)} mL</b> to the body: two pumps in one loop. The white dots move with the model's blood flow.`,
+          key: 'circuit',
+        };
+      },
+    };
+    return view;
+  };
+
+  // ------------------------------------------------------------- left heart strip (scenes 2–5)
+  views.heart = function (opts) {
+    const svg = svgEl('svg', { viewBox: '0 0 1000 420', role: 'img', 'aria-label': 'Left heart: pulmonary veins, left atrium, bicuspid valve, left ventricle, aortic valve, aorta' }, stage);
+    const strip = svgEl('g', {}, svg);
+    if (opts.pv) strip.setAttribute('transform', 'translate(0,62) scale(0.66)');
+    const Y = 215;
+    // labels
+    svgEl('text', { x: 24, y: Y - 34, 'font-size': 14, fill: '#5f6675', text: 'from the lungs' }, strip);
+    svgEl('text', { x: 24, y: Y - 18, 'font-size': 12, fill: '#8a90a0', text: '(pulmonary veins)' }, strip);
+    svgEl('text', { x: 795, y: Y - 44, 'font-size': 14, fill: '#5f6675', 'text-anchor': 'end', text: 'to the body →' }, strip);
+    // pipes and passages (blood colour), under the chambers
+    const pv = svgEl('rect', { x: 10, y: Y - 16, width: 200, height: 32, fill: COL.rich }, strip);
+    svgEl('line', { x1: 10, y1: Y - 16, x2: 180, y2: Y - 16, stroke: COL.wall, 'stroke-width': 2 }, strip);
+    svgEl('line', { x1: 10, y1: Y + 16, x2: 180, y2: Y + 16, stroke: COL.wall, 'stroke-width': 2 }, strip);
+    const aorta = svgEl('rect', { x: 600, y: Y - 22, width: 200, height: 44, fill: COL.rich }, strip);
+    const aoTop = svgEl('line', { x1: 625, x2: 800, stroke: COL.wall, 'stroke-width': 2.5 }, strip);
+    const aoBot = svgEl('line', { x1: 625, x2: 800, stroke: COL.wall, 'stroke-width': 2.5 }, strip);
+    // left atrium
+    const la = svgEl('circle', { cx: 200, cy: Y, r: 56, fill: COL.rich, stroke: COL.muscleDark, 'stroke-width': 7 }, strip);
+    // left ventricle: muscle (outer) then the passages through its wall, then the cavity
+    const lvOuter = svgEl('ellipse', { cx: 470, cy: Y, fill: COL.muscle, stroke: COL.muscleDark, 'stroke-width': 2 }, strip);
+    svgEl('rect', { x: 200, y: Y - 28, width: 270, height: 56, fill: COL.rich }, strip);
+    svgEl('rect', { x: 470, y: Y - 24, width: 160, height: 48, fill: COL.rich }, strip);
+    const lvCav = svgEl('ellipse', { cx: 470, cy: Y, fill: COL.rich }, strip);
+    // valve rings (the fibrous skeleton) drawn as short wall stubs
+    for (const [x, h] of [[300, 28], [620, 24]]) {
+      svgEl('rect', { x: x - 5, y: Y - h - 10, width: 10, height: 12, fill: COL.wall, rx: 2 }, strip);
+      svgEl('rect', { x: x - 5, y: Y + h - 2, width: 10, height: 12, fill: COL.wall, rx: 2 }, strip);
+    }
+    const mitral = makeValve(strip, 300, Y - 28, Y + 28, 30, 'av');
+    const aortic = makeValve(strip, 620, Y - 24, Y + 24, 25, 'semilunar');
+    svgEl('text', { x: 300, y: Y + 62, 'text-anchor': 'middle', 'font-size': 13, fill: '#3a3f4a', text: 'bicuspid valve' }, strip);
+    svgEl('text', { x: 620, y: Y + 62, 'text-anchor': 'middle', 'font-size': 13, fill: '#3a3f4a', text: 'aortic valve' }, strip);
+    const mState = svgEl('text', { x: 300, y: Y + 78, 'text-anchor': 'middle', 'font-size': 12, 'font-weight': 700 }, strip);
+    const aState = svgEl('text', { x: 620, y: Y + 78, 'text-anchor': 'middle', 'font-size': 12, 'font-weight': 700 }, strip);
+    // chamber read-outs
+    const laTxt = svgEl('text', { x: 200, y: Y - 80, 'text-anchor': 'middle', 'font-size': 13, fill: '#1f2430' }, strip);
+    const lvTxt = svgEl('text', { x: 470, y: Y - 128, 'text-anchor': 'middle', 'font-size': 14, fill: '#1f2430' }, strip);
+    const lvTxt2 = svgEl('text', { x: 470, y: Y - 112, 'text-anchor': 'middle', 'font-size': 12, fill: '#5f6675' }, strip);
+    const aoTxt = svgEl('text', { x: 720, y: Y + 54, 'text-anchor': 'middle', 'font-size': 13, fill: '#1f2430' }, strip);
+    svgEl('text', { x: 200, y: Y + 5, 'text-anchor': 'middle', 'font-size': 15, 'font-weight': 700, fill: '#fff', text: 'LA' }, strip);
+    svgEl('text', { x: 470, y: Y + 6, 'text-anchor': 'middle', 'font-size': 18, 'font-weight': 700, fill: '#fff', text: 'LV' }, strip);
+    svgEl('text', { x: 720, y: Y + 5, 'text-anchor': 'middle', 'font-size': 14, 'font-weight': 700, fill: '#fff', text: 'aorta' }, strip);
+    // flow streams
+    const sPV = makeStream(strip, 15, 150, Y, 14, 10, COL.wall);
+    const sM = makeStream(strip, 262, 360, Y, 24, 8, COL.wall);
+    const sA = makeStream(strip, 575, 795, Y, 20, 14, COL.wall);
+
+    // pressure ladder: three columns and the valve rule between them
+    let ladder = null;
+    if (!opts.pv) {
+      const g = svgEl('g', {}, svg);
+      const base = 352, top = 56, pmax = 140, sc = (base - top) / pmax;
+      const yP = (p) => base - clamp(p, 0, pmax) * sc;
+      svgEl('text', { x: 905, y: 22, 'text-anchor': 'middle', 'font-size': 13, 'font-weight': 650, fill: '#3a3f4a', text: 'Pressure (mmHg)' }, g);
+      svgEl('text', { x: 905, y: 37, 'text-anchor': 'middle', 'font-size': 11, fill: '#8a90a0', text: 'blood is pushed from high to low' }, g);
+      for (let p = 0; p <= pmax; p += 20) {
+        svgEl('line', { x1: 832, x2: 990, y1: yP(p), y2: yP(p), stroke: '#ebe8df' }, g);
+        svgEl('text', { x: 826, y: yP(p) + 4, 'text-anchor': 'end', 'font-size': 10, fill: '#8a90a0', text: p }, g);
+      }
+      const cols = {};
+      for (const [k, x, label, color] of [['LA', 850, 'LA', '#e2867f'], ['LV', 905, 'LV', COL.rich], ['aorta', 960, 'aorta', '#9e2a24']]) {
+        const bar = svgEl('rect', { x: x - 15, width: 30, fill: color, rx: 3 }, g);
+        const val = svgEl('text', { x, 'text-anchor': 'middle', 'font-size': 12, 'font-weight': 700, fill: '#1f2430' }, g);
+        svgEl('text', { x, y: base + 16, 'text-anchor': 'middle', 'font-size': 12, fill: '#3a3f4a', text: label }, g);
+        cols[k] = { bar, val };
+      }
+      const rule = (x, label) => {
+        const r = svgEl('g', {}, g);
+        const arrow = svgEl('text', { x, y: base + 34, 'text-anchor': 'middle', 'font-size': 16, 'font-weight': 700 }, r);
+        const txt = svgEl('text', { x, y: base + 48, 'text-anchor': 'middle', 'font-size': 11 }, r);
+        svgEl('text', { x, y: base + 61, 'text-anchor': 'middle', 'font-size': 10, fill: '#8a90a0', text: label }, r);
+        return { arrow, txt };
+      };
+      const rM = rule(877, 'bicuspid'), rA = rule(932, 'aortic');
+      ladder = {
+        update() {
+          for (const k of ['LA', 'LV', 'aorta']) {
+            const P = sim.P[k], y = yP(P);
+            setAttrs(cols[k].bar, { y, height: Math.max(0, base - y) });
+            setAttrs(cols[k].val, { y: y - 5 }); cols[k].val.textContent = r0(P);
+          }
+          const setRule = (r, up, down, open) => {
+            r.arrow.textContent = up > down ? '→' : '←';
+            r.arrow.setAttribute('fill', open ? COL.open : COL.shut);
+            r.txt.textContent = open ? 'open' : 'shut';
+            r.txt.setAttribute('fill', open ? COL.open : '#5f6675');
+          };
+          setRule(rM, sim.P.LA, sim.P.LV, sim.valveOpen.mitral);
+          setRule(rA, sim.P.LV, sim.P.sysArt, sim.valveOpen.aortic);
+        },
+      };
+    }
+
+    // pressure–volume loop
+    let pvPlot = null;
+    if (opts.pv) {
+      const g = svgEl('g', {}, svg);
+      const x0 = 600, x1 = 980, y0 = 370, y1 = 22, vmin = 20, vmax = 180, pmin = 0, pmax = 150;
+      const X = (v) => x0 + (v - vmin) / (vmax - vmin) * (x1 - x0), Yp = (p) => y0 - (clamp(p, pmin, pmax) - pmin) / (pmax - pmin) * (y0 - y1);
+      svgEl('rect', { x: x0, y: y1, width: x1 - x0, height: y0 - y1, fill: '#fff', stroke: '#d9d6cc' }, g);
+      for (let v = vmin; v <= vmax; v += 10) {
+        svgEl('line', { x1: X(v), x2: X(v), y1: y1, y2: y0, stroke: v % 20 === 0 ? '#e6e3da' : '#f3f1ec' }, g);
+        if (v % 20 === 0) svgEl('text', { x: X(v), y: y0 + 15, 'text-anchor': 'middle', 'font-size': 11, fill: '#5f6675', text: v }, g);
+      }
+      for (let p = pmin; p <= pmax; p += 10) {
+        svgEl('line', { x1: x0, x2: x1, y1: Yp(p), y2: Yp(p), stroke: p % 50 === 0 ? '#e6e3da' : '#f6f4ef' }, g);
+        if (p % 25 === 0) svgEl('text', { x: x0 - 6, y: Yp(p) + 4, 'text-anchor': 'end', 'font-size': 11, fill: '#5f6675', text: p }, g);
+      }
+      svgEl('text', { x: (x0 + x1) / 2, y: y0 + 32, 'text-anchor': 'middle', 'font-size': 13, fill: '#3a3f4a', text: 'LV volume (mL)' }, g);
+      svgEl('text', { x: x0 - 44, y: (y0 + y1) / 2, 'text-anchor': 'middle', 'font-size': 13, fill: '#3a3f4a', transform: `rotate(-90 ${x0 - 44} ${(y0 + y1) / 2})`, text: 'LV pressure (mmHg)' }, g);
+      svgEl('text', { x: x0 + 8, y: y1 + 18, 'font-size': 13, 'font-weight': 650, fill: '#3a3f4a', text: 'Pressure–volume loop' }, g);
+      const ghost = svgEl('path', { fill: 'none', stroke: '#9aa1ae', 'stroke-width': 2, 'stroke-dasharray': '6 5' }, g);
+      const ghostLbl = svgEl('text', { 'font-size': 11, fill: '#7a8190' }, g);
+      const old = svgEl('path', { fill: 'none', stroke: '#c9c5bb', 'stroke-width': 2 }, g);
+      const segG = svgEl('g', {}, g);
+      const cur = svgEl('path', { fill: 'none', stroke: COL.LV, 'stroke-width': 2.5 }, g);
+      const dot = svgEl('circle', { r: 6, fill: COL.rich, stroke: '#fff', 'stroke-width': 2 }, g);
+      const mk = svgEl('g', {}, g);
+      const segs = {};
+      for (const ph of Object.keys(PHASE_FILL)) {
+        const sg = svgEl('g', { tabindex: '0', role: 'button', 'aria-label': 'Side of the loop: ' + ph }, segG);
+        const vis = svgEl('path', { fill: 'none', stroke: COL.LV, 'stroke-width': 3 }, sg);
+        const hit = svgEl('path', { fill: 'none', stroke: 'transparent', 'stroke-width': 22, 'stroke-linecap': 'round' }, sg);
+        sg.addEventListener('click', () => view.onSegment && view.onSegment(ph));
+        sg.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); view.onSegment && view.onSegment(ph); } });
+        segs[ph] = { g: sg, vis, hit };
+      }
+      const pathOf = (pts) => pts.length ? 'M' + pts.map(p => `${X(p.V).toFixed(1)},${Yp(p.P).toFixed(1)}`).join('L') : '';
+      let lastLoopN = -1;
+      pvPlot = {
+        segs,
+        update() {
+          // the most recent complete loop, split into its four sides
+          const loop = app.loops[app.loops.length - 1];
+          if (loop && app.loops.length !== lastLoopN) {
+            lastLoopN = app.loops.length;
+            for (const ph in segs) {
+              const pts = loop.filter(p => p.phase === ph);
+              // connect each side to the next sample so the loop is closed
+              const i = loop.findIndex(p => p.phase === ph), j = loop.length - 1 - [...loop].reverse().findIndex(p => p.phase === ph);
+              const run = i >= 0 ? loop.slice(i, Math.min(loop.length, j + 2)) : [];
+              const d = pathOf(run.length ? run : pts);
+              segs[ph].vis.setAttribute('d', d); segs[ph].hit.setAttribute('d', d);
+            }
+            old.setAttribute('d', app.loops.length > 1 ? pathOf(app.loops[app.loops.length - 2]) : '');
+            mk.innerHTML = '';
+            if (view.markersOn) {
+              const st = sim.stats.L;
+              if (st) for (const [v, lab] of [[st.edv, 'EDV'], [st.esv, 'ESV']]) {
+                svgEl('line', { x1: X(v), x2: X(v), y1: y1, y2: y0, stroke: '#2f6fd6', 'stroke-dasharray': '4 4', 'stroke-width': 1.5 }, mk);
+                svgEl('text', { x: X(v), y: y1 - 6, 'text-anchor': 'middle', 'font-size': 12, 'font-weight': 700, fill: '#2f6fd6', text: lab }, mk);
+              }
+            }
+          }
+          cur.setAttribute('d', pathOf(app.curLoop));
+          setAttrs(dot, { cx: X(sim.V.LV), cy: Yp(sim.P.LV) });
+          if (app.ghost) {
+            ghost.setAttribute('d', pathOf(app.ghost.loop) + 'Z');
+            const top = app.ghost.loop.reduce((a, p) => p.P > a.P ? p : a, app.ghost.loop[0]);
+            setAttrs(ghostLbl, { x: X(top.V) + 6, y: Yp(top.P) - 8 }); ghostLbl.textContent = app.ghost.label || 'before';
+          } else { ghost.setAttribute('d', ''); ghostLbl.textContent = ''; }
+        },
+        refresh() { lastLoopN = -1; },
+        highlight(ph, color) { for (const k in segs) { segs[k].vis.setAttribute('stroke', k === ph ? (color || '#f0b429') : COL.LV); segs[k].vis.setAttribute('stroke-width', k === ph ? 6 : 3); } },
+      };
+    }
+
+    let lastT = 0;
+    const view = {
+      svg, mitral, aortic, pv: pvPlot, onSegment: null, markersOn: false,
+      update(dtReal, dtSim) {
+        // chambers sized from the model's volumes (area ∝ volume)
+        la.setAttribute('r', 7.4 * Math.sqrt(Math.max(1, sim.V.LA)));
+        const V = Math.max(1, sim.V.LV), rx = 10.4 * Math.sqrt(V), ry = 7.9 * Math.sqrt(V), w = 12 + 22 * sim.e.LV;
+        setAttrs(lvOuter, { rx: rx + w, ry: ry + w });
+        setAttrs(lvCav, { rx, ry });
+        // the aorta bulges with pressure (it is elastic)
+        const hh = clamp(14 + sim.P.sysArt * 0.085, 12, 30);
+        setAttrs(aorta, { y: Y - hh, height: 2 * hh });
+        setAttrs(aoTop, { y1: Y - hh, y2: Y - hh }); setAttrs(aoBot, { y1: Y + hh, y2: Y + hh });
+        sA.y = Y; // streams stay centred
+        // valves move toward the state the pressures put them in
+        const k = 1 - Math.exp(-dtReal / 45);
+        mitral.set(lerp(mitral.open, sim.valveOpen.mitral ? 1 : 0, k));
+        aortic.set(lerp(aortic.open, sim.valveOpen.aortic ? 1 : 0, k));
+        sPV.update(sim.Q.pulVen, dtSim); sM.update(sim.Q.mitral, dtSim); sA.update(sim.Q.aortic, dtSim);
+        // read-outs (4 per second is plenty to read)
+        lastT += dtReal;
+        if (lastT > 220) {
+          lastT = 0;
+          laTxt.textContent = `${r0(sim.P.LA)} mmHg · ${r0(sim.V.LA)} mL`;
+          lvTxt.textContent = `${r0(sim.P.LV)} mmHg`;
+          lvTxt2.textContent = `${r0(sim.V.LV)} mL`;
+          aoTxt.textContent = `${r0(sim.P.aorta)} mmHg`;
+          mState.textContent = sim.valveOpen.mitral ? 'OPEN' : 'SHUT'; mState.setAttribute('fill', sim.valveOpen.mitral ? COL.open : '#5f6675');
+          aState.textContent = sim.valveOpen.aortic ? 'OPEN' : 'SHUT'; aState.setAttribute('fill', sim.valveOpen.aortic ? COL.open : '#5f6675');
+        }
+        lvTxt.setAttribute('y', Y - ry - w - 22); lvTxt2.setAttribute('y', Y - ry - w - 6);
+        if (ladder) ladder.update();
+        if (pvPlot) pvPlot.update();
+      },
+      narrate() { return narrateLeftHeart(); },
+    };
+    return view;
+  };
+
+  // One sentence on what the left heart is doing and why, from the model's state.
+  function narrateLeftHeart() {
+    const P = sim.P, ph = sim.phase('left');
+    const close = Math.abs(P.LA - P.LV) < 1.5, d1 = (x) => (Math.round(x * 10) / 10).toFixed(1);
+    const la = close ? d1(P.LA) : r0(P.LA), lv = close ? d1(P.LV) : r0(P.LV), ao = r0(P.sysArt);
+    const manualIdle = sim.mode === 'manual' && sim.e.LV < 0.03;
+    let html;
+    switch (ph) {
+      case 'filling':
+        html = `<b>Filling.</b> LA pressure (${la}) is above LV pressure (${lv}), so blood pushes the bicuspid valve open and flows into the relaxed ventricle. The aortic valve stays shut: the aorta (${ao}) is far above the LV.`;
+        if (manualIdle) html += ` Nothing is refilling the aorta, so its pressure drains away into the body.`;
+        break;
+      case 'isovolumetric contraction':
+        html = `<b>Both valves shut.</b> The LV is squeezing: its pressure (${lv}) is above the LA (${la}), so the bicuspid valve is pushed shut, but still below the aorta (${ao}), so the aortic valve stays shut. No blood can move, so volume stays the same while pressure climbs.`;
+        break;
+      case 'ejection':
+        html = `<b>Ejection.</b> LV pressure (${lv}) has pushed past aortic pressure, so the aortic valve is open and blood is driven into the aorta. The LV gets smaller.`;
+        break;
+      default:
+        html = `<b>Both valves shut.</b> The LV is relaxing: its pressure (${lv}) has fallen below the aorta (${ao}), so the aortic valve snapped shut, but it is still above the LA (${la}), so the bicuspid valve stays shut. Volume stays the same while pressure falls.`;
+    }
+    return { html, key: ph + (manualIdle ? '-idle' : '') };
+  }
+
+  // =========================================================================
+  // Traces (pressures, LV volume, valve states, heart sounds)
+  // =========================================================================
+  const traceCanvas = $('#trace');
+  function recordSample() {
+    const P = sim.P;
+    app.history.push({ t: sim.t, LA: P.LA, LV: P.LV, aorta: P.aorta, RA: P.RA, RV: P.RV, pulTrunk: P.pulTrunk, VLV: sim.V.LV, mitral: sim.valveOpen.mitral, aortic: sim.valveOpen.aortic, phase: sim.phase('left') });
+    const tmin = sim.t - app.window * 1.3;
+    while (app.history.length && app.history[0].t < tmin) app.history.shift();
+    app.curLoop.push({ V: sim.V.LV, P: P.LV, phase: sim.phase('left') });
+  }
+  function drawTraces() {
+    const dpr = window.devicePixelRatio || 1;
+    const w = traceCanvas.clientWidth, h = traceCanvas.clientHeight;
+    if (traceCanvas.width !== Math.round(w * dpr) || traceCanvas.height !== Math.round(h * dpr)) { traceCanvas.width = Math.round(w * dpr); traceCanvas.height = Math.round(h * dpr); }
+    const c = traceCanvas.getContext('2d');
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    c.clearRect(0, 0, w, h);
+    const tr = app.traces;
+    const padL = 96, padR = 14, padT = 6, padB = 18;
+    const valveH = tr.valves ? 34 : 0, volH = tr.volume ? 52 : 0;
+    const W = app.window, t1 = Math.max(sim.t, W), t0 = t1 - W;
+    const X = (t) => padL + (t - t0) / W * (w - padL - padR);
+    // marker labels get their own strip above the plot, one row per overlap
+    c.font = '11px system-ui, sans-serif';
+    const rowEnd = [], placed = [];
+    for (const m of app.markers.filter(m => m.t >= t0 && m.t <= sim.t).sort((a, b) => a.t - b.t)) {
+      const x = X(m.t), tw = c.measureText(m.label).width, lx = Math.min(x + 2, w - padR - tw - 4);
+      let row = 0; while (rowEnd[row] != null && rowEnd[row] > lx) row++;
+      rowEnd[row] = lx + tw + 8;
+      placed.push({ x, lx, row, label: m.label });
+    }
+    const pTop = padT + rowEnd.length * 13 + (rowEnd.length ? 3 : 0), pBot = h - padB - valveH - volH - (tr.volume ? 8 : 0);
+    const vTop = pBot + 8, vBot = vTop + volH;
+    const pmax = tr.pmax || 140;
+    const Yp = (p) => pTop + (pmax - clamp(p, -5, pmax + 5)) / pmax * (pBot - pTop);
+    const Yv = (v) => vTop + (170 - clamp(v, 20, 170)) / 150 * (vBot - vTop);
+    c.font = '11px system-ui, sans-serif';
+    // phase shading
+    if (tr.phases) {
+      let prev = null, start = null;
+      const flush = (end) => { if (prev && start != null) { c.fillStyle = PHASE_FILL[prev]; c.fillRect(X(start), pTop, X(end) - X(start), (tr.volume ? vBot : pBot) - pTop); } };
+      for (const s of app.history) { if (s.t < t0) continue; if (s.phase !== prev) { flush(s.t); prev = s.phase; start = s.t; } }
+      flush(sim.t);
+    }
+    // pressure grid
+    c.textAlign = 'right'; c.textBaseline = 'middle';
+    for (let p = 0; p <= pmax; p += (pmax > 60 ? 40 : 10)) {
+      c.strokeStyle = p === 0 ? '#c9c5bb' : '#eceae3'; c.lineWidth = 1; c.beginPath(); c.moveTo(padL, Yp(p)); c.lineTo(w - padR, Yp(p)); c.stroke();
+      c.fillStyle = '#8a90a0'; c.fillText(String(p), padL - 4, Yp(p));
+    }
+    c.save(); c.translate(12, (pTop + pBot) / 2); c.rotate(-Math.PI / 2); c.textAlign = 'center'; c.fillStyle = '#5f6675'; c.fillText('pressure (mmHg)', 0, 0); c.restore();
+    // time grid
+    c.textAlign = 'center'; c.textBaseline = 'top';
+    for (let t = Math.ceil(t0 / 200) * 200; t <= t1 + 1e-6; t += 200) {
+      c.strokeStyle = '#f1efe9'; c.beginPath(); c.moveTo(X(t), pTop); c.lineTo(X(t), vBot || pBot); c.stroke();
+      if (t % 400 === 0) { c.fillStyle = '#8a90a0'; c.fillText((t / 1000).toFixed(1) + ' s', X(t), h - padB + 4); }
+    }
+    const line = (key, color, lw, Yf) => {
+      c.strokeStyle = color; c.lineWidth = lw; c.beginPath(); let first = true;
+      for (const s of app.history) { if (s.t < t0) continue; const x = X(s.t), y = Yf(s[key]); if (first) { c.moveTo(x, y); first = false; } else c.lineTo(x, y); }
+      c.stroke();
+    };
+    for (const k of tr.pressures) line(k, COL[k], k === 'LV' || k === 'RV' ? 2.2 : 1.8, Yp);
+    // LV volume
+    if (tr.volume) {
+      c.textAlign = 'right'; c.textBaseline = 'middle';
+      for (const v of [50, 100, 150]) { c.strokeStyle = '#eceae3'; c.beginPath(); c.moveTo(padL, Yv(v)); c.lineTo(w - padR, Yv(v)); c.stroke(); c.fillStyle = '#8a90a0'; c.fillText(String(v), padL - 4, Yv(v)); }
+      c.fillStyle = COL.vol; c.textAlign = 'left'; c.textBaseline = 'top'; c.fillText('LV volume (mL)', padL + 4, vTop + 1);
+      line('VLV', COL.vol, 2, Yv);
+    }
+    // valve rows and heart sounds
+    if (tr.valves) {
+      const rows = [['mitral', 'bicuspid open'], ['aortic', 'aortic open']];
+      rows.forEach(([k, label], i) => {
+        const y = h - padB - valveH + 4 + i * 14;
+        c.fillStyle = '#5f6675'; c.textAlign = 'right'; c.textBaseline = 'middle'; c.fillText(label, padL - 4, y + 5);
+        c.fillStyle = '#f1efe9'; c.fillRect(padL, y, w - padL - padR, 10);
+        c.fillStyle = COL.rich;
+        let start = null;
+        for (const s of app.history) { if (s.t < t0) continue; if (s[k] && start == null) start = s.t; if (!s[k] && start != null) { c.fillRect(X(start), y, X(s.t) - X(start), 10); start = null; } }
+        if (start != null) c.fillRect(X(start), y, X(sim.t) - X(start), 10);
+      });
+      c.textAlign = 'center'; c.textBaseline = 'bottom'; c.font = 'bold 11px system-ui, sans-serif';
+      for (const s of app.sounds) { if (s.t < t0) continue; c.fillStyle = '#1f2430'; c.fillText(s.sound, X(s.t), h - padB - valveH + 3); }
+      c.font = '11px system-ui, sans-serif';
+    }
+    // markers
+    c.textAlign = 'left'; c.textBaseline = 'top';
+    for (const m of placed) {
+      const ly = padT + m.row * 13;
+      c.strokeStyle = '#9ca3af'; c.setLineDash([3, 3]); c.beginPath(); c.moveTo(m.x, ly + 12); c.lineTo(m.x, vBot || pBot); c.stroke(); c.setLineDash([]);
+      c.fillStyle = '#374151'; c.fillText(m.label, m.lx + 2, ly);
+    }
+    // legend
+    const items = tr.pressures.map(k => `<span><i style="background:${COL[k]}"></i>${TRACE_LABEL[k]}</span>`);
+    if (tr.volume) items.push(`<span><i style="background:${COL.vol}"></i>LV volume</span>`);
+    if (tr.phases) items.push(...Object.keys(PHASE_FILL).map(k => `<span><b class="phase-key" style="background:${PHASE_FILL[k]};border:1px solid #d9d6cc"></b>${PHASE_SHORT[k]}</span>`));
+    const html = items.join('');
+    const legend = $('#trace-legend'); if (legend.innerHTML !== html) legend.innerHTML = html;
+  }
+
+  // =========================================================================
+  // Lesson runner wiring
+  // =========================================================================
+  const panel = $('#panel');
+  function setPaused(p) {
+    app.paused = p;
+    $('#btn-pause').textContent = p ? 'Resume' : 'Pause';
+    $('#paused-badge').style.display = p ? 'block' : 'none';
+  }
+  function setSpeed(s) {
+    app.speed = s;
+    const sel = $('#speed'); sel.value = String(s);
+    if (sel.value !== String(s)) { const o = document.createElement('option'); o.value = String(s); o.textContent = `${Math.round(s * 100)} %`; sel.appendChild(o); sel.value = String(s); }
+  }
+  const DEFAULT_TRACES = { pressures: ['LA', 'LV', 'aorta'], volume: true, valves: true, phases: false };
+
+  const host = {
+    ctx: {
+      sim, app,
+      view: () => app.view,
+      pause() { setPaused(true); },
+      resume() { setPaused(false); },
+      mark(label, row) { app.markers.push({ t: sim.t, label, row }); },
+      resetSim,
+    },
+    applyStep({ step, eff, sceneChanged }) {
+      if (step.reset) resetSim();
+      const needView = eff.view && (eff.view !== app.viewName || step.remount || sceneChanged);
+      if (needView) mountView(eff.view, eff.viewOpts || {});
+      else if (eff.viewOpts && eff.viewOpts.caption != null) $('#stage-caption').textContent = eff.viewOpts.caption;
+      if (sceneChanged) app.userSpeed = null;
+      if (app.userSpeed == null && eff.speed) setSpeed(eff.speed);
+      if (eff.mode && (sim.mode !== eff.mode || step.reset)) sim.setMode(eff.mode);
+      app.traces = Object.assign({}, DEFAULT_TRACES, eff.traces || {});
+      app.meters = eff.meters || null;
+      renderMeters(true);
+      setPaused(!!step.pause);
+      if (sim.mode === 'manual' && !step.keepSqueeze) sim.squeeze(0);
+    },
+  };
+
+  let runner; // created after LESSON is defined
+
+  // =========================================================================
+  // Meters overlay and badge
+  // =========================================================================
+  let meterClock = 0;
+  function renderMeters(force) {
+    const el = $('#meters');
+    if (!app.meters) { el.classList.remove('on'); el.innerHTML = ''; return; }
+    if (!force && meterClock < 250) return;
+    meterClock = 0;
+    el.classList.add('on');
+    el.innerHTML = app.meters().map(([label, value, hot]) => `<div class="m${hot ? ' hot' : ''}">${label}<b>${value}</b></div>`).join('');
+  }
+  function updateBadge() {
+    const lab = $('#badge-label'), val = $('#badge-value');
+    if (sim.mode === 'manual') { lab.textContent = 'Heartbeat:'; val.textContent = 'you'; return; }
+    if (sim.mode === 'single') { lab.textContent = 'Heartbeat:'; val.textContent = 'one at a time'; return; }
+    const L = sim.stats.L;
+    lab.textContent = `HR ${r0(sim.p.hr)}/min · CO`;
+    val.textContent = L ? `${L.co.toFixed(1)} L/min` : '—';
+  }
+
+  // =========================================================================
+  // Main loop
+  // =========================================================================
+  let srKey = null, narrClock = 1e9;
+  function frame(ts) {
+    if (app.lastFrame == null) app.lastFrame = ts;
+    const dtReal = Math.min(50, ts - app.lastFrame); app.lastFrame = ts;
+    let dtSim = 0, events = [];
+    if (!app.paused) { dtSim = dtReal * app.speed; events = advanceSim(dtSim, true); }
+    if (app.view && app.view.update) app.view.update(dtReal, dtSim, events);
+    if (runner) runner.tick(events, dtSim);
+    // narrator: visible text refreshed a few times a second; screen readers hear only phase changes
+    narrClock += dtReal;
+    if (app.view && app.view.narrate && narrClock > 250) {
+      narrClock = 0;
+      const n = app.view.narrate();
+      if (n) {
+        if ($('#narrator').innerHTML !== n.html) $('#narrator').innerHTML = n.html;
+        if (n.key !== srKey) { srKey = n.key; $('#sr-live').textContent = n.html.replace(/<[^>]*>/g, ''); }
+      }
+    } else if (!app.view || !app.view.narrate) $('#narrator').innerHTML = '';
+    meterClock += dtReal; renderMeters(false);
+    drawTraces();
+    updateBadge();
+    $('#sim-clock').textContent = `t = ${(sim.t / 1000).toFixed(2)} s`;
+    requestAnimationFrame(frame);
+  }
+
+  // =========================================================================
+  // Wiring
+  // =========================================================================
+  $('#speed').addEventListener('change', (e) => { app.speed = parseFloat(e.target.value); app.userSpeed = app.speed; });
+  $('#btn-pause').addEventListener('click', () => setPaused(!app.paused));
+  $('#btn-sound').addEventListener('click', () => {
+    app.soundOn = !app.soundOn; ensureAudio();
+    $('#btn-sound').textContent = 'Sound: ' + (app.soundOn ? 'on' : 'off');
+    $('#btn-sound').setAttribute('aria-pressed', String(app.soundOn));
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'p' && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) setPaused(!app.paused);
+  });
+
+  // =========================================================================
+  // Lesson content: Part A (see docs/HEART_MODULE.md)
+  // =========================================================================
+  let lvFail = {};   // state of the weakened-LV experiment, shown by the meters in later steps too
+  const beatsSince = (c) => { const d = c.stepState().data; if (d.beat0 == null) d.beat0 = sim.beats; return sim.beats - d.beat0; };
+  const fmt = (x, d) => (x == null ? '—' : x.toFixed(d || 0));
+  const statsL = () => sim.stats.L || {};
+  // Remember the current loop and stats as the "before" for a comparison.
+  function saveBaseline(c, label) {
+    const d = c.stepState().data;
+    d.base = Object.assign({}, sim.stats.L);
+    const loop = app.loops[app.loops.length - 1];
+    app.ghost = loop ? { loop: loop.slice(), label: label || 'before' } : null;
+    if (app.view && app.view.pv) app.view.pv.refresh();
+  }
+  function clearTraces() { app.history = []; app.curLoop = []; app.loops = []; app.markers = []; app.sounds = []; }
+
+  const CIRCUIT_STOPS = [
+    ['RA', 'Blood returning from the body (through the venae cavae) first enters this chamber. Click it.', 'The <b>right atrium</b> collects oxygen-poor blood from the whole body.'],
+    ['RV', 'Next the blood passes the tricuspid valve into the chamber that pumps it to the lungs. Click it.', 'The <b>right ventricle</b> pumps blood to the lungs only.'],
+    ['trunk', 'This vessel carries blood away from the heart toward the lungs. Click it.', 'The <b>pulmonary trunk</b> and its branches, the pulmonary arteries. Vessels that carry blood <i>away</i> from the heart are arteries, even when the blood in them is oxygen-poor.'],
+    ['lungs', 'Here the blood picks up O₂ and gets rid of CO₂. Click it.', 'In the <b>lung capillaries</b> the blood is oxygenated. Watch the cell change colour.'],
+    ['pv', 'These vessels bring the blood back to the heart from the lungs. Click them.', 'The <b>pulmonary veins</b>. Vessels that carry blood <i>toward</i> the heart are veins, even when the blood in them is oxygen-rich.'],
+    ['LA', 'The chamber that receives blood from the lungs. Click it.', 'The <b>left atrium</b>.'],
+    ['LV', 'Through the bicuspid valve into the thick-walled chamber that pumps blood to the whole body. Click it.', 'The <b>left ventricle</b>: notice its much thicker wall.'],
+    ['aorta', 'The large artery that carries blood from the left ventricle to the body. Click it.', 'The <b>aorta</b>. From here the blood goes to every organ, gives up O₂ in the tissues and returns through the venae cavae: one complete loop.'],
+  ];
+  const STOP_NAME = { RA: 'the right atrium', RV: 'the right ventricle', trunk: 'the pulmonary trunk', lungs: 'the lungs', pv: 'the pulmonary veins', LA: 'the left atrium', LV: 'the left ventricle', aorta: 'the aorta', body: 'the body tissues', cava: 'the venae cavae' };
+
+  const LESSON = [
+    // ------------------------------------------------------------- 1. two pumps, one loop
+    {
+      id: 'loop', title: 'Two pumps, one loop', speed: 1,
+      steps: [
+        ...CIRCUIT_STOPS.map(([stop, prompt, explain], i) => ({
+          view: 'circuit', viewOpts: { caption: 'Follow one red blood cell around the circulation. Click the next stop.' }, mode: 'sinus', reset: i === 0,
+          traces: { pressures: ['aorta', 'pulTrunk'], volume: false, valves: false },
+          title: `Follow a red blood cell (${i + 1} of ${CIRCUIT_STOPS.length})`,
+          text: (i === 0 ? `<p>The heart is two pumps side by side. We will follow one red blood cell, starting in the tissues of the body, where it has just given up its oxygen.</p>` : '') + `<p>${prompt}</p>`,
+          enter: (c) => {
+            const v = c.view();
+            v.showToken(i === 0 ? 'body' : CIRCUIT_STOPS[i - 1][0]);
+            v.highlight(null);
+            v.onStop = (s) => {
+              if (s === stop) { v.highlight(stop); v.showToken(stop); c.status(`<b>Yes: ${STOP_NAME[stop]}.</b> ${explain}`, true); c.complete(); }
+              else c.status(`That is ${STOP_NAME[s] || s}. Try again.`, false);
+            };
+          },
+          waitFor: () => false, waitHint: 'Click the next stop on the diagram',
+        })),
+        {
+          view: 'circuit', title: 'Arteries, veins and oxygen',
+          enter: (c) => { c.view().highlight('pv'); c.view().onStop = null; },
+          text: `<p>Your cell went body → right heart → lungs → left heart → body.</p>`,
+          question: { prompt: 'Compared with blood in the venae cavae, blood in the pulmonary veins carries…', options: [
+            { t: 'much more oxygen', ok: true, fb: 'The pulmonary veins carry the most oxygen-rich blood in the body; it has just left the lungs. "Vein" means the vessel carries blood <i>toward</i> the heart. It says nothing about oxygen.' },
+            { t: 'less oxygen, because veins carry deoxygenated blood', fb: 'A common rule of thumb that fails here. Veins are defined by direction (toward the heart), not by oxygen. Where has this blood just been?' },
+            { t: 'about the same amount of oxygen', fb: 'Between the venae cavae and the pulmonary veins the blood passes through the lungs. What happens there?' },
+          ] },
+        },
+        {
+          view: 'circuit', title: 'Which side pumps more?',
+          meters: () => [['Right ventricle → lungs', `${fmt((sim.stats.R || {}).co, 1)} L/min`], ['Left ventricle → body', `${fmt((sim.stats.L || {}).co, 1)} L/min`]],
+          text: `<p>The two sides are pumps <b>in series</b>: everything the right ventricle pumps out must, a few seconds later, arrive at the left ventricle.</p>`,
+          question: { prompt: 'Over a minute, which side pumps more blood?', options: [
+            { t: 'Both pump the same volume', ok: true, fb: 'Look at the meters. If one side pumped even 1 mL more per beat, about 75 mL a minute would pile up in the lungs or the body. In scene 5 you will see what stops that from happening.' },
+            { t: 'The left side, because it is bigger and stronger', fb: 'Its wall is thicker, but look at the meters on the diagram: the volumes match. What would happen to the lungs if the right side pumped less than the left for an hour?' },
+            { t: 'The right side, because it has to fill the lungs', fb: 'Look at the meters on the diagram. Any mismatch would steadily empty or flood one circuit.' },
+          ] },
+        },
+        {
+          view: 'circuit', title: 'Same volume, different job',
+          meters: () => [['Pulmonary trunk', `${r0((sim.stats.R || {}).sys || 0)}/${r0((sim.stats.R || {}).dia || 0)} mmHg`], ['Aorta', `${r0((sim.stats.L || {}).sys || 0)}/${r0((sim.stats.L || {}).dia || 0)} mmHg`]],
+          text: `<p>The trace at the bottom shows the pressure in the two arteries leaving the heart: the <b>aorta</b> and the <b>pulmonary trunk</b>.</p>`,
+          question: { prompt: 'Both ventricles pump the same volume. Why is the left ventricle\'s wall about three times thicker?', options: [
+            { t: 'It must push blood out against a much higher pressure', ok: true, fb: 'About 120/80 mmHg in the aorta vs about 25/10 in the pulmonary trunk. The lungs are close by and offer little resistance; the rest of the body offers much more. Same volume, much more force.' },
+            { t: 'It pumps more blood per beat', fb: 'Check the previous answer: the volumes are the same. Look at the two pressure traces instead.' },
+            { t: 'It has to pump blood farther, so it needs to pump faster', fb: 'Both ventricles beat together, at the same rate. Look at the pressure each one has to overcome.' },
+          ] },
+        },
+      ],
+    },
+    // ------------------------------------------------------------- 2. pressure moves blood
+    {
+      id: 'pressure', title: 'Pressure moves blood', speed: 0.25,
+      steps: [
+        {
+          view: 'heart', viewOpts: { caption: 'The left side of the heart, opened out in a line. The heartbeat is switched off: you are the heart muscle.' }, reset: true, mode: 'manual', remount: true,
+          traces: { pressures: ['LA', 'LV', 'aorta'], volume: true, valves: true },
+          title: 'You are the heart muscle',
+          text: `<p>Blood arrives from the lungs on the left, passes the <b>left atrium</b>, the <b>bicuspid valve</b>, the <b>left ventricle</b> and the <b>aortic valve</b>, and leaves through the aorta on the right.</p>
+                 <p>The bars on the right show the pressure in each space. Right now the ventricle is completely relaxed.</p>`,
+          question: { prompt: 'With the ventricle relaxed, what is holding the bicuspid valve open?', options: [
+            { t: 'Pressure in the atrium is slightly higher than in the ventricle, so blood pushes the flaps open', ok: true, fb: 'Valves have no muscle of their own. They are flaps that blood pushes open or shut. Look at the bars: LA is a little higher than LV, and the arrow between them points forward.' },
+            { t: 'The papillary muscles and chordae tendineae pull the flaps open', fb: 'The chordae only stop the flaps from blowing back into the atrium when the ventricle squeezes. They do not open the valve. Look at the pressure bars.' },
+            { t: 'The atrium is contracting and pushing it open', fb: 'Nothing is contracting right now; the heartbeat is off. Yet the valve is open. Look at the pressure bars for the reason.' },
+            { t: 'A nerve signal holds it open', fb: 'Valves have no nerves or muscle that move them. Look at the pressure bars.' },
+          ] },
+        },
+        {
+          view: 'heart', title: 'Predict, then squeeze',
+          text: `<p>You are about to make the ventricle wall contract. Its pressure will rise.</p>`,
+          question: { prompt: 'As LV pressure starts to rise, what happens first?', options: [
+            { t: 'The bicuspid valve is pushed shut', ok: true, fb: 'As soon as LV pressure rises above LA pressure, blood is pushed backward and slams the bicuspid flaps shut. Now hold the button and watch.' },
+            { t: 'Blood immediately starts to flow into the aorta', fb: 'The aortic valve is held shut by aortic pressure of around 80 mmHg. How high is the LV now?' },
+            { t: 'The aortic valve opens', fb: 'Only when LV pressure exceeds aortic pressure. Look at the bars: how far apart are LV and aorta now?' },
+            { t: 'Both valves open', fb: 'Squeezing raises LV pressure. Compare it with the pressure on each side.' },
+          ] },
+          actions: [{ label: 'Hold to squeeze the ventricle', cls: 'blood', hold: true, down: () => sim.squeeze(1), up: () => sim.squeeze(0) }],
+          tick: (c, events) => {
+            const d = c.stepState().data; d.seq = d.seq || [];
+            for (const e of events) if (e.type === 'valve' && e.side === 'left') d.seq.push(`${e.valve}${e.open ? '+' : '-'}`);
+          },
+          waitFor: (c) => { const s = (c.stepState().data.seq || []).join(' '); return s.includes('mitral- aortic+'); },
+          waitHint: 'Hold the squeeze button until blood leaves the ventricle',
+          status: (c) => c.stepState().done ? '<b>Observed:</b> the bicuspid valve shut first; the aortic valve opened only when LV pressure passed aortic pressure. Then blood left.' : `LV ${r0(sim.P.LV)} mmHg · aorta ${r0(sim.P.sysArt)} mmHg. Hold the button.`,
+        },
+        {
+          view: 'heart', title: 'Both valves shut',
+          text: `<p>Between the bicuspid valve shutting and the aortic valve opening there was a moment with <b>both valves shut</b>. Squeeze again and watch the LV size and the volume trace during that moment.</p>`,
+          actions: [{ label: 'Hold to squeeze the ventricle', cls: 'blood', hold: true, down: () => sim.squeeze(1), up: () => sim.squeeze(0) }],
+          question: { prompt: 'While both valves are shut and the muscle squeezes, the LV…', options: [
+            { t: 'keeps the same volume while its pressure climbs', ok: true, fb: 'Blood cannot be compressed and has nowhere to go, so the squeeze turns entirely into pressure. This is <b>isovolumetric contraction</b> ("same volume").' },
+            { t: 'gets smaller as blood leaves', fb: 'Where could the blood go? Both exits are shut. Look at the volume trace during that moment.' },
+            { t: 'loses pressure', fb: 'The muscle is squeezing on a fixed amount of blood. Look at the LV pressure trace.' },
+          ] },
+        },
+        {
+          view: 'heart', title: 'Let go',
+          text: `<p>Squeeze until blood is leaving, then <b>let go</b> and watch which valve moves.</p>`,
+          actions: [{ label: 'Hold to squeeze the ventricle', cls: 'blood', hold: true, down: () => sim.squeeze(1), up: () => sim.squeeze(0) }],
+          question: { prompt: 'When the muscle relaxes, which valve shuts first?', options: [
+            { t: 'The aortic valve, because LV pressure falls below aortic pressure', ok: true, fb: 'The aorta is stretched full of blood at high pressure. As the LV relaxes its pressure drops below that, blood starts back toward the ventricle and snaps the aortic valve shut. Test it.' },
+            { t: 'The bicuspid valve', fb: 'It is already shut. What has to happen before it can open again?' },
+            { t: 'Neither: both stay open', fb: 'Check the pressure bars when you let go.' },
+          ] },
+          tick: (c, events) => {
+            const d = c.stepState().data; d.seq = d.seq || [];
+            for (const e of events) if (e.type === 'valve' && e.side === 'left') d.seq.push(`${e.valve}${e.open ? '+' : '-'}`);
+          },
+          waitFor: (c) => (c.stepState().data.seq || []).join(' ').includes('aortic- mitral+'),
+          waitHint: 'Squeeze, then let go, and watch both valves',
+          status: (c) => c.stepState().done ? '<b>Observed:</b> aortic valve shut, then a moment with both valves shut while the pressure fell (<b>isovolumetric relaxation</b>), then the bicuspid valve was pushed open and filling restarted.' : `LV ${r0(sim.P.LV)} · aorta ${r0(sim.P.sysArt)} · LA ${r0(sim.P.LA)} mmHg`,
+        },
+        {
+          view: 'heart', title: 'Between beats',
+          text: `<p>Stop squeezing for a few seconds and watch the aortic pressure bar.</p>`,
+          question: { prompt: 'Why does aortic pressure fall while the heart is not squeezing?', options: [
+            { t: 'Blood keeps running out of the aorta into the body, and nothing is refilling it', ok: true, fb: 'The aorta is elastic: stretched by each beat, it keeps pushing blood on between beats. That is why diastolic pressure is not zero. But without the next beat it runs down. A real heart refills it about 75 times a minute.' },
+            { t: 'The aorta is a muscle that relaxes', fb: 'Its wall stretches and recoils; it does not pump. Where is the blood going?' },
+            { t: 'Blood leaks back into the ventricle', fb: 'The aortic valve is shut (look at the diagram), so no blood goes back. Follow the flow the other way.' },
+          ] },
+          waitFor: () => sim.P.sysArt < 60 && sim.e.LV < 0.05, waitHint: 'Stop squeezing and watch the aortic pressure fall below 60 mmHg',
+          status: () => `Aortic pressure ${r0(sim.P.sysArt)} mmHg`,
+        },
+      ],
+    },
+    // ------------------------------------------------------------- 3. the cardiac cycle
+    {
+      id: 'cycle', title: 'Building the cardiac cycle', speed: 0.2,
+      steps: [
+        {
+          view: 'heart', viewOpts: { caption: 'The heart now squeezes on its own, one beat each time you press Beat.' }, reset: true, mode: 'single', remount: true,
+          traces: { pressures: ['LA', 'LV', 'aorta'], volume: true, valves: true },
+          title: 'One beat in slow motion',
+          enter: (c) => { clearTraces(); c.stepState().data.armed = false; },
+          text: `<p>Each beat the <b>atria contract first</b>, topping up the ventricles, and about 0.15 s later the <b>ventricles</b> contract. We will stop the clock at each valve event.</p>`,
+          question: { prompt: 'Once the ventricle starts to squeeze, which valve event comes first?', options: [
+            { t: 'The bicuspid valve shuts', ok: true, fb: 'Exactly as when you squeezed by hand. Press Beat and watch.' },
+            { t: 'The aortic valve opens', fb: 'Remember scene 2: LV pressure first has to pass the atrium, then the aorta.' },
+            { t: 'The bicuspid valve opens', fb: 'It is already open during filling. What does rising LV pressure do to it?' },
+          ] },
+          actions: [{ label: 'Beat', cls: 'blood', run: (c) => { const d = c.stepState().data; if (d.armed || sim.e.LV > 0.01 || sim.pendingVentricular != null) return; d.armed = true; sim.triggerBeat(); app.markers.push({ t: sim.t + sim.p.atrialDelay, label: 'atria contract' }); c.resume(); } }],
+          tick: (c, events) => { const d = c.stepState().data; if (d.armed && !c.stepState().done && events.some(e => e.type === 'valve' && e.valve === 'mitral' && !e.open)) { c.pause(); c.mark('bicuspid shuts (S1)'); c.complete(); } },
+          waitFor: () => false, waitHint: 'Press Beat',
+          status: (c) => c.stepState().done ? '<b>Paused:</b> the bicuspid valve has just shut. You heard the first heart sound, S1 ("lub").' : '',
+        },
+        {
+          view: 'heart', title: 'Both valves shut, muscle squeezing', pause: true,
+          text: `<p>The clock is paused just after the bicuspid valve shut.</p>`,
+          question: { prompt: 'What happens next, before anything else changes?', options: [
+            { t: 'LV pressure climbs at constant volume until it passes aortic pressure', ok: true, fb: 'Isovolumetric contraction, as you felt by hand. Resume to see it.' },
+            { t: 'LV volume falls as blood is ejected', fb: 'Not yet: the aortic valve is still shut. Look at the aortic pressure the LV has to beat.' },
+            { t: 'The atrium refills the ventricle', fb: 'The bicuspid valve is shut now; nothing more can enter.' },
+          ] },
+          actions: [{ label: 'Resume', cls: 'primary', run: (c) => c.resume() }],
+          tick: (c, events) => { if (!c.stepState().done && events.some(e => e.type === 'valve' && e.valve === 'aortic' && e.open)) { c.pause(); c.mark('aortic opens'); c.complete(); } },
+          waitFor: () => false, waitHint: 'Resume and wait for the next valve event',
+          status: (c) => c.stepState().done ? '<b>Paused:</b> the aortic valve just opened. Look how flat the volume trace was until now.' : '',
+        },
+        {
+          view: 'heart', title: 'Ejection', pause: true,
+          question: { prompt: 'Why did the aortic valve open at exactly this moment?', options: [
+            { t: 'LV pressure rose just past aortic pressure', ok: true, fb: 'Look at where the black LV trace crosses the red aortic trace. From now on the two move together while blood is ejected.' },
+            { t: 'The ventricle reached its largest volume', fb: 'The volume has been at its largest since the bicuspid valve shut. What changed just now?' },
+            { t: 'The muscle reached full strength', fb: 'The squeeze is still building. The valve does not know about the muscle, only the pressures on its two sides.' },
+          ] },
+          actions: [{ label: 'Resume', cls: 'primary', run: (c) => c.resume() }],
+          tick: (c, events) => { if (!c.stepState().done && events.some(e => e.type === 'valve' && e.valve === 'aortic' && !e.open)) { c.pause(); c.mark('aortic shuts (S2)'); c.complete(); } },
+          waitFor: () => false, waitHint: 'Resume and wait for the next valve event',
+          status: (c) => c.stepState().done ? '<b>Paused:</b> the aortic valve has just shut. That was S2 ("dub"). Look for the small notch in the aortic trace.' : '',
+        },
+        {
+          view: 'heart', title: 'The aortic valve shuts', pause: true,
+          question: { prompt: 'What shut the aortic valve?', options: [
+            { t: 'The relaxing LV\'s pressure fell below aortic pressure, and a little backflow snapped the cusps shut', ok: true, fb: 'That brief backflow is the small dip in the aortic trace, the <b>dicrotic notch</b> (incisura). After it, the elastic aorta keeps pushing blood to the body while the heart rests.' },
+            { t: 'The ventricle ran out of blood', fb: 'Look at the volume trace: about 50 mL is still in the LV. Look at the two pressure traces instead.' },
+            { t: 'A muscle in the aortic wall closed it', fb: 'Valves have no muscle. Look at which pressure is higher now.' },
+          ] },
+          actions: [{ label: 'Resume', cls: 'primary', run: (c) => c.resume() }],
+          tick: (c, events) => { if (!c.stepState().done && events.some(e => e.type === 'valve' && e.valve === 'mitral' && e.open)) { c.pause(); c.mark('bicuspid opens'); c.complete(); } },
+          waitFor: () => false, waitHint: 'Resume and wait for the next valve event',
+          status: (c) => c.stepState().done ? '<b>Paused:</b> the bicuspid valve has just opened. In between, both valves were shut while the pressure fell: isovolumetric relaxation.' : '',
+        },
+        {
+          view: 'heart', title: 'Filling again', pause: true,
+          question: { prompt: 'The bicuspid valve just opened. What happens to LV volume now?', options: [
+            { t: 'It rises quickly at first, with no help from the atrium', ok: true, fb: 'Blood that piled up in the atrium and lung veins during systole rushes in as soon as the valve opens (<b>rapid filling</b>). The atrial contraction at the end of the cycle only tops it up (about 10–20 % of the final volume at rest).' },
+            { t: 'It stays the same until the atrium contracts', fb: 'Resume and watch the volume trace: most filling happens long before the atrium contracts.' },
+            { t: 'It falls', fb: 'Blood is now flowing from the atrium into the ventricle. Which way must the volume go?' },
+          ] },
+          actions: [{ label: 'Resume', cls: 'primary', run: (c) => c.resume() }],
+          waitFor: (c) => { const d = c.stepState().data; if (d.t0 == null) d.t0 = sim.t; return sim.t > d.t0 + 300 && !app.paused; },
+          waitHint: 'Resume and watch the ventricle fill',
+        },
+        {
+          view: 'heart', title: 'Heart sounds',
+          text: `<p>Each beat you heard two sounds: <b>S1</b> ("lub") and <b>S2</b> ("dub"). They are marked under the valve bars at the bottom.</p>`,
+          question: { prompt: 'What makes the two heart sounds?', options: [
+            { t: 'Valves shutting: S1 the AV valves (bicuspid, tricuspid), S2 the semilunar valves (aortic, pulmonary)', ok: true, fb: 'Sudden closure sets the blood and valve leaflets vibrating. Valves opening is silent in a healthy heart, which is why there are two sounds per beat and not four.' },
+            { t: 'The atria and then the ventricles contracting', fb: 'Look at where S1 and S2 sit on the traces: exactly where a valve shut, not where contraction began.' },
+            { t: 'Valves opening', fb: 'Check the marks: S1 sits where the bicuspid valve shut, S2 where the aortic valve shut.' },
+          ] },
+        },
+        {
+          view: 'heart', title: 'The whole cycle', mode: 'sinus',
+          traces: { pressures: ['LA', 'LV', 'aorta'], volume: true, valves: true, phases: true },
+          enter: () => { sim.setMode('sinus'); },
+          text: `<p>Now the heart beats continuously at 75 per minute. The four phases are shaded on the traces: <b>filling</b>, <b>isovolumetric contraction</b>, <b>ejection</b>, <b>isovolumetric relaxation</b>. Systole = the two contraction-side phases; diastole = relaxation plus filling.</p>`,
+          question: { prompt: 'At rest, which phase takes the longest?', options: [
+            { t: 'Filling', ok: true, fb: 'About half of every beat at rest. That spare filling time is what a fast heart rate eats into (Part B).' },
+            { t: 'Ejection', fb: 'Compare the widths of the shaded bands on the traces.' },
+            { t: 'Isovolumetric contraction', fb: 'Compare the widths of the shaded bands: this one is very short.' },
+          ] },
+          waitFor: (c) => beatsSince(c) >= 2, waitHint: 'Watch two full beats',
+        },
+      ],
+    },
+    // ------------------------------------------------------------- 4. pressure–volume loop
+    {
+      id: 'pv', title: 'How much per beat?', speed: 0.25,
+      steps: [
+        {
+          view: 'heart', viewOpts: { pv: true, caption: 'Left: the left heart. Right: LV pressure plotted against LV volume, drawn live.' }, reset: true, mode: 'sinus', remount: true,
+          traces: { pressures: ['LA', 'LV', 'aorta'], volume: true, valves: true, phases: true },
+          title: 'Each beat draws a loop',
+          text: `<p>Plot LV pressure against LV volume and every beat traces a closed loop: the red dot moves around it once per beat. The newest complete loop is black; older ones grey.</p>`,
+          waitFor: (c) => app.loops.length >= 2, waitHint: 'Watch two beats',
+        },
+        ...[
+          ['filling', 'Volume increases while pressure stays low: the ventricle is filling. Click that side of the loop.'],
+          ['isovolumetric contraction', 'Pressure shoots up but volume does not change: both valves are shut while the muscle squeezes. Click that side.'],
+          ['ejection', 'Volume falls while pressure stays high: blood is leaving through the aortic valve. Click that side.'],
+          ['isovolumetric relaxation', 'Pressure falls with no change in volume: the muscle relaxes with both valves shut. Click that side.'],
+        ].map(([ph, prompt], i) => ({
+          view: 'heart', title: `Read the loop (${i + 1} of 4)`,
+          text: `<p>${prompt}</p>`,
+          enter: (c) => {
+            const v = c.view(); v.pv.highlight(null);
+            v.onSegment = (s) => {
+              if (s === ph) { v.pv.highlight(ph, '#2f9e5b'); c.status(`<b>Yes: ${ph}.</b>`, true); c.complete(); }
+              else { v.pv.highlight(s, '#d24b3f'); c.status(`That side is <b>${s}</b>. Which way does volume change there, and which way pressure?`, false); }
+            };
+          },
+          waitFor: () => false, waitHint: 'Click the matching side of the loop',
+        })),
+        {
+          view: 'heart', title: 'Why is filling so cheap?',
+          enter: (c) => { c.view().onSegment = null; c.view().pv.highlight('filling'); },
+          question: { prompt: 'Along the bottom of the loop the ventricle gains about 70 mL, yet its pressure rises only a few mmHg. Why?', options: [
+            { t: 'The relaxed muscle is very stretchy (compliant), so it fills without much pressure', ok: true, fb: 'A relaxed ventricle is like a soft balloon. That is why a low venous pressure of a few mmHg is enough to fill it. If the wall gets stiff (as in some heart diseases), filling needs much higher pressure.' },
+            { t: 'The bicuspid valve is shut', fb: 'During filling the bicuspid valve is open. That is how the blood gets in.' },
+            { t: 'The atrium sucks blood back out', fb: 'Blood is moving from atrium to ventricle the whole time. Think about the ventricle wall.' },
+          ] },
+        },
+        {
+          view: 'heart', title: 'Measure the stroke volume',
+          enter: (c) => { c.view().markersOn = true; c.view().pv.refresh(); c.view().pv.highlight(null); },
+          text: `<p>The dashed blue lines mark <b>EDV</b> (end-diastolic volume: the fullest the ventricle gets) and <b>ESV</b> (end-systolic volume: what is left after ejection). Read both off the volume axis (gridlines every 10 mL).</p>
+                 <p><b>Stroke volume</b> SV = EDV − ESV, the volume ejected per beat.</p>`,
+          question: { type: 'number', prompt: 'Stroke volume of this heart:', unit: 'mL', recordAs: 'SV',
+            answer: () => statsL().edv - statsL().esv, tol: 6,
+            explain: (c, v) => `This heart ejects about ${r0(statsL().edv - statsL().esv)} mL per beat (EDV ≈ ${r0(statsL().edv)} mL, ESV ≈ ${r0(statsL().esv)} mL).`,
+            hint: (c, v, t) => v > 140 ? 'That is larger than the whole ventricle. Subtract ESV from EDV.' : 'Read EDV (right dashed line) and ESV (left dashed line) on the volume axis, then subtract.' },
+        },
+        {
+          view: 'heart', title: 'Ejection fraction',
+          text: `<p><b>Ejection fraction</b> EF = SV ÷ EDV: the fraction of the blood in the full ventricle that each beat pushes out. Clinicians measure it with ultrasound; a healthy EF is about 55–70 %.</p>`,
+          question: { type: 'number', prompt: 'Ejection fraction of this heart:', unit: '%', recordAs: 'EF',
+            answer: () => 100 * (statsL().edv - statsL().esv) / statsL().edv, tol: 5,
+            explain: () => `EF ≈ ${r0(100 * (statsL().edv - statsL().esv) / statsL().edv)} %. Even a healthy heart leaves about 40 % of its blood behind each beat: a reserve it can use when it squeezes harder.`,
+            hint: (c, v) => v < 1.5 ? 'Give it as a percentage (e.g. 0.6 → 60 %).' : 'Divide your stroke volume by EDV and multiply by 100.' },
+        },
+      ],
+    },
+    // ------------------------------------------------------------- 5. Frank–Starling
+    {
+      id: 'starling', title: 'More in, more out', speed: 0.5,
+      steps: [
+        {
+          view: 'heart', viewOpts: { pv: true, caption: 'Dashed loop: before your change. Solid: now.' }, reset: true, mode: 'sinus', remount: true,
+          traces: { pressures: ['LA', 'LV', 'aorta'], volume: true, valves: true },
+          meters: () => [['Stroke volume', `${fmt(statsL().sv)} mL`], ['EDV', `${fmt(statsL().edv)} mL`], ['ESV', `${fmt(statsL().esv)} mL`]],
+          title: 'Fill it more',
+          enter: (c) => { c.stepState().data.armedAt = null; },
+          text: `<p>A patient receives 500 mL of IV fluid. It enters the veins, so more blood returns to the heart each beat (more <b>preload</b>). Nerves and hormones are switched off in this model, so you see only the heart itself.</p>`,
+          question: { prompt: 'Predict: with more blood returning, the stroke volume will…', options: [
+            { t: 'increase', ok: true, fb: 'Give the fluid and watch the loop.' },
+            { t: 'stay the same, because nothing told the heart to squeeze harder', fb: 'A reasonable guess, but test it: give the fluid and watch the loop.' },
+            { t: 'decrease, because the heart is overloaded', fb: 'Only at extreme filling. Give the fluid and watch.' },
+          ] },
+          actions: [{ label: 'Give 500 mL IV fluid', cls: 'blood', run: (c) => { const d = c.stepState().data; if (d.armedAt != null) return; saveBaseline(c, 'before fluid'); sim.infuse(500); d.armedAt = sim.beats; c.note(`fluid given`); } }],
+          waitFor: (c) => { const d = c.stepState().data; return d.armedAt != null && sim.beats - d.armedAt >= 6 && statsL().sv > d.base.sv + 5; },
+          onDone: (c) => { const d = c.stepState().data, s = statsL(); c.recordValue('preload', { edv0: d.base.edv, edv1: s.edv, sv0: d.base.sv, sv1: s.sv }); },
+          waitHint: 'Give the fluid and watch several beats',
+          status: (c) => { const d = c.stepState().data; if (d.armedAt == null) return ''; const s = statsL(); return `${c.stepState().done ? '<b>Observed:</b> ' : ''}EDV ${r0(d.base.edv)} → ${r0(s.edv)} mL · SV ${r0(d.base.sv)} → ${r0(s.sv)} mL`; },
+        },
+        {
+          view: 'heart', title: 'Why did it pump more?',
+          question: { prompt: 'Nothing changed the heart muscle, yet each beat now ejects more. Why?', options: [
+            { t: 'The fuller ventricle was stretched more, and stretched heart muscle contracts more forcefully', ok: true, fb: 'This is the <b>Frank–Starling law of the heart</b>: within limits, the heart pumps out whatever comes in. Look at the loop: it moved right (bigger EDV) and grew wider, but its left edge (ESV) hardly moved.' },
+            { t: 'The nervous system made it beat harder', fb: 'Nerves are switched off in this model, and the heart rate did not change. The change came from inside the heart. What changed in the loop?' },
+            { t: 'The heart rate went up', fb: 'Check the badge: still 75 per minute. Only the filling changed.' },
+          ] },
+        },
+        {
+          view: 'heart', viewOpts: { pv: true, caption: 'Dashed loop: before your change. Solid: now.' }, title: 'Harder to push against', reset: true, remount: true,
+          meters: () => [['Stroke volume', `${fmt(statsL().sv)} mL`], ['ESV', `${fmt(statsL().esv)} mL`], ['Mean aortic pressure', `${fmt(statsL().mean)} mmHg`]],
+          enter: (c) => { c.stepState().data.armedAt = null; },
+          text: `<p>Now, starting from a normal heart, the small arteries of the body (<b>arterioles</b>) constrict. Their resistance rises 60 %, so the ventricle has to push against higher aortic pressure (more <b>afterload</b>).</p>`,
+          question: { prompt: 'Predict: against the higher pressure, the ventricle will eject…', options: [
+            { t: 'less blood per beat, leaving more behind (higher ESV)', ok: true, fb: 'Constrict the arterioles and watch the loop.' },
+            { t: 'more blood, because the pressure is higher', fb: 'Higher pressure is something the ventricle has to overcome, not help. Test it.' },
+            { t: 'the same amount', fb: 'Test it and compare the loops.' },
+          ] },
+          actions: [{ label: 'Constrict the arterioles', cls: 'blood', run: (c) => { const d = c.stepState().data; if (d.armedAt != null) return; saveBaseline(c, 'before constriction'); sim.p.R.sys *= 1.6; d.armedAt = sim.beats; } }],
+          waitFor: (c) => { const d = c.stepState().data; return d.armedAt != null && sim.beats - d.armedAt >= 4 && statsL().esv > d.base.esv + 4; },
+          onDone: (c) => { const d = c.stepState().data, s = statsL(); c.recordValue('afterload', { esv0: d.base.esv, esv1: s.esv, sv0: d.base.sv, sv1: s.sv, map0: d.base.mean, map1: s.mean }); },
+          waitHint: 'Constrict the arterioles and watch several beats',
+          status: (c) => { const d = c.stepState().data; if (d.armedAt == null) return ''; const s = statsL(); return `${c.stepState().done ? '<b>Observed:</b> ' : ''}ESV ${r0(d.base.esv)} → ${r0(s.esv)} mL · SV ${r0(d.base.sv)} → ${r0(s.sv)} mL · mean aortic ${r0(d.base.mean)} → ${r0(s.mean)} mmHg. The loop got taller and narrower: the aortic valve opens later and shuts sooner.`; },
+        },
+        {
+          view: 'heart', viewOpts: { pv: true, caption: 'A heart attack has just damaged part of the left ventricle.' }, title: 'When one side weakens', reset: true, remount: true,
+          meters: () => {
+            const L = sim.stats.L || {}, R = sim.stats.R || {}, d = lvFail;
+            const diff = L.sv && R.sv ? Math.abs(R.sv - L.sv) / L.sv : 0;
+            return [['Right ventricle', `${fmt(R.sv, 1)} mL/beat`, diff > 0.02], ['Left ventricle', `${fmt(L.sv, 1)} mL/beat`, diff > 0.02], ['Lung vein pressure', `${fmt(d.pv, 1)} mmHg`, d.pv0 != null && d.pv > d.pv0 + 1.5], ['LV EDV', `${fmt(L.edv)} mL`]];
+          },
+          enter: (c) => { const d = lvFail = c.stepState().data; d.armedAt = null; d.pvAcc = 0; d.pvT = 0; d.pv = sim.P.pulVen; d.pv0 = null; },
+          tick: (c, events, dtSim) => {
+            // mean pulmonary venous pressure over each beat-length of simulated time
+            const d = c.stepState().data; d.pvAcc += sim.P.pulVen * dtSim; d.pvT += dtSim;
+            if (d.pvT >= sim.rr) { d.pv = d.pvAcc / d.pvT; d.pvAcc = 0; d.pvT = 0; }
+          },
+          text: `<p>A heart attack kills part of the left ventricle's muscle: it now squeezes 60 % less hard. The right ventricle is unharmed.</p>`,
+          question: { prompt: 'For the first beat after the damage, the right ventricle still pumps its usual ~70 mL but the left pumps much less. Where does the difference go?', options: [
+            { t: 'It backs up in the lungs (and the left atrium)', ok: true, fb: 'The right ventricle keeps delivering blood that the weakened left ventricle does not pass on. Weaken the LV and watch the meters.' },
+            { t: 'Into the body tissues', fb: 'The body gets blood only from the left ventricle, which is now pumping less. Follow the extra blood from the right ventricle.' },
+            { t: 'Nowhere: the right ventricle slows down to match', fb: 'Nothing tells the right ventricle about the damage; nerves are off in this model. Where does its output go next?' },
+          ] },
+          actions: [{ label: 'Weaken the left ventricle', cls: 'blood', run: (c) => { const d = c.stepState().data; if (d.armedAt != null) return; saveBaseline(c, 'before the heart attack'); d.edv0 = statsL().edv; d.pv0 = d.pv; sim.p.chambers.LV.Emax *= 0.4; d.armedAt = sim.beats; } }],
+          waitFor: (c) => {
+            const d = c.stepState().data, L = sim.stats.L, R = sim.stats.R;
+            if (d.armedAt == null) return false;
+            if (L && R && R.sv > L.sv * 1.05) d.sawMismatch = true;
+            return d.sawMismatch && sim.beats - d.armedAt >= 10 && Math.abs(R.sv - L.sv) / L.sv < 0.02;
+          },
+          onDone: (c) => { const d = c.stepState().data; c.recordValue('lvFailure', { pv0: d.pv0, pv1: d.pv, edv0: d.edv0, edv1: statsL().edv }); },
+          waitHint: 'Weaken the left ventricle and watch until the two sides match again',
+          status: (c) => { const d = c.stepState().data; if (d.armedAt == null) return ''; return c.stepState().done ? `<b>Observed:</b> for a few beats the right side out-pumped the left and blood built up in the lungs; lung vein pressure rose from ${fmt(d.pv0, 1)} to ${fmt(d.pv, 1)} mmHg. Then the outputs matched again.` : 'Watch the two outputs and the lung vein pressure.'; },
+        },
+        {
+          view: 'heart', title: 'What rebalanced the two sides?',
+          question: { prompt: 'Within a few beats both sides pumped the same volume again, with no nerves or hormones involved. What made the weak left ventricle pump more?', options: [
+            { t: 'The blood backing up stretched it (bigger EDV), and stretched muscle squeezes harder: Frank–Starling', ok: true, fb: 'The same law as with the IV fluid, now keeping the two pumps matched beat by beat. But the price is a permanently higher pressure in the lungs. In <b>left heart failure</b> this pressure pushes fluid out of the lung capillaries, and patients become short of breath.' },
+            { t: 'The right ventricle slowed down', fb: 'The heart rate is the same for both sides. Look at what happened to LV EDV.' },
+            { t: 'The damaged muscle healed', fb: 'The weakening is still in place. Look at what happened to LV EDV and the loop.' },
+          ] },
+        },
+        {
+          view: 'heart', title: 'Lab record', continueLabel: 'Done',
+          text: `<p><b>Part A complete.</b> Type your name, then copy your lab record and paste it into the Canvas assignment (or download it and upload the file).</p>
+                 <p>The record lists your first answer to each prediction, your measurements and your experiments, with a check code your instructor can verify.</p>`,
+          extra: (el, c) => renderRecordBox(el, c),
+        },
+      ],
+    },
+  ];
+
+  // =========================================================================
+  // Lab record (pasted into Canvas) and the instructor's check
+  // =========================================================================
+  const RECORD_SALT = 'heartsim-partA-v1';
+  function recordText(name) {
+    const r = runner.runner.record, lines = [];
+    const now = new Date();
+    lines.push('HeartSim · Part A: The heart as a pump · lab record');
+    lines.push(`Student: ${name || '(no name entered)'}`);
+    lines.push(`Finished: ${now.toLocaleString()}`);
+    lines.push('');
+    lines.push('Predictions and questions (✓ = right first time; otherwise your first answer and the number of tries)');
+    const keys = Object.keys(r.answers).sort((a, b) => {
+      const sa = LESSON.findIndex(s => s.id === a.split('.')[0]), sb = LESSON.findIndex(s => s.id === b.split('.')[0]);
+      return sa - sb || (+a.split('.')[1]) - (+b.split('.')[1]);
+    });
+    let n = 0, firstRight = 0;
+    for (const k of keys) {
+      const a = r.answers[k]; n++; if (a.firstCorrect) firstRight++;
+      lines.push(`${String(n).padStart(2)}. [Scene ${a.scene}] ${a.prompt}`);
+      lines.push(a.firstCorrect ? `    ✓ ${a.first}` : `    first answer: ${a.first} · ${a.done ? `right after ${a.attempts} tries` : 'not yet answered correctly'}`);
+    }
+    const total = LESSON.reduce((s, sc) => s + sc.steps.filter(st => st.question).length, 0);
+    lines.push(`Answered ${n} of ${total} questions; ${firstRight} right first time.`);
+    lines.push('');
+    lines.push('Measurements');
+    const v = r.values;
+    if (v.SV) lines.push(`  Stroke volume read from your PV loop: ${v.SV.entered} mL (model ${fmt(v.SV.model, 1)} mL)`);
+    if (v.EF) lines.push(`  Ejection fraction: ${v.EF.entered} % (model ${fmt(v.EF.model, 1)} %)`);
+    lines.push('Experiments');
+    if (v.preload) lines.push(`  +500 mL IV fluid: EDV ${r0(v.preload.edv0)} → ${r0(v.preload.edv1)} mL, SV ${r0(v.preload.sv0)} → ${r0(v.preload.sv1)} mL`);
+    if (v.afterload) lines.push(`  Arterioles constricted: ESV ${r0(v.afterload.esv0)} → ${r0(v.afterload.esv1)} mL, SV ${r0(v.afterload.sv0)} → ${r0(v.afterload.sv1)} mL, mean aortic ${r0(v.afterload.map0)} → ${r0(v.afterload.map1)} mmHg`);
+    if (v.lvFailure) lines.push(`  Weakened LV: lung vein pressure ${fmt(v.lvFailure.pv0, 1)} → ${fmt(v.lvFailure.pv1, 1)} mmHg, LV EDV ${r0(v.lvFailure.edv0)} → ${r0(v.lvFailure.edv1)} mL`);
+    if (!v.preload && !v.afterload && !v.lvFailure) lines.push('  (none completed)');
+    const body = lines.join('\n');
+    return body + '\n\nCheck code: ' + Lesson.checkCode(body, RECORD_SALT);
+  }
+  function renderRecordBox(el, c) {
+    el.className = 'extra record';
+    el.innerHTML = '';
+    const lab = htmlEl('label', { for: 'rec-name' }, 'Your name');
+    const name = htmlEl('input', { type: 'text', id: 'rec-name', autocomplete: 'name' });
+    name.value = c.record.name || '';
+    const ta = htmlEl('textarea', { readonly: 'readonly', 'aria-label': 'Your lab record' });
+    const update = () => { c.record.name = name.value.trim(); ta.value = recordText(c.record.name); };
+    name.addEventListener('input', update);
+    const row = htmlEl('div', { class: 'row' });
+    const copy = htmlEl('button', { type: 'button', class: 'primary' }, 'Copy lab record');
+    copy.addEventListener('click', async () => {
+      update();
+      try { await navigator.clipboard.writeText(ta.value); c.status('<b>Copied.</b> Paste it into the Canvas assignment.', true); }
+      catch (e) { ta.focus(); ta.select(); c.status('Select-all is done: press Ctrl+C (⌘C on a Mac) to copy.', false); }
+    });
+    const dl = htmlEl('button', { type: 'button' }, 'Download as .txt');
+    dl.addEventListener('click', () => {
+      update();
+      const blob = new Blob([ta.value], { type: 'text/plain' });
+      const a = htmlEl('a', { href: URL.createObjectURL(blob), download: `heartsim-partA-${(c.record.name || 'record').replace(/\W+/g, '_')}.txt` });
+      document.body.appendChild(a); a.click(); a.remove();
+    });
+    row.appendChild(copy); row.appendChild(dl);
+    el.appendChild(lab); el.appendChild(name); el.appendChild(ta); el.appendChild(row);
+    update();
+  }
+  function verifyRecord(text) {
+    const m = text.replace(/\r\n/g, '\n').match(/^([\s\S]*?)\n\s*\nCheck code:\s*([A-Z0-9]{5}-[A-Z0-9]{5})\s*$/m);
+    if (!m) return { ok: false, msg: 'No check code found. Paste the whole record, including the last line.' };
+    const ok = Lesson.checkCode(m[1], RECORD_SALT) === m[2];
+    return { ok, msg: ok ? '✓ The record matches its check code (not edited after it was made).' : '✗ The check code does not match: the record was edited, or is incomplete.' };
+  }
+  function openVerify() {
+    $('#verify').classList.add('on'); $('#verify-text').focus();
+  }
+  $('#verify-check').addEventListener('click', () => { const r = verifyRecord($('#verify-text').value); $('#verify-result').textContent = r.msg; $('#verify-result').style.color = r.ok ? 'var(--good)' : 'var(--bad)'; });
+  $('#verify-close').addEventListener('click', () => $('#verify').classList.remove('on'));
+  window.__heartsim.verifyRecord = verifyRecord;
+  window.__heartsim.recordText = (n) => recordText(n);
+
+  // =========================================================================
+  // Start
+  // =========================================================================
+  runner = Lesson.createRunner({
+    lesson: LESSON, panel, progress: $('#progress'), host, partLabel: 'Part A',
+    inheritKeys: ['view', 'viewOpts', 'speed', 'mode', 'traces', 'meters'],
+  });
+  if (location.hash === '#verify') openVerify();
+  window.addEventListener('hashchange', () => { if (location.hash === '#verify') openVerify(); });
+  runner.goto(0, 0);
+  requestAnimationFrame(frame);
+})();
+
+</script>
+</body>
+</html>

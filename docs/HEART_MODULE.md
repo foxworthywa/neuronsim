@@ -1,4 +1,7 @@
-# HEART_MODULE.md — heart and circulation (design; not yet implemented)
+# HEART_MODULE.md — heart and circulation
+
+**Status:** Part A (scenes 1–5) is built: `heart/` (engine, app), `lib/` (shared lesson runner),
+`tests/heart.test.js`. Parts B and C, the lab and the case mode are still design.
 
 The second module, aimed at BIO 142 (A&P II), especially the online-only sections. It follows
 `PEDAGOGY.md` unchanged: predict → observe → explain, causes before names, nothing drawn that the
@@ -25,12 +28,12 @@ times this automatically, and why doesn't the heart need the brain to do it?
 | # | Scene | View | Student does | Predict | Done when |
 |---|-------|------|--------------|---------|-----------|
 | 1 | Two pumps, one loop | zoom: person → thorax → heart; then a circuit schematic (right heart → lungs → left heart → body → back) | follows one red blood cell by clicking the next stop from a **functional** description ("receives blood returning from the lungs") | O₂ content in the pulmonary veins; which side pumps more blood per minute | full loop traced |
-| 2 | Pressure moves blood | left-heart strip: pulmonary veins → LA → mitral → LV → aortic valve → aorta, with the pressure ladder; heartbeat off (manual mode) | holds **Squeeze** to stiffen the LV wall, releases, and repeats | what opens the mitral valve; which valve moves first when the LV squeezes; when blood starts to leave | student has produced ≥ 2 ejections and seen a phase with both valves shut |
+| 2 | Pressure moves blood | left-heart strip: pulmonary veins → LA → bicuspid → LV → aortic valve → aorta, with the pressure ladder; heartbeat off (manual mode) | holds **Squeeze** to stiffen the LV wall, releases, and repeats | what opens the bicuspid valve; which valve moves first when the LV squeezes; when blood starts to leave | student has produced ≥ 2 ejections and seen a phase with both valves shut |
 | 3 | Building the cardiac cycle | same strip + live traces (LA, LV, aortic pressure; LV volume; valve bar) drawn beat by beat; sim pauses at each of the four valve events | presses **Beat** for each squeeze and answers at the pauses; hears S1/S2 when they happen | next valve event; LV volume while both valves are shut; what closes the aortic valve; which event makes each heart sound | all four valve events annotated |
 | 4 | How much per beat? | pressure–volume loop drawn live next to the traces | clicks each side of the loop from its description; reads EDV and ESV off the loop | why pressure barely rises during filling; SV and EF from their own loop | SV within ±5 mL of the model |
 | 5 | More in, more out | PV loop + left and right output meters | raises filling (infuse, raise legs), then raises afterload (constrict arterioles); then sets RV output 5 % above LV | SV with more filling; SV against higher aortic pressure; where the extra right-heart blood goes and what the left heart does about it | both manipulations done; left and right outputs seen to re-converge |
 | 6 | The heart beats itself | SA node cell: membrane strip with funny (HCN), Ca²⁺ and K⁺ channels, voltage ladder, voltage trace; auto-beating switches on | watches three spontaneous beats; cuts the cardiac nerves | does a heart removed from the body keep beating; which ion carries the upstroke (vs. the neuron); why there is no stable resting potential | three beats seen; denervated rate ≈ 100 bpm observed |
-| 7 | Spreading the signal | heart outline with conduction pathway coloured by membrane potential; ECG builds underneath; sim pauses at P, PR segment, QRS, T | steps through one beat; then overlays the ECG on scene 3's traces | what the AV-node pause is for; which wave is atrial depolarization; whether atrial repolarization shows; whether the ECG shows contraction; which comes first: QRS or the mitral valve closing | ECG annotated; overlay ordering answered |
+| 7 | Spreading the signal | heart outline with conduction pathway coloured by membrane potential; ECG builds underneath; sim pauses at P, PR segment, QRS, T | steps through one beat; then overlays the ECG on scene 3's traces | what the AV-node pause is for; which wave is atrial depolarization; whether atrial repolarization shows; whether the ECG shows contraction; which comes first: QRS or the bicuspid valve closing | ECG annotated; overlay ordering answered |
 | 8 | The contractile cell | ventricular myocyte membrane strip (fast Na⁺, L-type Ca²⁺, K⁺) + Ca²⁺ → tension trace | stimulates once; then tries to stimulate again mid-contraction; then blocks Ca²⁺ channels partially | what holds Vm near 0 for ~250 ms; what the entering Ca²⁺ does; whether a second stimulus during contraction adds a second contraction (compare skeletal muscle from BIO 141) | early stimulus attempted and refused; weaker beat seen under Ca²⁺ block |
 | 9 | The nervous system adjusts | SA cell trace + PV loop + HR, SV, CO readouts; sympathetic and vagal sliders | **Challenge:** double cardiac output; first by heart rate alone (pacing to 180), then with sympathetic drive | vagal effect on the pacemaker drift; sympathetic effect on contractility; why pacing alone stops paying off at high rates | CO ≥ 10 L/min reached, and the high-rate plateau seen |
 | 10 | Into the vessels | whole-circulation schematic: heart, elastic aorta, arterioles (drawn diameter = resistance), capillaries, veins as a reservoir; MAP gauge; arterial pressure trace | constricts or dilates arterioles; stiffens the aorta | MAP and CO after arteriolar constriction; where most of the blood is; pulse pressure with a stiff aorta | answered and both manipulated |
@@ -51,7 +54,7 @@ built to catch:
 | Chordae tendineae / papillary muscles open the valves | 2 | Valves move only when the pressure across them reverses; chordae only stop eversion |
 | Blood leaves the moment the ventricle squeezes | 2, 3 | Isovolumetric contraction: pressure must first exceed aortic pressure |
 | Heart sounds are the muscle contracting | 3 | S1 and S2 occur at valve closures |
-| The atria fill the ventricles | 3, 4 | Most filling is passive; the atrial kick adds roughly the last 20 % |
+| The atria fill the ventricles | 3, 4 | Most filling is passive; the atrial kick adds roughly the last 10–20 % |
 | The heart pumps what the brain tells it to | 5 | Frank–Starling: output follows filling with no nerves involved |
 | The heart needs the brain to beat | 6 | The denervated SA node fires at ≈ 100 bpm; vagal tone slows it to ≈ 75 |
 | Every action potential upstroke is Na⁺ | 6 | SA-node upstroke is Ca²⁺; TTX-like Na⁺ block does not stop it |
@@ -67,13 +70,13 @@ built to catch:
 Same devices as NeuronSim, adapted:
 
 - **Narrator bar** generated from model state, e.g. *"LV pressure (14 mmHg) is now above LA
-  pressure (10), so the mitral valve is pushed shut. The aorta is still at 80, so the aortic valve
+  pressure (10), so the bicuspid valve is pushed shut. The aorta is still at 80, so the aortic valve
   stays shut too. With both valves closed, LV volume cannot change."*
 - **Pressure ladder** (the heart's version of the voltage ladder): a vertical mmHg scale with
   pointers for LA, LV and aorta and a valve symbol between each pair. A valve is drawn open only
   when the arrow between its two pointers runs downhill in the forward direction. "Valves follow
   pressure" can be read straight off it.
-- **Valve bar** under the traces: mitral and aortic open/closed in time, with the four phases
+- **Valve bar** under the traces: bicuspid and aortic open/closed in time, with the four phases
   (filling, isovolumetric contraction, ejection, isovolumetric relaxation) shaded once named.
 - **Causal checklist** for the reflex (scene 11): MAP falls → baroreceptors fire less → medulla
   → vagal ↓, sympathetic ↑ → HR ↑, contractility ↑, arterioles narrow, veins tighten → MAP
@@ -93,7 +96,7 @@ Same model, all controls:
 - **Volume:** infuse, hemorrhage, standing vs. lying.
 - **Vessels:** arteriolar resistance (TPR), aortic stiffness, venous tone.
 - **Heart muscle:** contractility, diastolic stiffness.
-- **Valves:** aortic stenosis or regurgitation; mitral stenosis or regurgitation; each graded.
+- **Valves:** aortic stenosis or regurgitation; bicuspid stenosis or regurgitation; each graded.
 - **Drugs:** β-blocker, atropine, L-type Ca²⁺-channel blocker, vasodilator, diuretic (volume ↓).
 - **Reflex:** baroreflex on/off.
 - **Views:** any; record any pressure, volume or cell voltage.
@@ -113,8 +116,8 @@ Initial case pool, chosen so each has a distinct signature in the model:
 |---|---|
 | Aortic stenosis | LV–aortic systolic gradient, systolic ejection murmur, narrow pulse pressure |
 | Aortic regurgitation | Wide pulse pressure, low diastolic pressure, diastolic murmur, large EDV |
-| Mitral regurgitation | Holosystolic murmur, tall LA pressure wave, no true isovolumetric contraction on the PV loop |
-| Mitral stenosis | High LA pressure, LA–LV gradient in diastole, diastolic murmur |
+| Bicuspid (bicuspid) regurgitation | Holosystolic murmur, tall LA pressure wave, no true isovolumetric contraction on the PV loop |
+| Bicuspid (bicuspid) stenosis | High LA pressure, LA–LV gradient in diastole, diastolic murmur |
 | Systolic heart failure | Low EF, high EDV and EDP, PV loop shifted right |
 | Complete AV block | P waves and QRS complexes unrelated, ventricular rate ≈ 35–45 |
 | β-blocker excess | Slow rate, reduced contractility, normal valves, blunted response to standing |
@@ -240,10 +243,10 @@ Healthy adult, supine, at rest, default vagal tone:
 - Total blood volume conserved to < 0.1 % over 100 beats without interventions.
 - Resting targets in the table above are met.
 - Each valve is open only when its upstream pressure exceeds downstream (apart from the brief
-  inertial backflow at semilunar closure); mitral and aortic are never open together (healthy).
+  inertial backflow at semilunar closure); bicuspid and aortic are never open together (healthy).
 - LV volume changes < 1 mL during isovolumetric phases.
-- Event order every beat: P → QRS → mitral closes (S1) → aortic opens → T → aortic closes (S2)
-  → mitral opens.
+- Event order every beat: P → QRS → bicuspid closes (S1) → aortic opens → T → aortic closes (S2)
+  → bicuspid opens.
 - Frank–Starling: + 500 mL infused → EDV ↑ and SV ↑ (reflex off).
 - Afterload: TPR ↑ → ESV ↑, SV ↓ (reflex off).
 - Contractility: E_max ↑ → ESV ↓, SV ↑, EF ↑.
@@ -287,21 +290,44 @@ module), respiratory sinus arrhythmia, arrhythmias beyond AV block, scoring and 
 
 Each milestone is usable in a course on its own.
 
-- **M0 · Shared framework.** Extract the lesson runner, question/feedback system and trace canvas
-  from `app.js` into shared files. NeuronSim must behave identically and pass its tests.
-  `build.js` writes one bundle per module. `dist/index.html` stays NeuronSim so existing student
-  links keep working, and `dist/heart.html` is added.
-- **M1 · Mechanics + Part A.** Closed-loop engine, manual and fixed-rate activation, mechanical
-  tests, scenes 1–5. A1 can be assigned at this point.
+- **M0 · Shared framework.** ✅ The repository is now a collection of models: `neuron/`, `heart/`,
+  shared `lib/` (lesson runner, base styles), a landing page, and `build.js` writing one bundle per
+  model (`dist/index.html` landing, `dist/neuron.html`, `dist/heart.html`). The heart uses the new
+  generic runner in `lib/lesson.js`. NeuronSim still runs its own copy of the runner; moving it
+  onto `lib/` is a separate, behaviour-preserving refactor for later.
+- **M1 · Mechanics + Part A.** ✅ Closed-loop engine with sinus, single-beat and manual activation;
+  19 physiology tests; scenes 1–5; lab record for Canvas. A1 can be assigned.
 - **M2 · Electrics + Part B.** Cells, conduction, ECG, coupling, autonomic; scenes 6–9.
 - **M3 · Vessels + Part C.** Venous reservoirs, baroreflex; scenes 10–11.
 - **M4 · Lab and cases.** Lesions, drugs, sounds/murmurs, mystery-patient mode, check codes,
   assignment handouts.
 
-## Open questions for the instructor
+## Decisions (instructor, Oct 2026)
 
-1. Which textbook and vocabulary should the scenes match (e.g., mitral vs. bicuspid, "AV valve")?
-2. How students submit: pasted check code plus a Canvas quiz or worksheet, or something else?
-3. Target length per lesson: is ~30–40 min right for the online sections?
-4. Keep the `neuronsim` repo and URL for all modules, or move to a broader name later?
-5. Sound on by default (S1/S2, murmurs), given headphones and accessibility?
+1. **Vocabulary:** "bicuspid valve" in everything students see. Code identifiers still say `mitral`.
+2. **Submission:** through Canvas. Each Part ends with a **lab record**: the student's first answer
+   to every prediction, attempts, measurements and experiment results, plus a check code. Students
+   paste it into a Canvas text-entry assignment or upload the downloaded .txt. Instructors check a
+   record at `heart/#verify` (paste the record; the code is recomputed from the text). Assignment
+   text: `assignments/` (the answer key and rubric are kept out of this public repository).
+3. **Length:** about 30–40 min per Part; Parts A–C together make one lab.
+4. **Naming:** the repo becomes a collection of models (done in the file layout; renaming the
+   GitHub repository and Pages URL is still to do).
+5. **Sound:** heart sounds on by default, with a toggle and a visual twin on the traces.
+
+## Part A as built (differences from the plan above)
+
+- Scene 1 traces the loop in 8 clicks (RA → RV → pulmonary trunk → lungs → pulmonary veins → LA →
+  LV → aorta); a token changes colour in the lungs. A third question (why the LV wall is thicker)
+  uses the aortic vs. pulmonary-trunk pressure traces.
+- Scene 5's "two sides" experiment weakens the **left** ventricle (a heart attack, contractility
+  −60 %) instead of strengthening the right. Strengthening the RV barely moves any blood (it cannot
+  pump more than venous return gives it), while a weak LV shows the damming, the rise in lung
+  pressure and the Frank–Starling rebalancing clearly, and leads into left heart failure.
+- The relaxed ventricles follow an exponential pressure–volume curve (not a constant E_min), so
+  an over-filled ventricle stiffens and pressure backs up into the lungs.
+- "Stiffen the aorta" lowers compliance and raises characteristic impedance together (∝ √stiffness).
+- Until Part B, the beat is a clock: atria contract 105 ms after the beat, ventricles 190 ms after.
+- Measured at rest (default model): 126/81 mmHg (MAP 97), EDV 118 mL, ESV 47 mL, SV 71 mL, EF 60 %,
+  CO 5.3 L/min, PA 28/9, LA 6, RA 3 mmHg, systole ≈ 300 ms, atrial kick ≈ 11 % of EDV,
+  70 % of blood volume in systemic veins.

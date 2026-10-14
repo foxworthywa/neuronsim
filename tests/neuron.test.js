@@ -2,7 +2,7 @@
 // Run with:  npm test   (Node 18+)
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { Neuron, nernst } = require('../engine.js');
+const { Neuron, nernst } = require('../neuron/engine.js');
 
 function run(n, ms, onStep) {
   let events = [];

@@ -1,34 +1,51 @@
-// Bundle each model into one self-contained HTML file in dist/, plus the landing page.
-//   dist/index.html   landing page listing the models
-//   dist/neuron.html  NeuronSim   (neuron/index.html + its scripts)
-//   dist/heart.html   HeartSim    (heart/index.html + lib/ + its scripts)
-// Usage: node build.js
+// Bundle each page into one self-contained file under dist/: every <script src="..."> and
+// <link rel="stylesheet" href="..."> that points at a local file is inlined (nested paths such
+// as scenes/shared.js included). Pages that do not exist yet are skipped with a note.
+// Frozen releases (v1/) are copied through untouched so their URLs keep working forever.
+// Pages in their own folder (heart/) resolve their files relative to that folder.
+// Usage: node build.js            → dist/index.html, dist/muscle.html, dist/heart.html, dist/v1/*
 const fs = require('fs'), path = require('path');
 const root = __dirname;
-const MODULES = ['neuron', 'heart'];
+const PAGES = ['index.html', 'muscle.html'];
+const FOLDER_PAGES = [['heart/index.html', 'heart.html']];   // [source, published name]
+const FROZEN = ['v1'];   // already-bundled snapshots: copied verbatim, never rebuilt
+const isLocal = (p) => !/^(https?:)?\/\//.test(p) && !p.startsWith('data:');
 
-function inline(htmlFile) {
-  const dir = path.dirname(htmlFile);
-  let html = fs.readFileSync(htmlFile, 'utf8');
+function inline(html, base = root) {
   html = html.replace(/<script src="([^"]+)"><\/script>/g, (m, src) => {
-    const code = fs.readFileSync(path.join(dir, src), 'utf8').replace(/<\/script>/g, '<\\/script>');
-    return `<script>\n${code}\n</script>`;
+    if (!isLocal(src)) return m;
+    const js = fs.readFileSync(path.join(base, src), 'utf8').replace(/<\/script>/g, '<\\/script>');
+    return `<script>\n${js}\n</script>`;
   });
   html = html.replace(/<link rel="stylesheet" href="([^"]+)">/g, (m, href) => {
-    if (/^https?:/.test(href)) return m;
-    return `<style>\n${fs.readFileSync(path.join(dir, href), 'utf8')}\n</style>`;
+    if (!isLocal(href)) return m;
+    const css = fs.readFileSync(path.join(base, href), 'utf8').replace(/<\/style>/g, '<\\/style>');
+    return `<style>\n${css}\n</style>`;
   });
-  // Links between models: source tree uses folders (heart/), the bundle uses files (heart.html).
-  html = html.replace(/href="(?:\.\.\/)?(neuron|heart)\/"/g, 'href="$1.html"').replace(/href="\.\.\/"/g, 'href="index.html"');
   return html;
 }
 
 fs.mkdirSync(path.join(root, 'dist'), { recursive: true });
-for (const m of MODULES) {
-  const html = inline(path.join(root, m, 'index.html'));
-  fs.writeFileSync(path.join(root, 'dist', m + '.html'), html);
-  console.log(`wrote dist/${m}.html`, (html.length / 1024).toFixed(0), 'KB');
+for (const page of PAGES) {
+  const src = path.join(root, page);
+  if (!fs.existsSync(src)) { console.log(`skip ${page}: not found (not built yet)`); continue; }
+  const html = inline(fs.readFileSync(src, 'utf8'));
+  fs.writeFileSync(path.join(root, 'dist', page), html);
+  console.log(`wrote dist/${page}`, (html.length / 1024).toFixed(0), 'KB');
 }
-const landing = inline(path.join(root, 'index.html'));
-fs.writeFileSync(path.join(root, 'dist', 'index.html'), landing);
-console.log('wrote dist/index.html', (landing.length / 1024).toFixed(0), 'KB');
+
+for (const [page, out] of FOLDER_PAGES) {
+  const src = path.join(root, page);
+  if (!fs.existsSync(src)) { console.log(`skip ${page}: not found (not built yet)`); continue; }
+  const html = inline(fs.readFileSync(src, 'utf8'), path.dirname(src));
+  fs.writeFileSync(path.join(root, 'dist', out), html);
+  console.log(`wrote dist/${out}`, (html.length / 1024).toFixed(0), 'KB');
+}
+
+for (const dir of FROZEN) {
+  const from = path.join(root, dir);
+  if (!fs.existsSync(from)) continue;
+  fs.mkdirSync(path.join(root, 'dist', dir), { recursive: true });
+  for (const f of fs.readdirSync(from)) fs.copyFileSync(path.join(from, f), path.join(root, 'dist', dir, f));
+  console.log(`copied ${dir}/ (frozen release)`);
+}

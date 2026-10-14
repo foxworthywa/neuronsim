@@ -1,78 +1,50 @@
-# A&P models: interactive physiology simulations
+# NeuronSim and MuscleSim — how excitable cells signal
 
-Model-driven lessons for intro-college anatomy & physiology (BIO 141/142). Students predict,
-then test their prediction against a running simulation, then explain. Every picture is drawn
-from the model's state; nothing is a canned animation.
+Two interactive, model-driven lessons on one engine. **NeuronSim** builds a causal
+understanding of neuronal signaling: receive → integrate → decide → propagate → transmit.
+**MuscleSim** does the same for a skeletal muscle fibre: rest → shock → impulse → spread → Ca²⁺ →
+force → relax → tetanus, then the neuromuscular junction, with a lab of clinical scenarios. The
+muscle module is self-contained (it is taught first in the course it was built for) and
+introduces the resting membrane and the action potential from scratch.
 
-| Model | Course | Status |
-|---|---|---|
-| **NeuronSim**: how a neuron signals (`neuron/`) | BIO 141 | complete: 10 scenes + lab |
-| **HeartSim**: heart and circulation (`heart/`) | BIO 142 | Part A (the pump) built; Parts B–C planned |
+**Live versions:** https://foxworthywa.github.io/neuronsim/ (neuron) and
+https://foxworthywa.github.io/neuronsim/muscle.html (muscle), rebuilt automatically on every push.
 
-**Live version:** https://foxworthywa.github.io/neuronsim/ (rebuilt automatically on every push
-to the deploy branches; see `.github/workflows/pages.yml`).
+**Frozen release, safe to assign:** https://foxworthywa.github.io/neuronsim/v1/muscle.html and
+https://foxworthywa.github.io/neuronsim/v1/index.html. These are byte-for-byte copies of the first
+classroom-usable build (commit `c60f6d6`, tag `muscle-v1`), carried in `v1/` and copied into the
+site untouched by `node build.js`. Nothing that happens on the main pages can change them, so a
+link handed to students mid-semester keeps working exactly as it did the day it was tested. To
+freeze a later release, copy the current `dist/*.html` into a new `v2/` folder and add it to
+`FROZEN` in `build.js`.
 
-No build step for development. Open `index.html`, `neuron/index.html` or `heart/index.html` in a
-browser, or serve the folder with any static server.
+**HeartSim (BIO 142), Part A: the heart as a pump:** https://foxworthywa.github.io/neuronsim/heart.html.
+A separate page in `heart/` with its own engine (`heart/engine.js`, a closed-loop lumped
+circulation) and lesson runner (`lib/lesson.js`). Six scenes: the real heart (a beating frontal
+section) and its parts; following a red blood cell, then morphing the anatomy into the circulation
+diagram; pressure and valves, squeezing the ventricle yourself; the cardiac cycle with heart
+sounds; the pressure–volume loop, stroke volume and ejection fraction; Frank–Starling. A patient
+case (Dana, two weeks after a heart attack) runs through it and ends with her fluid retention and a
+diuretic. The last screen gives the student's results and a completion code (instructors check it
+at `heart.html#verify`); the graded work is a worksheet (`assignments/heart-part-A.md`). Design and
+model: `docs/HEART_MODULE.md`. Tests: `tests/heart.test.js` (physiology) and `npm run test:heart`
+(walks all 54 steps in Chromium).
+
+No build step. Open `index.html` in a browser (or serve the folder with any static server).
 
 ```
-npm test          # physiology unit tests for every model (Node 18+)
+npm test          # biology unit tests (Node 18+)
 npm start         # optional: serve on http://localhost:8080
-node build.js     # bundle each model into one self-contained file in dist/
+node build.js     # bundle each page into dist/<page>.html (one self-contained file each)
+npm run test:ui     # walk every scene, step and lab view in headless Chromium
+npm run test:walk   # perform every muscle activity through the panel buttons
+npm run test:robust # no step callback throws, and the loop survives one that does
 ```
 
-`dist/` holds the single-file versions: `index.html` (landing page), `neuron.html`, `heart.html`.
-Copy any of them anywhere, double-click it, or upload it to a course site. Regenerate with
-`node build.js`.
+`dist/index.html` is the single-file version: copy it anywhere, double-click it, or drop it on
+GitHub Pages / a course site. It is regenerated from the source files by `node build.js`.
 
-## Layout
-
-```
-index.html            landing page
-lib/lesson.js         shared lesson runner: scenes, questions + targeted feedback, gating, answer record
-lib/base.css          shared layout and styles
-neuron/               NeuronSim: engine.js (model), app.js (views + lesson), index.html
-heart/                HeartSim:  engine.js (model), app.js (views + lesson), index.html
-tests/                neuron.test.js, heart.test.js: the physiology each model must obey
-docs/                 PRODUCT, PEDAGOGY, BIOLOGY, VISUAL_STYLE, NEURON_MODULE, HEART_MODULE
-assignments/          Canvas assignment text (student-facing; answer keys are kept out of this public repo)
-```
-
-## HeartSim Part A: the heart as a pump (~40–45 min)
-
-Six scenes, each **predict → observe → explain**:
-
-1. **The real heart.** A beating frontal section (its four valves driven by the model): orient
-   (whose left?), then find the chambers and valves by their function.
-2. **Two pumps, one loop.** Follow a red blood cell through the real heart, lungs and body; then
-   watch the anatomy slide apart into the box diagram (and back) to see that it is the same
-   heart. Arteries vs. veins; both sides pump the same volume, against very different pressures.
-3. **Pressure moves blood.** The left side is straightened out of the real heart into a line
-   (a small inset keeps showing where it came from), with a guided key to reading it. The
-   heartbeat is off and the student squeezes the ventricle by hand, discovering that pressure
-   alone opens and shuts the valves.
-4. **Building the cardiac cycle.** One beat at a time, pausing at each valve event; heart sounds
-   S1/S2 are heard when the model's valves shut; the four phases.
-5. **How much per beat?** The pressure–volume loop: identify its sides, measure stroke volume
-   and ejection fraction.
-6. **More in, more out.** Preload (IV fluid), afterload (constricted arterioles), and a heart
-   attack weakening the left ventricle: blood dams in the lungs until Frank–Starling rebalances
-   the two sides; then Dana's fluid retention and her diuretic.
-
-A fictional patient, Dana (two weeks after a heart attack), runs through the lab: her case opens
-it, and her heart attack, fluid retention and diuretic are the last experiments. Part A ends with
-the student's results and a completion code (checked at `heart/index.html#verify`); the graded
-work is a reasoning worksheet (`assignments/heart-part-A.md`).
-
-The model (`heart/engine.js`) is a closed-loop lumped circulation: four time-varying-elastance
-chambers (exponential passive filling curve for the ventricles), one-way valves (the semilunar
-valves with inertia, so the aortic trace shows the dicrotic notch), systemic and pulmonary arteries
-and veins as compliances, and exactly conserved blood volume. Defaults give a resting adult:
-≈ 126/81 mmHg, EDV 118 mL, SV 71 mL, EF 60 %, CO 5.3 L/min. Details: `docs/HEART_MODULE.md`.
-
-Keyboard: **P** pauses/resumes; every control, question and diagram target is keyboard-operable.
-
-## NeuronSim: how a neuron signals
+## What the student does
 
 Ten scenes, each following **predict → observe → explain**:
 
@@ -95,20 +67,69 @@ as the model reaches it.
 Then a **free-play lab**: block Na⁺/K⁺/Ca²⁺ channels, change extracellular K⁺, switch off
 the pump, inject current, fire inputs repeatedly, and record from any compartment.
 
-- `neuron/engine.js`: the simulation. A simplified Hodgkin–Huxley conductance model
+## MuscleSim (`muscle.html`)
+
+Thirteen scenes on one skeletal muscle fibre, same predict → observe → explain rhythm:
+
+1. Zoom from a person lifting a cup to one fibre; one impulse, one twitch.
+2. Parts of a muscle fibre by *function* (sarcolemma, T-tubules, SR, myofibrils, end plate).
+3. The resting membrane (−85 mV): gradients, pump vs. permeability, open a channel yourself.
+4. Insert a recording electrode.
+5. Shock the fibre: threshold, the Na⁺ positive-feedback loop, all-or-none.
+6. Build the action potential phase by phase; the refractory period.
+7. The impulse spreads both ways along the fibre and down the T-tubules.
+8. Voltage to calcium: the tubule sensor opens the SR store (a Ca²⁺-free bath still twitches).
+9. Calcium to force: troponin, tropomyosin, cross-bridges, ATP.
+10. Relaxation: SERCA pumps Ca²⁺ back; with no ATP the fibre locks (rigor).
+11. The twitch on one time axis: milliseconds of impulse, tens of ms of Ca²⁺, ~100 ms of force —
+    first at full speed, then walked one phase at a time, the fibre stopping at each.
+12. Summation and tetanus, discovered by raising the stimulation rate.
+13. How the body delivers the shock: the neuromuscular junction, ACh, the end-plate potential
+    and its safety margin.
+(A fourteenth scene on motor units and grading force is specified but not yet built.)
+
+`docs/worksheet/` holds a two-page group worksheet keyed to the scenes (with an instructor key
+on page 3): `MuscleSim-worksheet.docx` / `.pdf`, generated by `node docs/worksheet/make-worksheet.js`.
+
+The **lab** adds clinical scenario cards, each with a prediction: botulinum toxin, magnesium
+sulfate and calcium gluconate, rocuronium with neostigmine or sugammadex, myasthenia gravis with
+pyridostigmine and cholinergic crisis, succinylcholine, organophosphate poisoning, hyper- and
+hypokalaemia (with IV calcium), hypo- and hypercalcaemia, malignant hyperthermia and dantrolene,
+rigor mortis versus cramp, and "which calcium?". The design and every question are in
+`docs/MUSCLE_MODULE.md`; the model is `muscle.js`, tested by `tests/muscle.test.js`.
+
+## How it works
+
+- `engine.js` — the simulation. A simplified Hodgkin–Huxley conductance model
   (`I = g·(V − E)` for Na⁺, K⁺, leak, synaptic and Ca²⁺ currents) with Nernst reversal
   potentials computed from concentrations, in 16 coupled compartments (dendrite, soma, hillock,
   12 axon segments, terminal). Presynaptic terminals model Ca²⁺ channel gating, cytosolic Ca²⁺,
   vesicle release and transmitter clearance; receptors bind transmitter and open. Works in the
   browser and in Node.
-- `neuron/app.js`: the lesson engine, the SVG views (neuron, membrane strip, synapse, axon) and
-  the canvas voltage trace.
+- `app.js` — the page-agnostic lesson engine (scenes, questions, feedback, activity gating),
+  the generic membrane view and the canvas voltage trace (`SimApp.init`, see `docs/APP_API.md`).
+  Every visual is rendered from engine state; nothing is a pre-baked animation.
+- `scenes/shared.js` — the resting-membrane, recording-electrode and action-potential scenes,
+  built from a cell profile so other modules (muscle) can re-stage them.
+- `lessons/neuron.js` — everything neuron-specific: the neuron drawing, the zoom/neuron/synapse/axon
+  views, the ten-scene lesson and the lab. `index.html` + `style.css` are the page.
+- `muscle.js` — the skeletal muscle fibre: 17 coupled sarcolemma segments (3 cm) with the same
+  channel kinetics, a split K⁺/Na⁺ leak resting at −85 mV, per-segment excitation–contraction
+  coupling (T-tubule sensor → SR release channel → cytosolic Ca²⁺ → troponin → cross-bridges →
+  force, SERCA return, ATP), a neuromuscular junction built from the engine's terminal and
+  receptor classes, and the drug/ion controls behind the clinical scenarios.
+- `views/muscle.js` — the fibre, fibre-wave, triad, sarcomere and junction views;
+  `lessons/muscle.js` — the fourteen-scene lesson and the scenario lab; `muscle.html` is the page.
+- `tests/biology.test.js`, `tests/muscle.test.js` — "scientific unit tests" asserting the physiology;
+  `tests/ui/smoke.js` — a Playwright walk of every scene, step and lab view (`npm run test:ui`).
+- `docs/` — `PRODUCT.md`, `BIOLOGY.md`, `PEDAGOGY.md`, `VISUAL_STYLE.md`, `NEURON_MODULE.md`,
+  `MUSCLE_MODULE.md`, `MUSCLE_VIEWS.md`, `APP_API.md`.
 
 Keyboard: **space** pauses/resumes the simulation clock. The speed menu sets how much simulated
 time passes per real second (default 1 %: a 2 ms action potential takes ~0.2 s; scenes 7–10 use
 0.3 %).
 
-### Model notes (for instructors)
+## Model notes (for instructors)
 
 - Units: mV, ms, µS, nF, nA. Compartment areas set capacitance and channel numbers.
 - Resting potential is calibrated to exactly −70 mV by the leak reversal; E_K ≈ −95 mV, E_Na ≈ +67 mV.

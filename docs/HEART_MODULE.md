@@ -290,11 +290,10 @@ module), respiratory sinus arrhythmia, arrhythmias beyond AV block, scoring and 
 
 Each milestone is usable in a course on its own.
 
-- **M0 · Shared framework.** ✅ The repository is now a collection of models: `neuron/`, `heart/`,
-  shared `lib/` (lesson runner, base styles), a landing page, and `build.js` writing one bundle per
-  model (`dist/index.html` landing, `dist/neuron.html`, `dist/heart.html`). The heart uses the new
-  generic runner in `lib/lesson.js`. NeuronSim still runs its own copy of the runner; moving it
-  onto `lib/` is a separate, behaviour-preserving refactor for later.
+- **M0 · Shared framework.** ✅ HeartSim lives in its own folder, `heart/` (engine, app, page),
+  with a generic lesson runner and base styles in `lib/`. It is published as `dist/heart.html`
+  alongside the existing pages, which `build.js` leaves byte-for-byte unchanged (NeuronSim at the
+  site root, MuscleSim at `muscle.html`, frozen releases in `v1/`).
 - **M1 · Mechanics + Part A.** ✅ Closed-loop engine with sinus, single-beat and manual activation;
   19 physiology tests; Part A scenes; results + completion code for Canvas. A1 can be assigned.
 - **M2 · Electrics + Part B.** Cells, conduction, ECG, coupling, autonomic; scenes 6–9.

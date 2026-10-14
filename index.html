@@ -3,41 +3,61 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>A&amp;P Models</title>
-<style>
-  :root { --bg: #f6f5f0; --panel: #fff; --ink: #1f2430; --muted: #5f6675; --line: #d9d6cc; --accent: #2f6fd6; }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-  main { max-width: 860px; margin: 0 auto; padding: 32px 16px 48px; }
-  h1 { font-size: 26px; margin: 0 0 4px; }
-  .lede { color: var(--muted); margin: 0 0 24px; }
-  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
-  a.card { display: block; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; color: inherit; text-decoration: none; }
-  a.card:hover, a.card:focus-visible { border-color: var(--accent); box-shadow: 0 2px 10px rgba(47, 111, 214, .12); }
-  a.card:focus-visible { outline: 3px solid #f0b429; outline-offset: 2px; }
-  .course { font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); }
-  .card h2 { font-size: 19px; margin: 2px 0 6px; }
-  .card p { margin: 0; color: var(--muted); font-size: 14px; }
-  .soon { margin-top: 24px; color: var(--muted); font-size: 14px; }
-</style>
+<title>NeuronSim — How a neuron signals</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-<main>
-  <h1>Anatomy &amp; Physiology models</h1>
-  <p class="lede">Interactive simulations where you predict, test and explain how the body works. Every picture is drawn from a running model, not a canned animation.</p>
-  <div class="cards">
-    <a class="card" href="neuron/">
-      <div class="course">BIO 141</div>
-      <h2>NeuronSim</h2>
-      <p>How a neuron signals: resting membrane, synapses, summation, the action potential, propagation and transmission.</p>
-    </a>
-    <a class="card" href="heart/">
-      <div class="course">BIO 142 · Part A</div>
-      <h2>HeartSim: the heart as a pump</h2>
-      <p>The circulation, pressure and valves, the cardiac cycle, pressure–volume loops and the Frank–Starling law.</p>
-    </a>
+<header>
+  <div>
+    <h1>NeuronSim</h1>
+    <div class="sub">How a neuron receives, decides, sends · <a href="muscle.html">Muscle module →</a></div>
   </div>
-  <p class="soon">Coming next in HeartSim: Part B (pacemaker, conduction and ECG, autonomic control) and Part C (blood pressure and the baroreceptor reflex).</p>
+  <div id="progress" title="Scenes"></div>
+  <div class="spacer"></div>
+  <label class="sub">Speed
+    <select id="speed" title="How much simulated time passes per second of real time">
+      <option value="0.0015">1 s = 1.5 ms (slowest)</option>
+      <option value="0.003">1 s = 3 ms</option>
+      <option value="0.005">1 s = 5 ms</option>
+      <option value="0.01" selected>1 s = 10 ms</option>
+      <option value="0.02">1 s = 20 ms</option>
+      <option value="0.05">1 s = 50 ms</option>
+    </select>
+  </label>
+  <button id="btn-pause" title="Pause / resume the simulation clock (space)">Pause</button>
+  <button id="btn-lab" title="Free-play lab with all controls">Lab</button>
+</header>
+
+<main>
+  <div id="stage-wrap">
+    <div id="stage-top">
+      <div id="stage-caption"></div>
+      <div id="vm-badge"><span id="vm-label">Vm</span> <b id="vm-value">−70.0</b> mV</div>
+    </div>
+    <div id="stage"></div>
+    <div id="paused-badge">Paused — predict first, then continue</div>
+    <div id="narrator" aria-live="polite"></div>
+  </div>
+  <aside id="panel"></aside>
+  <div id="trace-wrap">
+    <div id="trace-head">
+      <span id="trace-title">Membrane potential recorded inside the soma</span>
+      <span class="legend" id="trace-legend"></span>
+      <span style="flex:1"></span>
+      <label><input type="checkbox" id="show-g"> show Na⁺/K⁺ conductance</label>
+      <span id="sim-clock" style="font-variant-numeric: tabular-nums">t = 0.0 ms</span>
+    </div>
+    <canvas id="trace"></canvas>
+  </div>
 </main>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+<script src="scenes/shared.js"></script>
+<script src="lessons/neuron.js"></script>
+<script>
+  // Boot: the generic SimApp runs the neuron model with the neuron lesson (see docs/APP_API.md).
+  window.__neuronsim = SimApp.init(Object.assign({ model: new NeuronSim.Neuron() }, NeuronLesson));
+</script>
 </body>
 </html>

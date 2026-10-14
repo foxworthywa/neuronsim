@@ -1,7 +1,8 @@
 # NEURON_MODULE.md — scene sequence (Prototype 0.1 + 0.2)
 
 Every scene lists: the view, what the student does, the prediction(s), and the acceptance condition.
-Implemented in `app.js` (`LESSON`).
+Implemented in `lessons/neuron.js` (`lesson(kit)`); scenes 3, 4 and 8 come from `scenes/shared.js`
+(see `docs/APP_API.md`).
 
 | # | Scene | View | Student does | Predict | Done when |
 |---|-------|------|--------------|---------|-----------|
@@ -39,6 +40,11 @@ Same model, all controls: fire inputs (single or repeated), synapse strengths, c
 hold-to-open Na⁺/K⁺/Cl⁻ channels, TTX (Na⁺ block), TEA (K⁺ block), Ca²⁺ channel block,
 receptor antagonist, extracellular K⁺ and Na⁺, pump on/off (accelerated rundown), recording site,
 and any of the views.
+
+Planned clinical scenario (referenced from `MUSCLE_MODULE.md`, not yet built): **lost inhibition**
+(tetanus toxin blocks release from spinal inhibitory interneurons; strychnine blocks their glycine
+receptors): antagonize the receptor at input C and watch the same excitatory inputs now fire the
+cell unopposed. The muscle chain itself is intact in tetanus, which is why it belongs here.
 
 ## Feedback rules
 

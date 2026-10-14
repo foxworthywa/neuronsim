@@ -37,16 +37,30 @@
 
   // Hodgkin–Huxley gating kinetics, shifted so the resting potential is ≈ −70 mV.
   const HH_SHIFT = 0;
-  function hhRates(V) {
+  // opts.hShift shifts the inactivation (h) curve only, in mV (negative = inactivates at more
+  // negative voltages, as mammalian muscle Na⁺ channels do); opts.phi divides all three time
+  // constants (a temperature correction: the squid rates are for 6 °C). Both default to the
+  // classic behaviour so the neuron is unchanged.
+  function hhRates(V, opts) {
     const v = V + HH_SHIFT;
+    const hs = opts && opts.hShift ? opts.hShift : 0;
+    const phi = opts && opts.phi ? opts.phi : 1;
+    const vh = v - hs;
     const am = 0.1 * vtrap(v + 40, 10), bm = 4 * Math.exp(-(v + 65) / 18);
-    const ah = 0.07 * Math.exp(-(v + 65) / 20), bh = 1 / (1 + Math.exp(-(v + 35) / 10));
+    const ah = 0.07 * Math.exp(-(vh + 65) / 20), bh = 1 / (1 + Math.exp(-(vh + 35) / 10));
     const an = 0.01 * vtrap(v + 55, 10), bn = 0.125 * Math.exp(-(v + 65) / 80);
     return {
-      minf: am / (am + bm), taum: 1 / (am + bm),
-      hinf: ah / (ah + bh), tauh: 1 / (ah + bh),
-      ninf: an / (an + bn), taun: 1 / (an + bn),
+      minf: am / (am + bm), taum: 1 / ((am + bm) * phi),
+      hinf: ah / (ah + bh), tauh: 1 / ((ah + bh) * phi),
+      ninf: an / (an + bn), taun: 1 / ((an + bn) * phi),
     };
+  }
+
+  // Pump off → gradients slowly run down (accelerated for teaching). Shared by both models.
+  function pumpRundown(conc, k) {
+    if (conc.Na.in < 60) conc.Na.in += k * 6;
+    if (conc.K.in > 60) conc.K.in -= k * 6;
+    if (conc.K.out < 30) conc.K.out += k * 1.5;
   }
 
   // ---------------------------------------------------------------------------
@@ -202,6 +216,8 @@
         gKMax: (s.gK || 0) * s.area * 1e-5,
         gL: (s.gL || 0.1) * s.area * 1e-5,
         EL: -70,
+        // nominal shares of the lumped leak, used only for drawing ion traffic and the ladder
+        gKLeak: 0.75 * (s.gL || 0.1) * s.area * 1e-5, gNaLeak: 0.06 * (s.gL || 0.1) * s.area * 1e-5,
         V: -70, m: 0, h: 1, n: 0,
         gNa: 0, gK: 0, iNa: 0, iK: 0, iL: 0, iSynE: 0, iSynI: 0, iAx: 0,
         dVdt: 0,
@@ -276,7 +292,7 @@
       this.terminal.reset(); this.nextReceptor.reset();
       this.next.V = -70; this.next.i = 0;
       this.manual = { gNa: 0, gK: 0, gCl: 0 };
-      this.stim = {};
+      this.stim = {}; this._pulseEnd = null;
       this.naBlock = 0; this.kBlock = 0; this.pumpOn = true;
       this.conc = JSON.parse(JSON.stringify(DEFAULT_CONC));
       this.calibrateLeak();
@@ -297,6 +313,14 @@
       if (nA) this.stim[idx] = nA; else delete this.stim[idx];
     }
 
+    /** Inject `nA` into a compartment for `ms` of simulated time, then stop automatically. */
+    pulse(comp, nA, ms) {
+      const idx = typeof comp === 'number' ? comp : this.byName[comp].index;
+      this.setStim(idx, nA);
+      this._pulseComp = idx; this._pulseEnd = this.t + ms;
+      this.events.push({ t: this.t, type: 'shock', comp: idx, nA });
+    }
+
     /** Advance the model by `ms` of simulated time. */
     advance(ms) {
       const steps = Math.max(1, Math.round(ms / this.dt));
@@ -310,12 +334,9 @@
       const n = comps.length;
 
       // Pump off → gradients slowly run down (accelerated for teaching).
-      if (!this.pumpOn && this.pumpRundownRate > 0) {
-        const c = this.conc, k = this.pumpRundownRate * dt;
-        if (c.Na.in < 60) c.Na.in += k * 6;
-        if (c.K.in > 60) c.K.in -= k * 6;
-        if (c.K.out < 30) c.K.out += k * 1.5;
-      }
+      if (!this.pumpOn && this.pumpRundownRate > 0) pumpRundown(this.conc, this.pumpRundownRate * dt);
+      // timed current pulses (see pulse())
+      if (this._pulseEnd != null && this.t >= this._pulseEnd) { this.setStim(this._pulseComp, 0); this._pulseEnd = null; }
 
       // --- input synapses (presynaptic terminals driven by template APs)
       for (const inp of this.inputs) {
@@ -423,5 +444,5 @@
     input(id) { return this.inputs.find(x => x.id === id); }
   }
 
-  return { Neuron, Terminal, Receptor, nernst, hhRates, templateAP, DEFAULT_CONC, N_AXON };
+  return { Neuron, Terminal, Receptor, nernst, hhRates, expEuler, vtrap, pumpRundown, templateAP, DEFAULT_CONC, N_AXON };
 });

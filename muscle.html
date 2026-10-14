@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MuscleSim — From a shock to a twitch</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div>
+    <h1>MuscleSim</h1>
+    <div class="sub">From a shock to a twitch · <a href="index.html">Neuron module →</a></div>
+  </div>
+  <div id="progress" title="Scenes"></div>
+  <div class="spacer"></div>
+  <label class="sub">Speed
+    <select id="speed" title="How much simulated time passes per second of real time">
+      <option value="0.0015">1 s = 1.5 ms (slowest)</option>
+      <option value="0.003">1 s = 3 ms</option>
+      <option value="0.005">1 s = 5 ms</option>
+      <option value="0.01" selected>1 s = 10 ms</option>
+      <option value="0.02">1 s = 20 ms</option>
+      <option value="0.03">1 s = 30 ms</option>
+      <option value="0.05">1 s = 50 ms</option>
+      <option value="0.1">1 s = 100 ms</option>
+      <option value="0.15">1 s = 150 ms</option>
+      <option value="0.2">1 s = 200 ms (fastest)</option>
+    </select>
+  </label>
+  <button id="btn-pause" title="Pause / resume the simulation clock (space)">Pause</button>
+  <button id="btn-lab" title="Free-play lab with all controls">Lab</button>
+</header>
+
+<main>
+  <div id="stage-wrap">
+    <div id="stage-top">
+      <div id="stage-caption"></div>
+      <div id="vm-badge"><span id="vm-label">Vm</span> <b id="vm-value">−85.0</b> mV</div>
+    </div>
+    <div id="stage"></div>
+    <div id="paused-badge">Paused — predict first, then continue</div>
+    <div id="narrator" aria-live="polite"></div>
+  </div>
+  <aside id="panel"></aside>
+  <div id="trace-wrap">
+    <div id="trace-head">
+      <span id="trace-title">Membrane potential recorded inside the fibre (end plate)</span>
+      <span class="legend" id="trace-legend"></span>
+      <span style="flex:1"></span>
+      <label><input type="checkbox" id="show-g"> show Na⁺/K⁺ conductance</label>
+      <span id="sim-clock" style="font-variant-numeric: tabular-nums">t = 0.0 ms</span>
+    </div>
+    <canvas id="trace"></canvas>
+  </div>
+</main>
+
+<script src="engine.js"></script>
+<script src="muscle.js"></script>
+<script src="app.js"></script>
+<script src="scenes/shared.js"></script>
+<script src="views/muscle.js"></script>
+<script src="lessons/muscle.js"></script>
+<script>
+  // Boot: the generic SimApp runs the muscle fibre model with the muscle lesson (see docs/APP_API.md).
+  window.__musclesim = SimApp.init(Object.assign({ model: new MuscleSim.MuscleFibre() }, MuscleLesson));
+</script>
+</body>
+</html>

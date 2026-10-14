@@ -24,5 +24,10 @@ The lesson controls what problem the student is investigating. The simulation de
 happens biologically. The renderer shows the consequences. This separation is meant to be
 reused for later modules (muscle, kidney, endocrine, gene expression).
 
+Planned BIO 142 (A&P II) modules, in build order: **heart and circulation** (design in
+`HEART_MODULE.md`), kidney / fluid balance, respiratory + acid–base, reproductive hormone cycle,
+immune response, digestive. Modules are meant to share state where the physiology does
+(blood pressure drives GFR; ventilation sets pH) so later cases can involve several systems.
+
 Deliberately out of scope for now: myelin and saltatory conduction, multiple neuron types,
 realistic brain anatomy in the zoom-in, scoring / accounts.

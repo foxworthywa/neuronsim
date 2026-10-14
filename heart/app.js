@@ -255,7 +255,12 @@
     const labelLayer = svgEl('g', { 'pointer-events': 'none' }, g);
     const label = (key, text, x, y, anchor, lx, ly, inside) => {
       const lg = svgEl('g', { opacity: 0 }, labelLayer);
-      if (lx != null) svgEl('line', { x1: x + (anchor === 'end' ? 3 : anchor === 'start' ? -3 : 0), y1: y - 4, x2: lx, y2: ly, stroke: '#3a3f4a', 'stroke-width': 1 }, lg);
+      if (lx != null) {
+        const ln = { x1: x + (anchor === 'end' ? 3 : anchor === 'start' ? -3 : 0), y1: y - 4, x2: lx, y2: ly, 'stroke-linecap': 'round' };
+        svgEl('line', Object.assign({ stroke: '#fff', 'stroke-width': 5, opacity: 0.9 }, ln), lg);   // halo: readable on dark vessels
+        svgEl('line', Object.assign({ stroke: '#1f2430', 'stroke-width': 2 }, ln), lg);
+        svgEl('circle', { cx: lx, cy: ly, r: 3, fill: '#1f2430', stroke: '#fff', 'stroke-width': 1.5 }, lg);
+      }
       const t = svgEl('text', { x, y, 'text-anchor': anchor || 'middle', 'font-size': inside ? 12 : 12, 'font-weight': inside ? 700 : 600, fill: inside ? '#fff' : '#1f2430', text }, lg);
       if (!inside) { lg.insertBefore(svgEl('rect', { fill: 'rgba(255,255,255,.85)', rx: 3 }, null), t); }
       labels[key] = { g: lg, t, x, y };
@@ -1033,6 +1038,11 @@
       <p>She is started on a <b>diuretic</b>, a drug that makes the kidneys remove extra fluid from the body.</p>`;
   const CASE_QUESTIONS = `<ol style="margin:4px 0 0 18px;padding:0"><li>Her heart is damaged, so why does she have a <i>lung</i> problem?</li><li>What do "EDV 180 mL" and "EF 40 %" mean, and how do they compare with a healthy heart?</li><li>How does a diuretic help her, and why could a large IV fluid bolus be dangerous for her?</li></ol>`;
   const caseNote = (html) => `<div class="case"><div class="case-h">Back to Dana</div>${html}</div>`;
+  const SQUEEZE = { label: 'Hold to squeeze the ventricle', cls: 'blood', hold: true, up: () => sim.squeeze(0),
+    down: (c) => { if (sim.P.sysArt < 40 && sim.e.LV < 0.05) { resetSim(); sim.setMode('manual'); } c.resume(); sim.squeeze(1); } };
+  // With the heartbeat off the aorta drains into the body. If a student has been away long enough
+  // for that, start the squeeze steps again from a freshly stopped heart.
+  function freshStop() { if (sim.mode !== 'manual' || (sim.P.sysArt < 60 && sim.e.LV < 0.05)) { resetSim(); sim.setMode('manual'); } }
   let lvFail = {};   // state of the weakened-LV experiment, shown by the meters in later steps too
   const beatsSince = (c) => { const d = c.stepState().data; if (d.beat0 == null) d.beat0 = sim.beats; return sim.beats - d.beat0; };
   const fmt = (x, d) => (x == null ? '—' : x.toFixed(d || 0));
@@ -1219,73 +1229,77 @@
           waitFor: (c) => c.stepState().data.sawLine, waitHint: 'Straighten out the left side',
         },
         {
-          view: 'heart', viewOpts: { key: true, caption: 'The left side of the heart, straightened into a line. Numbers: see the panel.' }, reset: true, mode: 'manual', remount: true, speed: 0.25,
+          view: 'heart', viewOpts: { key: true, caption: 'The left side of the heart, straightened into a line, beating. Numbers: see the panel.' }, reset: true, mode: 'sinus', remount: true, speed: 0.25,
           traces: { pressures: ['LA', 'LV', 'aorta'], volume: true, valves: true },
           title: 'How to read this picture',
           enter: (c) => c.view().showKey(true),
-          text: `<p>This is the same route you just straightened: lungs → <b>LA</b> → bicuspid valve → <b>LV</b> → aortic valve → aorta. The numbers on the picture:</p>
+          text: `<p>This is the same route you just straightened: lungs → <b>LA</b> → bicuspid valve → <b>LV</b> → aortic valve → aorta. The heart is beating. The numbers on the picture:</p>
                  <p><b>1 · Chamber size = how much blood is inside.</b> The cavity is drawn to scale with the model's volume (the mL number above it). When blood leaves, it shrinks.</p>
-                 <p><b>2 · The muscle wall.</b> The pink ring is the ventricle's muscle. It thickens when the muscle squeezes. The heartbeat is switched off for now, so it is relaxed.</p>
+                 <p><b>2 · The muscle wall.</b> The pink ring is the ventricle's muscle. It thickens each time the muscle squeezes.</p>
                  <p><b>3 · Valves.</b> Two flaps each. They are drawn open or shut (and labelled OPEN/SHUT) exactly as the model has them.</p>
                  <p><b>4 · White dots = blood moving.</b> They move only where blood is flowing, at a speed set by the flow.</p>
                  <p><b>5 · Pressure bars.</b> The pressure (mmHg) in the left atrium, left ventricle and aorta. Pressure is how hard the blood is being pushed.</p>
                  <p><b>6 · The valve rule.</b> Between two bars, the arrow points from the higher pressure to the lower. A valve opens when that push is forward and shuts when it is backward.</p>
-                 <p>The graph at the bottom records the same pressures and the LV volume over time, so you can look back at what just happened.</p>`,
-          question: { prompt: 'Right now the aortic valve is labelled SHUT. Use the pressure bars (5 and 6) to say why.', options: [
-            { t: 'Aortic pressure is much higher than LV pressure, so the push on the valve is backward', ok: true, fb: 'Blood in the aorta pushes back toward the ventricle, which holds the valve shut. To open it, the LV would need a pressure above the aorta\'s. Coming next: you will provide that squeeze.' },
-            { t: 'The LV is empty', fb: 'Check number 1: the LV holds over 100 mL. Look at the two pressure bars on either side of the aortic valve.' },
-            { t: 'The heart muscle is holding it shut', fb: 'Valves have no muscle of their own. Look at the two pressure bars on either side of the aortic valve and the arrow between them (6).' },
+                 <p>The graph at the bottom records the same pressures and the LV volume over time, so you can look back at what just happened. (The speed menu at the top slows things down.)</p>`,
+          question: { prompt: 'Watch a few beats, using the pressure bars (5) and the arrow between them (6). When is the aortic valve open?', options: [
+            { t: 'Whenever the LV is at its fullest', fb: 'Watch the LV size (1) and the aortic valve together: the LV is fullest just before the valve opens, while the valve is still shut. Now watch the LV and aorta bars.' },
+            { t: 'Only while the LV bar is higher than the aorta bar', ok: true, fb: 'While the LV pressure is above the aorta\'s, the push on the valve is forward and blood flows out. The rest of the time the aorta pushes back and holds the valve shut. Next, you will make that happen yourself.' },
+            { t: 'Whenever the muscle wall is relaxed', fb: 'Watch the wall (2): the aortic valve is open while the wall is thick, not thin. What do the LV and aorta bars show at that moment?' },
           ] },
         },
         {
-          view: 'heart', viewOpts: { caption: 'The left side of the heart, straightened into a line. The heartbeat is switched off: you are the heart muscle.' },
+          view: 'heart', viewOpts: { caption: 'The heartbeat is switched off and the clock is paused: you are the heart muscle.' }, reset: true, mode: 'manual', pause: true,
           traces: { pressures: ['LA', 'LV', 'aorta'], volume: true, valves: true },
           title: 'You are the heart muscle',
           enter: (c) => c.view().showKey(false),
-          text: `<p>Soon you will squeeze the ventricle yourself. First, look at the bicuspid valve: it is open, and blood is trickling from the atrium into the relaxed ventricle.</p>`,
+          text: `<p>Now the heartbeat has been switched off, just as the ventricle finished filling, and the clock is <b>paused</b>, so nothing changes until you act.</p>
+                 <p>In the next steps <b>you</b> are the heart muscle: holding a button makes the ventricle contract. First, look at the bicuspid valve: it is open.</p>`,
           question: { prompt: 'With the ventricle relaxed, what is holding the bicuspid valve open?', options: [
-            { t: 'Pressure in the atrium is slightly higher than in the ventricle, so blood pushes the flaps open', ok: true, fb: 'Valves have no muscle of their own. They are flaps that blood pushes open or shut. Look at the bars: LA is a little higher than LV, and the arrow between them points forward.' },
             { t: 'The papillary muscles and chordae tendineae pull the flaps open', fb: 'The chordae only stop the flaps from blowing back into the atrium when the ventricle squeezes. They do not open the valve. Look at the pressure bars.' },
             { t: 'The atrium is contracting and pushing it open', fb: 'Nothing is contracting right now; the heartbeat is off. Yet the valve is open. Look at the pressure bars for the reason.' },
+            { t: 'Atrial pressure is slightly higher than ventricular pressure, so blood pushes the flaps open', ok: true, fb: 'Valves have no muscle of their own: they are flaps that blood pushes open or shut. The LA bar is a little higher than the LV bar, and the arrow between them points forward.' },
             { t: 'A nerve signal holds it open', fb: 'Valves have no nerves or muscle that move them. Look at the pressure bars.' },
           ] },
         },
         {
-          view: 'heart', title: 'Predict, then squeeze',
-          text: `<p>You are about to make the ventricle wall contract. Its pressure will rise.</p>`,
-          question: { prompt: 'As LV pressure starts to rise, what happens first?', options: [
-            { t: 'The bicuspid valve is pushed shut', ok: true, fb: 'As soon as LV pressure rises above LA pressure, blood is pushed backward and slams the bicuspid flaps shut. Now hold the button and watch.' },
-            { t: 'Blood immediately starts to flow into the aorta', fb: 'The aortic valve is held shut by aortic pressure of around 80 mmHg. How high is the LV now?' },
+          view: 'heart', title: 'Predict, then squeeze', pause: true,
+          enter: () => freshStop(),
+          text: `<p>When you <b>press and hold</b> the button below, the ventricle's muscle contracts (its wall thickens) and the pressure inside the LV rises. The clock starts when you press it.</p>`,
+          question: { prompt: 'When you start squeezing and LV pressure begins to rise, which valve moves first?', options: [
             { t: 'The aortic valve opens', fb: 'Only when LV pressure exceeds aortic pressure. Look at the bars: how far apart are LV and aorta now?' },
+            { t: 'Neither: blood immediately flows into the aorta', fb: 'The aortic valve is held shut by aortic pressure of about 80 mmHg. How high is the LV now?' },
+            { t: 'The bicuspid valve is pushed shut', ok: true, fb: 'As soon as LV pressure rises above LA pressure, blood is pushed backward and slams the bicuspid flaps shut. Now hold the button and watch.' },
             { t: 'Both valves open', fb: 'Squeezing raises LV pressure. Compare it with the pressure on each side.' },
           ] },
-          actions: [{ label: 'Hold to squeeze the ventricle', cls: 'blood', hold: true, down: () => sim.squeeze(1), up: () => sim.squeeze(0) }],
+          actions: [SQUEEZE],
           tick: (c, events) => {
             const d = c.stepState().data; d.seq = d.seq || [];
             for (const e of events) if (e.type === 'valve' && e.side === 'left') d.seq.push(`${e.valve}${e.open ? '+' : '-'}`);
           },
           waitFor: (c) => { const s = (c.stepState().data.seq || []).join(' '); return s.includes('mitral- aortic+'); },
           waitHint: 'Hold the squeeze button until blood leaves the ventricle',
-          status: (c) => c.stepState().done ? '<b>Observed:</b> the bicuspid valve shut first; the aortic valve opened only when LV pressure passed aortic pressure. Then blood left.' : `LV ${r0(sim.P.LV)} mmHg · aorta ${r0(sim.P.sysArt)} mmHg. Hold the button.`,
+          status: (c) => c.stepState().done ? '<b>Observed:</b> the bicuspid valve shut first; the aortic valve opened only when LV pressure passed aortic pressure. Then blood left.' : `LV ${r0(sim.P.LV)} mmHg · aorta ${r0(sim.P.sysArt)} mmHg. Press and hold the button.`,
         },
         {
-          view: 'heart', title: 'Both valves shut',
+          view: 'heart', title: 'Both valves shut', pause: true,
+          enter: () => freshStop(),
           text: `<p>Between the bicuspid valve shutting and the aortic valve opening there was a moment with <b>both valves shut</b>. Squeeze again and watch the LV size and the volume trace during that moment.</p>`,
-          actions: [{ label: 'Hold to squeeze the ventricle', cls: 'blood', hold: true, down: () => sim.squeeze(1), up: () => sim.squeeze(0) }],
+          actions: [SQUEEZE],
           question: { prompt: 'While both valves are shut and the muscle squeezes, the LV…', options: [
-            { t: 'keeps the same volume while its pressure climbs', ok: true, fb: 'Blood cannot be compressed and has nowhere to go, so the squeeze turns entirely into pressure. This is <b>isovolumetric contraction</b> ("same volume").' },
             { t: 'gets smaller as blood leaves', fb: 'Where could the blood go? Both exits are shut. Look at the volume trace during that moment.' },
+            { t: 'keeps the same volume while its pressure climbs', ok: true, fb: 'Blood cannot be compressed and has nowhere to go, so the squeeze turns entirely into pressure. This is <b>isovolumetric contraction</b> ("same volume").' },
             { t: 'loses pressure', fb: 'The muscle is squeezing on a fixed amount of blood. Look at the LV pressure trace.' },
           ] },
         },
         {
-          view: 'heart', title: 'Let go',
+          view: 'heart', title: 'Let go', pause: true,
+          enter: () => freshStop(),
           text: `<p>Squeeze until blood is leaving, then <b>let go</b> and watch which valve moves.</p>`,
-          actions: [{ label: 'Hold to squeeze the ventricle', cls: 'blood', hold: true, down: () => sim.squeeze(1), up: () => sim.squeeze(0) }],
+          actions: [SQUEEZE],
           question: { prompt: 'When the muscle relaxes, which valve shuts first?', options: [
-            { t: 'The aortic valve, because LV pressure falls below aortic pressure', ok: true, fb: 'The aorta is stretched full of blood at high pressure. As the LV relaxes its pressure drops below that, blood starts back toward the ventricle and snaps the aortic valve shut. Test it.' },
             { t: 'The bicuspid valve', fb: 'It is already shut. What has to happen before it can open again?' },
             { t: 'Neither: both stay open', fb: 'Check the pressure bars when you let go.' },
+            { t: 'The aortic valve, because LV pressure falls below aortic pressure', ok: true, fb: 'The aorta is stretched full of blood at high pressure. As the LV relaxes its pressure drops below that, blood starts back toward the ventricle and snaps the aortic valve shut. Test it.' },
           ] },
           tick: (c, events) => {
             const d = c.stepState().data; d.seq = d.seq || [];
@@ -1319,7 +1333,7 @@
           enter: (c) => { clearTraces(); c.stepState().data.armed = false; },
           text: `<p>Each beat the <b>atria contract first</b>, topping up the ventricles, and about 0.15 s later the <b>ventricles</b> contract. We will stop the clock at each valve event.</p>`,
           question: { prompt: 'Once the ventricle starts to squeeze, which valve event comes first?', options: [
-            { t: 'The bicuspid valve shuts', ok: true, fb: 'Exactly as when you squeezed by hand. Press Beat and watch.' },
+            { t: 'The bicuspid valve shuts', ok: true, fb: 'Exactly as when you squeezed the ventricle in scene 3. Press Beat and watch.' },
             { t: 'The aortic valve opens', fb: 'Remember scene 3: LV pressure first has to pass the atrium, then the aorta.' },
             { t: 'The bicuspid valve opens', fb: 'It is already open during filling. What does rising LV pressure do to it?' },
           ] },
@@ -1332,7 +1346,7 @@
           view: 'heart', title: 'Both valves shut, muscle squeezing', pause: true,
           text: `<p>The clock is paused just after the bicuspid valve shut.</p>`,
           question: { prompt: 'What happens next, before anything else changes?', options: [
-            { t: 'LV pressure climbs at constant volume until it passes aortic pressure', ok: true, fb: 'Isovolumetric contraction, as you felt by hand. Resume to see it.' },
+            { t: 'LV pressure climbs at constant volume until it passes aortic pressure', ok: true, fb: 'Isovolumetric contraction, as you saw when you squeezed the ventricle in scene 3. Resume to see it.' },
             { t: 'LV volume falls as blood is ejected', fb: 'Not yet: the aortic valve is still shut. Look at the aortic pressure the LV has to beat.' },
             { t: 'The atrium refills the ventricle', fb: 'The bicuspid valve is shut now; nothing more can enter.' },
           ] },

@@ -52,6 +52,7 @@ the pump, inject current, fire inputs repeatedly, and record from any compartmen
   from engine state; nothing is a pre-baked animation.
 - `tests/biology.test.js` — "scientific unit tests" asserting the physiology.
 - `docs/` — `PRODUCT.md`, `BIOLOGY.md`, `PEDAGOGY.md`, `VISUAL_STYLE.md`, `NEURON_MODULE.md`.
+  `HEART_MODULE.md` is the design for the next module (heart and circulation, not yet built).
 
 Keyboard: **space** pauses/resumes the simulation clock. The speed menu sets how much simulated
 time passes per real second (default 1 %: a 2 ms action potential takes ~0.2 s; scenes 7–10 use

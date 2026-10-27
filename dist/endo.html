@@ -920,6 +920,8 @@ header a.home:hover { text-decoration: underline; }
     clock: 'idle',           // 'free': time runs; 'idle': time runs only during an experiment
     run: null,               // {until, schedule, onDone, speed}
     history: [], sampleDt: 60, lastSample: -1e9, origin: 0,
+    zero: 0,                 // the time the trace's time axis counts from (the start of the experiment)
+    spans: [],               // shaded stretches of the trace, e.g. while a medicine is taken
     traces: null,
     markers: [],
     meters: null,
@@ -938,7 +940,7 @@ header a.home:hover { text-decoration: underline; }
     clearHistory();
     if (changed && app.viewName === 'axis') mountView('axis', app.viewOpts || {});
   }
-  function clearHistory() { app.history = []; app.markers = []; app.lastSample = -1e9; app.origin = app.axis.t; app.gcDays = {}; recordSample(true); }
+  function clearHistory() { app.history = []; app.markers = []; app.spans = []; app.lastSample = -1e9; app.origin = app.zero = app.axis.t; app.gcDays = {}; recordSample(true); }
   function sample() {
     const a = app.axis;
     if (app.kind === 'thyroid') return { t: a.t, TRH: a.TRH, TSH: a.TSH + a.injected, FT4: a.FT4, FT3: a.FT3, size: a.size };
@@ -974,8 +976,11 @@ header a.home:hover { text-decoration: underline; }
     }
   }
   // Run an experiment: time runs at `speed` for `duration` minutes, with scheduled events.
+  // The time axis counts from the start of the run (earlier history shows as negative), unless
+  // o.keepZero says the run continues an earlier experiment.
   function startRun(o) {
     const t0 = app.axis.t;
+    if (!o.keepZero) app.zero = t0;
     app.run = { until: t0 + o.duration, speed: o.speed || app.speed, onDone: o.onDone, schedule: (o.schedule || []).map(s => ({ t: t0 + s.at, fn: s.fn, done: false })) };
     if (o.speed && app.userSpeed == null) setSpeed(o.speed);
     setPaused(false);
@@ -1043,17 +1048,36 @@ header a.home:hover { text-decoration: underline; }
     svgEl('path', { d: 'M130,112 C140,135 150,145 160,152', fill: 'none', stroke: COL.tropic, 'stroke-width': 3 }, svg);
     // blood vessel
     svgEl('rect', { x: 30, y: 150, width: 940, height: 70, rx: 34, fill: COL.blood, stroke: COL.bloodLine, 'stroke-width': 2 }, svg);
-    svgEl('text', { x: 950, y: 242, 'text-anchor': 'end', 'font-size': 13, fill: '#9e3a33', text: 'blood: reaches every tissue' }, svg);
+    svgEl('text', { x: 960, y: 140, 'text-anchor': 'end', 'font-size': 13, 'font-weight': 600, fill: '#9e3a33', text: 'The bloodstream' }, svg);
+    svgEl('text', { x: 960, y: 242, 'text-anchor': 'end', 'font-size': 12, fill: '#9e3a33', text: 'drawn as one straight vessel; really it loops through every organ' }, svg);
+    // legend
+    const lg = svgEl('g', { transform: 'translate(640,40)' }, svg);
+    svgEl('rect', { x: 0, y: 0, width: 330, height: 62, rx: 8, fill: '#fff', stroke: '#d9d6cc' }, lg);
+    svgEl('rect', { x: 16, y: 14, width: 9, height: 9, fill: COL.tropic, transform: 'rotate(45 20.5 18.5)' }, lg);
+    svgEl('text', { x: 34, y: 23, 'font-size': 13, fill: COL.ink, text: 'TSH (thyroid-stimulating hormone)' }, lg);
+    view.legendT4 = svgEl('g', { opacity: 0 }, lg);
+    svgEl('circle', { cx: 20.5, cy: 44, r: 5, fill: COL.target }, view.legendT4);
+    svgEl('text', { x: 34, y: 49, 'font-size': 13, fill: COL.ink, text: 'thyroid hormone (T4, made into T3 in cells)' }, view.legendT4);
     const tshBlood = particles(svg, { x: 50, y: 160, w: 900, h: 50 }, 'diamond', COL.tropic, 8);
     const t4Blood = particles(svg, { x: 50, y: 160, w: 900, h: 50 }, 'circle', COL.target, 8);
     // cells
-    const CELLS = [['thyroid', 'Thyroid cell'], ['liver', 'Liver cell'], ['muscle', 'Muscle cell'], ['skin', 'Skin cell']];
+    const CELLS = [['thyroid', 'Thyroid cell', 'in the neck', [0, 63]], ['liver', 'Liver cell', 'in the liver', [-22, 170]], ['muscle', 'Muscle cell', 'in a thigh muscle', [22, 340]], ['skin', 'Skin cell', 'in the skin', [84, 220]]];
+    // A tiny person beside each cell, with a dot where that cell lives (as in scene 1).
+    function miniPerson(parent, x, y, spot) {
+      const g = svgEl('g', { transform: `translate(${x},${y}) scale(0.11)`, opacity: 0.9 }, parent);
+      const hy = 70, cx = 0;
+      svgEl('path', { d: `M${cx - 44},${hy + 238} L${cx - 40},${hy + 440} L${cx + 40},${hy + 440} L${cx + 44},${hy + 238} Z M${cx - 60},${hy + 86} C${cx - 30},${hy + 66} ${cx + 30},${hy + 66} ${cx + 60},${hy + 86} L${cx + 50},${hy + 240} L${cx - 50},${hy + 240} Z M${cx - 60},${hy + 88} L${cx - 92},${hy + 250} L${cx - 74},${hy + 254} L${cx - 46},${hy + 120} Z M${cx + 60},${hy + 88} L${cx + 92},${hy + 250} L${cx + 74},${hy + 254} L${cx + 46},${hy + 120} Z`, fill: '#e6c3a5' }, g);
+      svgEl('ellipse', { cx, cy: hy, rx: 36, ry: 44, fill: '#e6c3a5' }, g);
+      svgEl('circle', { cx: spot[0], cy: hy + spot[1], r: 26, fill: '#b0352b' }, g);
+    }
     const cells = {};
-    CELLS.forEach(([k, name], i) => {
+    CELLS.forEach(([k, name, where, spot], i) => {
       const cx = 150 + i * 233, g = svgEl('g', {}, svg);
       const body = svgEl('rect', { x: cx - 95, y: 300, width: 190, height: 150, rx: 26, fill: COL.cell, stroke: COL.cellLine, 'stroke-width': 2 }, g);
       const glow = svgEl('rect', { x: cx - 95, y: 300, width: 190, height: 150, rx: 26, fill: COL.target, opacity: 0 }, g);
       svgEl('ellipse', { cx, cy: 395, rx: 38, ry: 28, fill: '#efe6d6', stroke: COL.cellLine, 'stroke-width': 1.5 }, g);
+      miniPerson(g, cx + 68, 303, spot);
+      svgEl('text', { x: cx - 84, y: 322, 'font-size': 12, fill: COL.muted, text: where }, g);
       svgEl('text', { x: cx, y: 476, 'text-anchor': 'middle', 'font-size': 15, 'font-weight': 600, fill: COL.ink, text: name }, g);
       const sub = svgEl('text', { x: cx, y: 496, 'text-anchor': 'middle', 'font-size': 12.5, fill: COL.muted, text: '' }, g);
       // receptors for T3 inside every nucleus
@@ -1073,7 +1097,15 @@ header a.home:hover { text-decoration: underline; }
       cells[k] = { body, glow, sub, near, cups, nucR, nucT };
     });
     view.cells = cells;
-    view.setT4 = (on) => { view.showT4 = on; };
+    // numbered markers for "How to read this picture"
+    const marks = svgEl('g', { opacity: 0 }, svg);
+    for (const [n, x, y] of [[1, 40, 40], [2, 40, 186], [3, 36, 380], [4, 625, 70], [5, 150, 262]]) {
+      svgEl('circle', { cx: x, cy: y, r: 13, fill: '#f0b429', stroke: '#fff', 'stroke-width': 2 }, marks);
+      svgEl('text', { x, y: y + 5, 'text-anchor': 'middle', 'font-size': 14, 'font-weight': 700, fill: '#1f2430', text: String(n) }, marks);
+    }
+    view.setMarks = (on) => marks.setAttribute('opacity', on ? 1 : 0);
+    view.setMarks(!!opts.marks);
+    view.setT4 = (on) => { view.showT4 = on; view.legendT4.setAttribute('opacity', on ? 1 : 0); };
     view.update = (dtReal) => {
       const a = app.axis, tsh = a.TSHeff, sTSH = tsh / (tsh + a.p.KsTSH);
       tshBlood.set(clamp(4 * tsh, 0, 70), dtReal, 30);
@@ -1085,11 +1117,11 @@ header a.home:hover { text-decoration: underline; }
           c.cups.forEach((u, j) => u.setAttribute('opacity', j < nb ? 1 : 0));
           const out = a.glandT4 / a.P0;
           c.glow.setAttribute('opacity', clamp(0.06 + 0.12 * (out - 1), 0, 0.45));
-          c.sub.textContent = `making T4: × ${out.toFixed(1)} normal`;
+          c.sub.textContent = `making T4: × ${out.toFixed(1)} its resting rate`;
         } else if (!view.showT4) c.sub.textContent = 'no TSH receptors';
         c.nucR.forEach(u => u.setAttribute('opacity', view.showT4 ? 1 : 0));
         c.nucT.set(view.showT4 ? clamp(2 * a.FT3 / 3 * 2, 0, 8) : 0, dtReal);
-        if (view.showT4 && k !== 'thyroid') { c.sub.textContent = `burning fuel: × ${(a.FT3 / 3).toFixed(2)} normal`; c.glow.setAttribute('opacity', clamp(0.1 * a.FT3 / 3, 0, 0.4)); }
+        if (view.showT4 && k !== 'thyroid') { c.sub.textContent = 'responds: burns fuel, makes heat'; c.glow.setAttribute('opacity', clamp(0.1 * a.FT3 / 3, 0, 0.4)); }
         if (!view.showT4 && k !== 'thyroid') c.glow.setAttribute('opacity', 0);
       }
     };
@@ -1102,7 +1134,217 @@ header a.home:hover { text-decoration: underline; }
     return view;
   };
 
-  // ------------------------------------------------------------- scenes 2–7: one feedback axis
+  // ------------------------------------------------------------- the body: where the glands are
+  // A zoom from the whole person to the glands, in slides (as MuscleSim's opening): 0 the person,
+  // 1 a mid-sagittal section of the head, 2 the hypothalamus and pituitary close up, 3 the neck and
+  // thyroid, 4 the bloodstream and four kinds of cell around the body, 5 the kidneys and adrenals.
+  // Parts named in BODY_HOT are clickable; the lesson sets view.onPart to receive clicks.
+  const SKIN = '#e6c3a5', INK = '#3a3f4a', BRAIN = '#f1d2cf', BRAIN_LINE = '#b98680', BONE = '#efe7d3', BONE_LINE = '#a39a82';
+  views.body = function (opts) {
+    const svg = svgEl('svg', { viewBox: '0 0 1000 560', role: 'img', 'aria-label': 'The body, zooming in to the endocrine glands' }, stage);
+    const view = { svg, onPart: null, slide: 0 };
+    const slides = [], hot = {}, flows = [];
+    const label = (g, x, y, t, o) => svgEl('text', Object.assign({ x, y, 'font-size': 14, fill: INK, text: t }, o || {}), g);
+    const leader = (g, x1, y1, x2, y2, color) => svgEl('path', { d: `M${x1},${y1} L${x2},${y2}`, stroke: color || '#6b7280', 'stroke-width': 1.5 }, g);
+    const hotspot = (g, name, el) => {
+      el.style.cursor = 'pointer';
+      el.addEventListener('click', (e) => { e.stopPropagation(); if (view.onPart) view.onPart(name); });
+      (hot[name] = hot[name] || []).push(el);
+      return el;
+    };
+    const ring = (g, cx, cy, rx, ry) => svgEl('ellipse', { cx, cy, rx, ry, fill: 'none', stroke: '#f0b429', 'stroke-width': 3, opacity: 0, 'pointer-events': 'none' }, g);
+    const rings = {};
+
+    // the standing person, used in slides 0 and 4
+    function person(g, cx) {
+      const hy = 70;
+      svgEl('path', { d: `M${cx - 44},${hy + 238} L${cx - 40},${hy + 440} L${cx - 8},${hy + 440} L${cx - 3},${hy + 280} L${cx + 3},${hy + 280} L${cx + 8},${hy + 440} L${cx + 40},${hy + 440} L${cx + 44},${hy + 238} Z`, fill: SKIN, stroke: INK, 'stroke-width': 2 }, g);   // legs
+      svgEl('path', { d: `M${cx - 60},${hy + 86} C${cx - 30},${hy + 66} ${cx + 30},${hy + 66} ${cx + 60},${hy + 86} L${cx + 50},${hy + 240} L${cx - 50},${hy + 240} Z`, fill: SKIN, stroke: INK, 'stroke-width': 2 }, g);   // trunk
+      svgEl('path', { d: `M${cx - 60},${hy + 88} L${cx - 92},${hy + 250} L${cx - 74},${hy + 254} L${cx - 46},${hy + 120} Z`, fill: SKIN, stroke: INK, 'stroke-width': 2 }, g);
+      svgEl('path', { d: `M${cx + 60},${hy + 88} L${cx + 92},${hy + 250} L${cx + 74},${hy + 254} L${cx + 46},${hy + 120} Z`, fill: SKIN, stroke: INK, 'stroke-width': 2 }, g);
+      svgEl('rect', { x: cx - 13, y: hy + 40, width: 26, height: 34, fill: SKIN, stroke: INK, 'stroke-width': 2 }, g);   // neck
+      svgEl('ellipse', { cx, cy: hy, rx: 36, ry: 44, fill: SKIN, stroke: INK, 'stroke-width': 2 }, g);   // head
+      return hy;
+    }
+
+    // slide 0: the person and the glands of the two axes in this lab
+    {
+      const g = svgEl('g', {}, svg); slides.push(g);
+      const cx = 500, hy = person(g, cx);
+      // the brain, faint, and the glands drawn where they are
+      svgEl('ellipse', { cx, cy: hy - 8, rx: 27, ry: 25, fill: BRAIN, opacity: 0.8 }, g);
+      hotspot(g, 'pituitary', svgEl('circle', { cx, cy: hy + 10, r: 7, fill: COL.tropic, stroke: '#fff', 'stroke-width': 1.5 }, g));
+      hotspot(g, 'thyroid', svgEl('path', { d: `M${cx - 3},${hy + 62} C${cx - 8},${hy + 50} ${cx - 18},${hy + 52} ${cx - 17},${hy + 64} C${cx - 16},${hy + 72} ${cx - 8},${hy + 74} ${cx},${hy + 68} C${cx + 8},${hy + 74} ${cx + 16},${hy + 72} ${cx + 17},${hy + 64} C${cx + 18},${hy + 52} ${cx + 8},${hy + 50} ${cx + 3},${hy + 62} Z`, fill: COL.gland, stroke: COL.glandDark, 'stroke-width': 1.5 }, g));
+      for (const s of [-1, 1]) {
+        svgEl('ellipse', { cx: cx + s * 22, cy: hy + 196, rx: 10, ry: 17, fill: '#e7c9bf', stroke: '#a77b6c', 'stroke-width': 1.5, opacity: 0.9 }, g);
+        hotspot(g, 'adrenal', svgEl('path', { d: `M${cx + s * 22 - 10},${hy + 182} L${cx + s * 22},${hy + 168} L${cx + s * 22 + 10},${hy + 182} Z`, fill: '#e8b64c', stroke: '#9a6d12', 'stroke-width': 1.5 }, g));
+      }
+      rings.pituitary = ring(g, cx, hy + 10, 20, 20);
+      rings.thyroid = ring(g, cx, hy + 63, 30, 18);
+      rings.adrenal = ring(g, cx, hy + 186, 50, 28);
+      const L = svgEl('g', {}, g); view.bodyLabels = L;
+      leader(L, cx + 8, hy + 10, cx + 150, hy - 10); label(L, cx + 156, hy - 14, 'Hypothalamus and pituitary gland', { 'font-weight': 600, fill: COL.tropic }); label(L, cx + 156, hy + 4, 'at the base of the brain', { 'font-size': 12.5, fill: COL.muted });
+      leader(L, cx + 18, hy + 64, cx + 150, hy + 70); label(L, cx + 156, hy + 66, 'Thyroid gland', { 'font-weight': 600, fill: COL.glandDark }); label(L, cx + 156, hy + 84, 'front of the neck', { 'font-size': 12.5, fill: COL.muted });
+      leader(L, cx + 32, hy + 178, cx + 150, hy + 178); label(L, cx + 156, hy + 174, 'Adrenal glands', { 'font-weight': 600, fill: '#9a6d12' }); label(L, cx + 156, hy + 192, 'one on top of each kidney', { 'font-size': 12.5, fill: COL.muted });
+      label(g, 120, 520, 'Endocrine glands release their hormones into the blood, which carries them all over the body.', { 'font-size': 13, fill: COL.muted });
+    }
+
+    // slide 1: mid-sagittal section of the head, facing left
+    {
+      const g = svgEl('g', {}, svg); slides.push(g);
+      svgEl('path', { d: 'M330,548 C320,500 300,470 290,440 C270,430 262,410 268,392 C250,380 236,360 246,340 C224,322 214,300 236,284 C246,270 252,250 256,226 C262,150 340,60 470,46 C620,30 760,100 790,220 C810,300 790,380 740,430 C720,460 710,500 712,548 Z', fill: SKIN, stroke: INK, 'stroke-width': 2.5 }, g);   // head and neck
+      svgEl('path', { d: 'M300,218 C300,140 380,74 480,68 C610,60 740,120 758,224 C770,300 748,352 708,376 L640,370 L560,350 L470,346 C400,340 330,320 306,280 C300,262 298,240 300,218 Z', fill: BONE, stroke: BONE_LINE, 'stroke-width': 2 }, g);   // skull cavity
+      svgEl('path', { d: 'M318,228 C318,150 392,88 484,84 C604,78 726,132 740,226 C748,282 728,318 700,334 L640,330 C600,322 560,320 520,322 C470,324 420,322 380,310 C340,298 318,262 318,228 Z', fill: BRAIN, stroke: BRAIN_LINE, 'stroke-width': 2 }, g);   // cerebrum
+      for (const d of ['M360,170 C390,150 410,180 440,160', 'M470,120 C500,105 520,135 550,118', 'M600,130 C630,125 640,160 670,150', 'M650,210 C680,200 690,235 715,225', 'M380,250 C410,235 430,265 460,250']) svgEl('path', { d, fill: 'none', stroke: BRAIN_LINE, 'stroke-width': 1.5, opacity: 0.7 }, g);   // gyri
+      svgEl('path', { d: 'M420,268 C460,236 600,230 650,262 C610,252 470,256 430,280 Z', fill: '#e3b6b0', stroke: BRAIN_LINE, 'stroke-width': 1.5 }, g);   // corpus callosum
+      svgEl('ellipse', { cx: 668, cy: 372, rx: 68, ry: 42, fill: '#ecc3bf', stroke: BRAIN_LINE, 'stroke-width': 2 }, g);   // cerebellum
+      for (let i = 0; i < 5; i++) svgEl('path', { d: `M${612 + i * 4},${352 + i * 9} C${650},${342 + i * 9} ${690},${342 + i * 9} ${728 - i * 4},${352 + i * 9}`, fill: 'none', stroke: BRAIN_LINE, 'stroke-width': 1, opacity: 0.7 }, g);
+      svgEl('path', { d: 'M540,330 C548,380 560,440 572,548 L612,548 C602,440 596,380 590,330 Z', fill: '#ecc3bf', stroke: BRAIN_LINE, 'stroke-width': 2 }, g);   // brainstem and spinal cord
+      svgEl('path', { d: 'M420,372 C440,366 456,368 462,380 C468,404 512,404 518,380 C524,368 540,366 556,372 L560,430 L416,430 Z', fill: BONE, stroke: BONE_LINE, 'stroke-width': 2 }, g);   // sphenoid bone with its saddle (sella turcica)
+      const hyp = hotspot(g, 'hypothalamus', svgEl('path', { d: 'M470,326 C480,312 520,310 538,324 C540,338 520,350 500,350 C484,350 470,342 470,326 Z', fill: '#bfe6e1', stroke: COL.rh, 'stroke-width': 2 }, g));
+      svgEl('path', { d: 'M494,350 C492,362 490,370 488,378 M504,350 C502,362 500,370 498,378', stroke: '#b98680', 'stroke-width': 2.5 }, g);   // stalk
+      hotspot(g, 'pituitary', svgEl('ellipse', { cx: 490, cy: 388, rx: 20, ry: 12, fill: '#e7d3f0', stroke: COL.tropic, 'stroke-width': 2 }, g));
+      svgEl('ellipse', { cx: 446, cy: 342, rx: 14, ry: 6, fill: '#f7e7a8', stroke: '#b59a3a', 'stroke-width': 1.5 }, g);   // optic chiasm
+      svgEl('ellipse', { cx: 300, cy: 300, rx: 22, ry: 14, fill: '#fff', stroke: INK, 'stroke-width': 1.5 }, g);   // eye
+      svgEl('circle', { cx: 290, cy: 300, r: 6, fill: '#4a5a6a' }, g);
+      rings.hypothalamus = ring(g, 504, 332, 44, 26);
+      rings.pituitary1 = ring(g, 490, 388, 34, 22);
+      const L = svgEl('g', {}, g); view.headLabels = L;
+      label(L, 470, 160, 'cerebrum', { 'font-size': 13, fill: '#8a5a55', 'text-anchor': 'middle' });
+      label(L, 668, 430, 'cerebellum', { 'font-size': 13, fill: '#8a5a55', 'text-anchor': 'middle' });
+      label(L, 620, 520, 'brainstem', { 'font-size': 13, fill: '#8a5a55' });
+      label(L, 406, 334, 'optic chiasm', { 'font-size': 11.5, fill: '#8a7a3a', 'text-anchor': 'end' });
+      label(L, 488, 448, 'sphenoid bone', { 'font-size': 11.5, fill: '#8b8270', 'text-anchor': 'middle' });
+      view.headNames = svgEl('g', {}, g);
+      leader(view.headNames, 540, 328, 830, 280, COL.rh); label(view.headNames, 836, 276, 'Hypothalamus', { 'font-weight': 600, fill: COL.rh }); label(view.headNames, 836, 294, 'part of the brain', { 'font-size': 12.5, fill: COL.muted });
+      leader(view.headNames, 510, 390, 830, 400, COL.tropic); label(view.headNames, 836, 396, 'Pituitary gland', { 'font-weight': 600, fill: COL.tropic }); label(view.headNames, 836, 414, 'pea-sized, hangs on a stalk', { 'font-size': 12.5, fill: COL.muted });
+      label(g, 140, 90, 'The head cut down the middle,', { 'font-size': 13, fill: COL.muted }); label(g, 140, 108, 'seen from the side', { 'font-size': 13, fill: COL.muted });
+      view.hyp = hyp;
+    }
+
+    // slide 2: hypothalamus and pituitary close up, with hormone flows driven by the model
+    {
+      const g = svgEl('g', {}, svg); slides.push(g);
+      svgEl('path', { d: 'M120,40 L880,40 L880,190 C700,200 600,206 560,240 L440,240 C400,206 300,200 120,190 Z', fill: '#d9f0ed', stroke: COL.rh, 'stroke-width': 2 }, g);
+      label(g, 140, 70, 'Hypothalamus (brain)', { 'font-weight': 700, fill: COL.rh, 'font-size': 16 });
+      // neurons whose endings release TRH into tiny blood vessels in the stalk
+      for (const [x, y] of [[360, 110], [450, 92], [550, 96], [640, 116]]) {
+        svgEl('circle', { cx: x, cy: y, r: 14, fill: '#fff', stroke: COL.rh, 'stroke-width': 2 }, g);
+        svgEl('circle', { cx: x, cy: y, r: 5, fill: COL.rh }, g);
+        svgEl('path', { d: `M${x},${y + 14} C${x},${y + 70} ${490 + (x - 500) * 0.15},${190} ${490 + (x - 500) * 0.12},235`, fill: 'none', stroke: COL.rh, 'stroke-width': 2 }, g);
+      }
+      label(g, 680, 96, 'neurons that make TRH', { 'font-size': 13, fill: COL.rh });
+      // the stalk, with portal blood vessels
+      svgEl('path', { d: 'M440,240 L560,240 L540,330 L460,330 Z', fill: '#f3e4ea', stroke: '#b98680', 'stroke-width': 2 }, g);
+      svgEl('path', { d: 'M470,236 C480,270 470,300 482,336 M530,236 C520,270 530,300 518,336', fill: 'none', stroke: '#c24b42', 'stroke-width': 6, 'stroke-linecap': 'round' }, g);
+      label(g, 580, 280, 'tiny blood vessels carry TRH a few millimetres down the stalk', { 'font-size': 12.5, fill: '#9e3a33' });
+      const trh = particles(g, { x: 466, y: 240, w: 68, h: 92 }, 'circle', COL.rh, 7);
+      // the pituitary: anterior lobe (makes TSH) and posterior lobe (a separate job)
+      svgEl('path', { d: 'M300,340 C300,320 360,316 480,330 L500,330 L500,470 C440,490 320,480 300,440 Z', fill: '#efe3f5', stroke: COL.tropic, 'stroke-width': 2 }, g);
+      svgEl('path', { d: 'M500,330 L520,330 C600,322 650,336 650,380 C650,440 600,470 500,470 Z', fill: '#eceae3', stroke: '#9ca3af', 'stroke-width': 2 }, g);
+      for (const [x, y] of [[350, 380], [395, 365], [440, 385], [370, 430], [420, 430], [465, 420]]) svgEl('circle', { cx: x, cy: y, r: 11, fill: '#fff', stroke: COL.tropic, 'stroke-width': 1.5 }, g);
+      label(g, 300, 510, 'Anterior pituitary', { 'font-weight': 700, fill: COL.tropic, 'font-size': 16 });
+      label(g, 300, 528, 'its cells answer TRH by releasing TSH', { 'font-size': 12.5, fill: COL.muted });
+      label(g, 530, 500, 'Posterior pituitary', { 'font-weight': 600, fill: '#6b7280' });
+      label(g, 530, 518, 'a different job (ADH, oxytocin)', { 'font-size': 12.5, fill: COL.muted });
+      // the vein leaving the pituitary, to the heart and the whole body
+      svgEl('path', { d: 'M310,440 C220,460 170,470 60,470', fill: 'none', stroke: '#c24b42', 'stroke-width': 18, 'stroke-linecap': 'round', opacity: 0.35 }, g);
+      label(g, 60, 440, 'blood leaving the pituitary:', { 'font-size': 12.5, fill: '#9e3a33' });
+      label(g, 60, 456, 'to the heart, then everywhere', { 'font-size': 12.5, fill: '#9e3a33' });
+      const tsh = particles(g, { x: 70, y: 462, w: 230, h: 16 }, 'diamond', COL.tropic, 8);
+      flows.push((dt) => { const a = app.axis; trh.set(clamp(6 * (a.TRH || 1), 0, 16), dt); tsh.set(clamp(8 * Math.sqrt((a.TSH + (a.injected || 0)) / 1.5), 0, 22), dt, -40); });
+    }
+
+    // slide 3: the neck from the front, the thyroid wrapped around the windpipe
+    {
+      const g = svgEl('g', {}, svg); slides.push(g);
+      svgEl('path', { d: 'M330,0 C330,80 320,120 300,160 C280,240 270,380 230,560 L770,560 C730,380 720,240 700,160 C680,120 670,80 670,0 Z', fill: SKIN, stroke: INK, 'stroke-width': 2.5 }, g);   // neck
+      svgEl('path', { d: 'M300,0 C330,40 400,70 500,72 C600,70 670,40 700,0', fill: 'none', stroke: INK, 'stroke-width': 2, opacity: 0.6 }, g);   // jaw line
+      svgEl('rect', { x: 460, y: 100, width: 80, height: 470, rx: 30, fill: '#f4ece2', stroke: '#b9a58a', 'stroke-width': 2 }, g);   // trachea
+      for (let y = 210; y < 560; y += 26) svgEl('path', { d: `M462,${y} Q500,${y + 10} 538,${y}`, fill: 'none', stroke: '#b9a58a', 'stroke-width': 3 }, g);
+      svgEl('path', { d: 'M450,100 L550,100 L540,180 L500,196 L460,180 Z', fill: '#efe3d0', stroke: '#a39a82', 'stroke-width': 2 }, g);   // larynx
+      hotspot(g, 'thyroid', svgEl('path', { d: 'M488,300 C470,236 400,232 392,290 C384,350 398,410 430,420 C456,428 474,400 480,350 L520,350 C526,400 544,428 570,420 C602,410 616,350 608,290 C600,232 530,236 512,300 C508,320 492,320 488,300 Z', fill: COL.gland, stroke: COL.glandDark, 'stroke-width': 2.5, opacity: 0.95 }, g));
+      svgEl('path', { d: 'M640,40 C620,160 600,240 600,290', fill: 'none', stroke: '#c24b42', 'stroke-width': 7, 'stroke-linecap': 'round' }, g);   // an artery bringing blood
+      const tsh = particles(g, { x: 588, y: 120, w: 40, h: 170 }, 'diamond', COL.tropic, 7);
+      flows.push((dt) => { const a = app.axis; tsh.set(clamp(5 * Math.sqrt((a.TSH + (a.injected || 0)) / 1.5), 0, 14), dt); });
+      rings.thyroid3 = ring(g, 500, 330, 130, 110);
+      label(g, 560, 140, 'larynx ("Adam\'s apple")', { 'font-size': 13, fill: '#8b8270' });
+      label(g, 560, 520, 'trachea (windpipe)', { 'font-size': 13, fill: '#8b8270' });
+      label(g, 660, 300, 'an artery brings blood,', { 'font-size': 13, fill: '#9e3a33' }); label(g, 660, 318, 'and with it TSH', { 'font-size': 13, fill: '#9e3a33' });
+      view.neckName = svgEl('g', {}, g);
+      leader(view.neckName, 400, 340, 220, 340, COL.glandDark); label(view.neckName, 60, 336, 'Thyroid gland', { 'font-weight': 700, fill: COL.glandDark, 'font-size': 16 }); label(view.neckName, 60, 354, 'two lobes joined in front;', { 'font-size': 12.5, fill: COL.muted }); label(view.neckName, 60, 370, 'about 20 g in an adult', { 'font-size': 12.5, fill: COL.muted });
+    }
+
+    // slide 4: the bloodstream reaches every tissue; four kinds of cell in four places
+    {
+      const g = svgEl('g', {}, svg); slides.push(g);
+      const cx = 500, hy = person(g, cx);
+      const art = '#c24b42';
+      svgEl('path', { d: `M${cx - 6},${hy + 120} C${cx - 30},${hy + 100} ${cx - 34},${hy + 140} ${cx - 8},${hy + 150} C${cx + 6},${hy + 160} ${cx + 22},${hy + 140} ${cx + 10},${hy + 120} Z`, fill: '#d23c35', stroke: '#8f2620', 'stroke-width': 1.5 }, g);   // heart
+      for (const d of [`M${cx},${hy + 120} L${cx},${hy + 10}`, `M${cx},${hy + 135} L${cx},${hy + 250} L${cx - 22},${hy + 430}`, `M${cx},${hy + 250} L${cx + 22},${hy + 430}`, `M${cx},${hy + 110} L${cx - 54},${hy + 104} L${cx - 84},${hy + 246}`, `M${cx},${hy + 110} L${cx + 54},${hy + 104} L${cx + 84},${hy + 246}`])
+        svgEl('path', { d, fill: 'none', stroke: art, 'stroke-width': 3.5, opacity: 0.55, 'stroke-linecap': 'round' }, g);
+      svgEl('circle', { cx, cy: hy + 10, r: 6, fill: COL.tropic }, g);
+      const spots = [['thyroid', 'Thyroid cell', cx, hy + 63, 'in the neck', -1], ['liver', 'Liver cell', cx - 22, hy + 170, 'in the liver', -1], ['skin', 'Skin cell', cx + 84, hy + 220, 'in the skin of the arm', 1], ['muscle', 'Muscle cell', cx + 22, hy + 340, 'in a thigh muscle', 1]];
+      spots.forEach(([k, name, x, y, where, side], i) => {
+        svgEl('circle', { cx: x, cy: y, r: 9, fill: '#fff', stroke: COL.ink, 'stroke-width': 2.5 }, g);
+        svgEl('text', { x, y: y + 4.5, 'text-anchor': 'middle', 'font-size': 12, 'font-weight': 700, fill: COL.ink, text: String(i + 1) }, g);
+        const lx = side < 0 ? cx - 170 : cx + 170;
+        leader(g, x + side * 9, y, lx - side * 6, y);
+        label(g, lx, y - 2, `${i + 1}. ${name}`, { 'font-weight': 600, 'text-anchor': side < 0 ? 'end' : 'start' });
+        label(g, lx, y + 15, where, { 'font-size': 12.5, fill: COL.muted, 'text-anchor': side < 0 ? 'end' : 'start' });
+      });
+      label(g, cx + 14, hy + 4, 'pituitary', { 'font-size': 12, fill: COL.tropic });
+      label(g, cx + 14, hy + 130, 'heart', { 'font-size': 12, fill: '#8f2620' });
+      label(g, 90, 520, 'The heart pumps the same blood, and the hormones in it, through every tissue: one bloodstream for the whole body.', { 'font-size': 13, fill: COL.muted });
+    }
+
+    // slide 5: the kidneys and adrenal glands, from the front, with an adrenal cut open
+    {
+      const g = svgEl('g', {}, svg); slides.push(g);
+      svgEl('rect', { x: 0, y: 0, width: 1000, height: 560, fill: '#f6efe6' }, g);
+      svgEl('path', { d: 'M480,0 L480,560 M520,0 L520,560', stroke: '#c24b42', 'stroke-width': 14, opacity: 0.25 }, g);
+      label(g, 500, 548, 'aorta and vena cava', { 'font-size': 12, fill: '#9e3a33', 'text-anchor': 'middle' });
+      for (const s of [-1, 1]) {
+        const x = 500 + s * 170;
+        svgEl('path', { d: KIDNEY_D, transform: `translate(${x},330) scale(${-s * 1.5},1.5)`, fill: '#e7c9bf', stroke: '#a77b6c', 'stroke-width': 1.5 }, g);
+        hotspot(g, 'adrenal', svgEl('path', { d: ADRENAL_D, transform: `translate(${x},330) scale(${-s * 1.5},1.5)`, fill: '#e8b64c', stroke: '#9a6d12', 'stroke-width': 1.5 }, g));
+        svgEl('path', { d: `M${x - s * 30},330 L${500 + s * 20},330`, stroke: '#c24b42', 'stroke-width': 8, opacity: 0.3 }, g);
+      }
+      label(g, 330, 470, 'kidney', { 'font-size': 13, fill: '#8a5a4a', 'text-anchor': 'middle' }); label(g, 670, 470, 'kidney', { 'font-size': 13, fill: '#8a5a4a', 'text-anchor': 'middle' });
+      rings.adrenal5 = ring(g, 670, 250, 70, 40);
+      // an adrenal gland cut open: cortex outside, medulla inside
+      const ins = svgEl('g', { transform: 'translate(820,110)' }, g);
+      svgEl('ellipse', { cx: 0, cy: 0, rx: 70, ry: 44, fill: '#e8b64c', stroke: '#9a6d12', 'stroke-width': 2 }, ins);
+      svgEl('ellipse', { cx: 0, cy: 0, rx: 34, ry: 18, fill: '#b5654a', stroke: '#7a3b26', 'stroke-width': 1.5 }, ins);
+      label(ins, 0, 66, 'cut open: the cortex (outer layer)', { 'font-size': 12, 'text-anchor': 'middle', fill: '#7a4f0a' });
+      label(ins, 0, 82, 'makes cortisol; the medulla (inside)', { 'font-size': 12, 'text-anchor': 'middle', fill: '#7a4f0a' });
+      label(ins, 0, 98, 'makes adrenaline', { 'font-size': 12, 'text-anchor': 'middle', fill: '#7a4f0a' });
+      view.adrenalName = svgEl('g', {}, g);
+      leader(view.adrenalName, 330, 250, 230, 160, '#9a6d12'); label(view.adrenalName, 60, 150, 'Adrenal gland', { 'font-weight': 700, fill: '#9a6d12', 'font-size': 16 }); label(view.adrenalName, 60, 168, 'one on top of each kidney', { 'font-size': 12.5, fill: COL.muted });
+    }
+
+    slides.forEach((s, i) => { s.style.transition = 'opacity .7s ease, transform .9s ease'; s.style.transformOrigin = '50% 30%'; });
+    view.show = (i, instant) => {
+      view.slide = clamp(i, 0, slides.length - 1);
+      slides.forEach((s, k) => {
+        if (instant) s.style.transition = 'none';
+        s.style.opacity = k === view.slide ? 1 : 0;
+        s.style.transform = k < view.slide ? 'scale(2.5)' : k === view.slide ? 'scale(1)' : 'scale(0.4)';
+        s.style.pointerEvents = k === view.slide ? 'auto' : 'none';
+        if (instant) { void s.getBoundingClientRect(); s.style.transition = 'opacity .7s ease, transform .9s ease'; }
+      });
+    };
+    // Highlight a part with a gold ring (or nothing), and show or hide the name labels.
+    view.highlight = (name) => { for (const k in rings) rings[k].setAttribute('opacity', name && k.replace(/\d$/, '') === name ? 1 : 0); };
+    view.names = (on) => { for (const el of [view.bodyLabels, view.headNames, view.neckName, view.adrenalName]) if (el) el.setAttribute('opacity', on ? 1 : 0); };
+    view.update = (dtReal) => { for (const f of flows) f(dtReal); };
+    view.narrate = () => null;
+    view.show(opts.slide || 0, true);
+    view.names(opts.names !== false);
+    return view;
+  };
+
+  // ------------------------------------------------------------- scenes 3–8: one feedback axis
   const AXIS_TEXT = {
     thyroid: {
       levels: ['Hypothalamus', 'Anterior pituitary', 'Thyroid gland'], hormones: ['TRH', 'TSH', 'T4 (and T3)'],
@@ -1131,6 +1373,9 @@ header a.home:hover { text-decoration: underline; }
     const badge = (x, y) => { const g = svgEl('g', {}, svg); svgEl('circle', { cx: x, cy: y, r: 13, fill: '#fff', stroke: '#b0352b', 'stroke-width': 2 }, g); svgEl('text', { x, y: y + 6, 'text-anchor': 'middle', 'font-size': 20, 'font-weight': 700, fill: '#b0352b', text: '−' }, g); return g; };
     const bPit = badge(X + 166, 300), bHyp = badge(X + 236, 250);
     const fbLabel = svgEl('text', { x: X + 60, y: 470, 'font-size': 12.5, fill: '#b0352b', text: `feedback: ${kind === 'thyroid' ? 'T4' : 'cortisol'} holds back both levels above` }, svg);
+    const fbGroup = [fbPit, fbHyp, bPit, bHyp, fbLabel];
+    view.feedback = opts.feedback !== false;
+    view.setFeedback = (on) => { view.feedback = on; fbGroup.forEach(e => e.style.display = on ? '' : 'none'); };
     // brain and hypothalamus
     svgEl('path', { d: `M${X - 150},86 C${X - 160},20 ${X - 40},0 ${X},22 C${X + 60},0 ${X + 170},20 ${X + 150},86 C${X + 140},120 ${X + 60},126 ${X + 30},116 L${X - 30},116 C${X - 70},126 ${X - 140},120 ${X - 150},86 Z`, fill: '#f3ece6', stroke: '#c9b8a8', 'stroke-width': 2 }, svg);
     const hyp = svgEl('ellipse', { cx: X, cy: 108, rx: 42, ry: 15, fill: '#d6efec', stroke: COL.rh, 'stroke-width': 2 }, svg);
@@ -1186,10 +1431,11 @@ header a.home:hover { text-decoration: underline; }
       svgEl('rect', { x: GX, y, width: GW, height: 12, rx: 6, fill: '#eceae3' }, g);
       const pos = (v) => GX + GW * clamp(log ? (Math.log10(Math.max(v, min)) - Math.log10(min)) / (Math.log10(max) - Math.log10(min)) : (v - min) / (max - min), 0, 1);
       if (lo != null) svgEl('rect', { x: pos(lo), y, width: pos(hi) - pos(lo), height: 12, fill: 'rgba(47,158,91,0.35)' }, g);
+      if (log) for (const v of [0.01, 0.1, 1, 10, 100, 1000]) if (v >= min && v <= max) { svgEl('path', { d: `M${pos(v)},${y + 12} v4`, stroke: '#9ca3af' }, g); svgEl('text', { x: pos(v), y: y + 26, 'text-anchor': 'middle', 'font-size': 9.5, fill: '#9ca3af', text: String(v) }, g); }
       const ptr = svgEl('path', { d: '', fill: color }, g);
       const val = svgEl('text', { x: GX + GW + 10, y: y + 11, 'font-size': 14, 'font-weight': 700, fill: COL.ink, text: '' }, g);
       const flagT = svgEl('text', { x: GX + GW + 10, y: y + 27, 'font-size': 11.5, fill: COL.muted, text: '' }, g);
-      const ref = svgEl('text', { x: GX, y: y + 27, 'font-size': 11, fill: COL.muted, text: lo != null ? `normal ${lo}–${hi}` : '' }, g);
+      const ref = svgEl('text', { x: GX, y: y + (log ? 38 : 27), 'font-size': 11, fill: COL.muted, text: lo != null ? `normal ${lo}–${hi}${log ? ' · each tick is 10× the last' : ''}` : '' }, g);
       const o = {
         g, set(v) {
           const x = pos(v);
@@ -1228,6 +1474,14 @@ header a.home:hover { text-decoration: underline; }
       sky.icon = svgEl('circle', { cx: 872, cy: 41, r: 12, fill: '#f0b429' }, sky);
       sky.txt = svgEl('text', { x: 892, y: 47, 'font-size': 15, 'font-weight': 700, fill: COL.ink, text: '' }, sky);
     }
+    const marks = svgEl('g', { opacity: 0 }, svg);
+    for (const [n, x, y] of [[1, X - 175, 92], [2, X - 175, 160], [3, X + 26, 250], [4, X - 72, 300], [5, X + 26, 450], [6, GX - 24, 62]]) {
+      svgEl('circle', { cx: x, cy: y, r: 13, fill: '#f0b429', stroke: '#fff', 'stroke-width': 2 }, marks);
+      svgEl('text', { x, y: y + 5, 'text-anchor': 'middle', 'font-size': 14, 'font-weight': 700, fill: '#1f2430', text: String(n) }, marks);
+    }
+    view.setMarks = (on) => marks.setAttribute('opacity', on ? 1 : 0);
+    view.setMarks(!!opts.marks);
+    view.setFeedback(view.feedback);
     let fbPitW = 4, fbHypW = 4;
     view.update = (dtReal) => {
       const a = app.axis, p = a.p;
@@ -1249,7 +1503,7 @@ header a.home:hover { text-decoration: underline; }
         glandNote2.textContent = p.thyroid < 0.6 ? 'damaged by antibodies (Hashimoto\'s)' : p.TSI > 0 ? 'Y = antibodies that act like TSH' : p.iodine < 0.5 ? 'iodine-poor diet' : '';
         pit.setAttribute('fill', p.pituitary < 0.1 ? '#e5e7eb' : '#efe3f5');
         pitX.setAttribute('opacity', p.pituitary < 0.1 ? 1 : 0);
-        pitNote.textContent = manual ? 'that\'s you: set TSH with the dial' : p.pituitary < 0.1 ? 'blocked' : '';
+        pitNote.textContent = manual ? 'that\'s you: set TSH with the dial' : p.pituitary < 0.1 ? 'blocked' : a.capP > 1.3 ? `TSH-making cells × ${a.capP.toFixed(1)} (built up)` : a.capP < 0.7 ? `TSH-making cells × ${a.capP.toFixed(1)} (dwindled)` : '';
         drugTag.setAttribute('opacity', p.levothyroxine > 0 ? 1 : 0);
         drugText.textContent = `T4 tablets ${p.levothyroxine} µg/day`;
         extraTag.textContent = p.clearance > 1.2 ? 'a medicine is speeding up T4 breakdown' : '';
@@ -1293,7 +1547,8 @@ header a.home:hover { text-decoration: underline; }
     const a = app.axis, p = a.p, F = a.FT4, st = status(F, 0.8, 1.8);
     if (p.manualTSH != null) {
       const trend = app.history.length > 3 ? F - app.history[Math.max(0, app.history.length - 4)].FT4 : 0;
-      return { key: 'manual' + st, html: `You set TSH to <b>${fv(a.TSH)} mIU/L</b>. Free T4 is <b>${fT4(F)} ng/dL</b> (${st === 'normal' ? 'in range' : st}) and ${Math.abs(trend) < 0.005 ? 'steady' : trend > 0 ? 'rising' : 'falling'}.` };
+      const med = p.clearance > 1.2 ? ' <b>The medicine is on:</b> the liver is breaking T4 down twice as fast.' : '';
+      return { key: 'manual' + st + med.length, html: `You set TSH to <b>${fv(a.TSH)} mIU/L</b>. Free T4 is <b>${fT4(F)} ng/dL</b> (${st === 'normal' ? 'in range' : st}) and ${Math.abs(trend) < 0.005 ? 'steady' : trend > 0 ? 'rising' : 'falling'}.${med}` };
     }
     let s;
     if (p.removed) s = `With no thyroid, nothing makes T4: free T4 is <b>${fT4(F)}</b>. With almost no T4 holding them back, TRH is × ${a.TRH.toFixed(1)} and TSH has climbed to <b>${fv(a.TSH)} mIU/L</b>, but there is no gland to respond.`;
@@ -1301,6 +1556,8 @@ header a.home:hover { text-decoration: underline; }
     else if (st === 'low') s = `Free T4 is <b>low (${fT4(F)} ng/dL)</b>, so it holds back the hypothalamus and pituitary less: TRH × ${a.TRH.toFixed(1)}, and TSH is <b>${fv(a.TSH)} mIU/L</b>.`;
     else if (st === 'high') s = `Free T4 is <b>high (${fT4(F)} ng/dL)</b>, so it holds back the hypothalamus and pituitary more: TRH × ${a.TRH.toFixed(1)}, and TSH is down to <b>${fv(a.TSH)} mIU/L</b>.`;
     else s = `Free T4 is <b>${fT4(F)} ng/dL</b>, in range. Its feedback keeps TSH at <b>${fv(a.TSH)} mIU/L</b>.`;
+    if (p.clearance > 1.2) s += ' <b>The medicine is on:</b> the liver is breaking T4 down twice as fast.';
+    if (p.levothyroxine > 0 && a.capP > 1.3) s += ` During the months of low T4, the pituitary built up its TSH-making cells (× ${a.capP.toFixed(1)}); they take weeks to scale back, so TSH falls more slowly than T4 rises.`;
     if (p.levothyroxine > 0) s += ` The tablets supply ${r0(p.levothyroxine * p.absorbed)} µg of T4 a day; the thyroid itself now makes ${r0(a.glandT4)} µg.`;
     if (p.TSI > 0) s += ' The antibodies stimulate the thyroid like TSH, but nothing holds them back.';
     if (p.iodine < 0.5) s += ` Without iodine the gland cannot make enough T4, so it grows instead (${r0(a.size)} g).`;
@@ -1328,7 +1585,7 @@ header a.home:hover { text-decoration: underline; }
     CRH: { label: 'CRH', unit: '× normal', color: COL.rh, min: 0, max: 4 },
     ACTH: { label: 'ACTH', unit: 'pg/mL', color: COL.tropic, log: true, min: 0.5, max: 300, band: [10, 60] },
     cortisol: { label: 'cortisol', unit: 'µg/dL', color: COL.target, min: 0, max: 45, band: [5, 25], bandLabel: 'normal at 8 am' },
-    gc: { label: 'cortisol + prednisone effect', unit: 'µg/dL', color: COL.gc, min: 0, max: 80 },
+    gc: { label: 'cortisol + prednisone effect', unit: 'µg/dL', color: COL.gc, min: 0, max: 30, danger: [0, 3], line: 3, lineLabel: 'red zone = adrenal crisis' },
     asize: { label: 'adrenal size', unit: 'g', color: COL.glandDark, min: 0, max: 10, band: [3, 7] },
   };
   const traceCanvas = $('#trace');
@@ -1341,6 +1598,12 @@ header a.home:hover { text-decoration: underline; }
     c.clearRect(0, 0, w, h);
     const cfg = app.traces;
     if (!cfg) return;
+    if (!cfg.panels.length) {
+      c.fillStyle = '#8a90a0'; c.font = '13px system-ui, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.fillText(cfg.note || '', w / 2, h / 2);
+      $('#trace-legend').innerHTML = '';
+      return;
+    }
     const keys = cfg.panels, W = cfg.window, now = app.axis.t;
     const t1 = Math.max(now, app.origin + W), t0 = t1 - W;
     const padL = 74, padR = 14, padT = 4, padB = 18;
@@ -1361,6 +1624,8 @@ header a.home:hover { text-decoration: underline; }
       const norm = P.log ? (v) => (Math.log10(clamp(v, P.min, P.max)) - Math.log10(P.min)) / (Math.log10(P.max) - Math.log10(P.min)) : (v) => (clamp(v, P.min, P.max) - P.min) / (P.max - P.min);
       const Y = (v) => y1 - norm(v) * (y1 - y0);
       c.fillStyle = '#fbfaf6'; c.fillRect(padL, y0, w - padL - padR, ph);
+      for (const sp of app.spans) { const xa = Math.max(padL, X(sp.t0)), xb = Math.min(w - padR, X(sp.t1)); if (xb > xa) { c.fillStyle = sp.color || 'rgba(61,111,182,0.10)'; c.fillRect(xa, y0, xb - xa, ph); } }
+      if (P.danger) { c.fillStyle = 'rgba(176,53,43,0.14)'; c.fillRect(padL, Y(P.danger[1]), w - padL - padR, Y(P.danger[0]) - Y(P.danger[1])); }
       if (P.band) { c.fillStyle = COL.band; c.fillRect(padL, Y(P.band[1]), w - padL - padR, Y(P.band[0]) - Y(P.band[1])); }
       // y ticks
       c.textAlign = 'right'; c.textBaseline = 'middle'; c.fillStyle = '#8a90a0';
@@ -1370,6 +1635,7 @@ header a.home:hover { text-decoration: underline; }
       c.fillText(`${P.label} (${P.unit})${P.log ? ' · log scale' : ''}${cfg.daily ? ' · daily average' : ''}`, padL + 6, y0 + 2);
       if (P.band && P.bandLabel) { c.fillStyle = '#2f7a4f'; c.font = '11px system-ui, sans-serif'; c.fillText(P.bandLabel, padL + 6, Y(P.band[1]) + 1); }
       c.font = '11px system-ui, sans-serif';
+      if (P.line != null) { c.strokeStyle = '#b0352b'; c.setLineDash([5, 4]); c.beginPath(); c.moveTo(padL, Y(P.line)); c.lineTo(w - padR, Y(P.line)); c.stroke(); c.setLineDash([]); c.fillStyle = '#b0352b'; c.textAlign = 'right'; c.textBaseline = 'bottom'; c.fillText(P.lineLabel || '', w - padR - 4, Y(P.line) - 1); c.textAlign = 'left'; }
       // the trace (or, over many weeks of a daily rhythm, each day's average)
       c.strokeStyle = P.color; c.lineWidth = 2; c.beginPath(); let first = true;
       for (const s of (cfg.daily ? dailyAverages() : app.history)) { if (s.t < t0 - app.sampleDt) continue; const x = X(Math.max(s.t, t0)), y = Y(s[k]); if (first) { c.moveTo(x, y); first = false; } else c.lineTo(x, y); }
@@ -1379,10 +1645,15 @@ header a.home:hover { text-decoration: underline; }
     c.textAlign = 'center'; c.textBaseline = 'top'; c.fillStyle = '#8a90a0';
     const steps = [60, 120, 360, 720, DAY, 2 * DAY, 7 * DAY, 14 * DAY, 28 * DAY, 56 * DAY];
     const step = steps.find(s => W / s <= 10) || 56 * DAY;
-    for (let t = Math.ceil((t0 - app.origin) / step) * step + app.origin; t <= t1 + 1e-6; t += step) {
+    const base = app.kind === 'adrenal' && step < DAY ? 0 : app.zero;
+    for (let t = Math.ceil((t0 - base) / step) * step + base; t <= t1 + 1e-6; t += step) {
       c.strokeStyle = '#eceae3'; c.beginPath(); c.moveTo(X(t), top); c.lineTo(X(t), bottom); c.stroke();
       if (X(t) < w - padR - 24) c.fillText(timeLabel(t, step), X(t), bottom + 3);
     }
+    // shaded stretches: their labels along the top of the first panel
+    c.textAlign = 'left'; c.textBaseline = 'top'; c.font = '600 11px system-ui, sans-serif';
+    for (const sp of app.spans) { const xa = Math.max(padL, X(sp.t0)); if (X(sp.t1) > padL && xa < w - padR - 40) { c.fillStyle = '#23497f'; c.fillText(sp.label, xa + 4, top + 14); } }
+    c.font = '11px system-ui, sans-serif';
     // markers
     c.textAlign = 'left'; c.textBaseline = 'top';
     for (const m of placed) {
@@ -1398,14 +1669,13 @@ header a.home:hover { text-decoration: underline; }
   function dailyAverages() {
     const out = [], H = app.history;
     let day = null, acc = null, n = 0;
-    const flush = () => { if (acc && n) { const o = { t: (day + 0.5) * DAY }; for (const k in acc) o[k] = acc[k] / n; out.push(o); } };
+    const flush = () => { if (acc && n >= 3) { const o = { t: (day + 0.5) * DAY }; for (const k in acc) o[k] = acc[k] / n; out.push(o); } };
     for (const s of H) {
       const d = Math.floor(s.t / DAY);
       if (d !== day) { flush(); day = d; acc = {}; n = 0; }
       for (const k in s) if (k !== 't') acc[k] = (acc[k] || 0) + s[k];
       n++;
     }
-    if (H.length) { const last = H[H.length - 1]; out.push(last); }
     return out;
   }
   function niceTicks(min, max, n) {
@@ -1416,16 +1686,17 @@ header a.home:hover { text-decoration: underline; }
   }
   function timeLabel(t, step) {
     if (app.kind === 'adrenal' && step < DAY) { const h = ((t / HOUR) % 24 + 24) % 24; return Math.abs(h) < 0.01 ? `day ${Math.floor((t - app.origin) / DAY + 1e-6) + 1}` : clockLabel(h); }
-    const rel = t - app.origin;
-    if (step < DAY) return `${r0(rel / HOUR)} h`;
-    if (step < 7 * DAY) return `day ${r0(rel / DAY)}`;
-    return `week ${r0(rel / (7 * DAY))}`;
+    const rel = t - app.zero, sgn = (x) => (x < -0.5 ? '−' + Math.abs(x) : String(Math.abs(x) < 0.5 ? 0 : x));
+    if (step < DAY) return `${sgn(r0(rel / HOUR))} h`;
+    if (step < 7 * DAY) return `day ${sgn(r0(rel / DAY))}`;
+    return `week ${sgn(r0(rel / (7 * DAY)))}`;
   }
   function clockText() {
-    const a = app.axis, rel = a.t - app.origin;
+    const a = app.axis, rel = a.t - app.zero;
     if (app.kind === 'adrenal') return `day ${Math.floor(a.t / DAY) - Math.floor(app.origin / DAY) + 1} · ${clockLabel(a.hour)}`;
     if (app.traces && app.traces.window < 2 * DAY) return `${(rel / HOUR).toFixed(1)} h`;
-    return rel >= 14 * DAY ? `week ${(rel / (7 * DAY)).toFixed(1)}` : `day ${(rel / DAY).toFixed(1)}`;
+    const s = rel < 0 ? '−' : '';
+    return Math.abs(rel) >= 14 * DAY ? `week ${s}${(Math.abs(rel) / (7 * DAY)).toFixed(1)}` : `day ${s}${(Math.abs(rel) / DAY).toFixed(1)}`;
   }
 
   // =========================================================================
@@ -1452,7 +1723,11 @@ header a.home:hover { text-decoration: underline; }
       if (sceneChanged) app.userSpeed = null;
       if (app.userSpeed == null && eff.speed) setSpeed(eff.speed);
       app.clock = eff.clock || 'idle';
-      if (eff.traces) { app.traces = eff.traces; app.sampleDt = eff.traces.window / 420; }
+      // samples: about 420 across the window; for daily averages, a whole number of samples a day
+      if (eff.traces) { app.traces = eff.traces; app.sampleDt = eff.traces.window / 420; if (eff.traces.daily) app.sampleDt = DAY / Math.ceil(DAY / app.sampleDt); }
+      const graphed = !!(app.traces && app.traces.panels.length);
+      $('#trace-wrap').style.display = graphed ? '' : 'none';
+      $('#vm-badge').style.visibility = graphed ? 'visible' : 'hidden';
       app.meters = eff.meters || null;
       renderMeters(true);
       setPaused(false);
@@ -1487,7 +1762,7 @@ header a.home:hover { text-decoration: underline; }
       if (n) {
         if ($('#narrator').innerHTML !== n.html) $('#narrator').innerHTML = n.html;
         if (n.key !== srKey) { srKey = n.key; $('#sr-live').textContent = n.html.replace(/<[^>]*>/g, ''); }
-      }
+      } else $('#narrator').innerHTML = '';
     }
     meterClock += dtReal; renderMeters(false);
     drawTraces();
@@ -1553,8 +1828,8 @@ header a.home:hover { text-decoration: underline; }
     return `<b>Observed after 8 weeks:</b> TRH × ${r.before.TRH.toFixed(2)} → × ${r.after.TRH.toFixed(2)}; TSH ${fv(r.before.TSH)} → ${fv(r.after.TSH)} mIU/L; free T4 ${fT4(r.before.FT4)} → ${fT4(r.after.FT4)} ng/dL.`;
   };
 
-  // Scene 2: the student's TSH dial, and the 30-day challenge.
-  function tshDial(el, c) {
+  // Scene 3: the student's TSH dial, the practice run, and the 30-day challenge.
+  function tshDial(el, c, showRange) {
     el.className = 'extra dial';
     const toVal = (s) => +(Math.pow(10, s / 100 * 3 - 1)).toFixed(2);    // slider 0–100 → 0.1–100 (log)
     const toS = (v) => (Math.log10(v) + 1) / 3 * 100;
@@ -1565,6 +1840,8 @@ header a.home:hover { text-decoration: underline; }
     const show = () => { big.textContent = `${fv(app.axis.p.manualTSH)} mIU/L`; };
     s.addEventListener('input', () => { app.axis.p.manualTSH = toVal(+s.value); show(); });
     el.appendChild(big); el.appendChild(s);
+    el.appendChild(htmlEl('div', { style: 'font-size:12px;color:var(--muted);display:flex;justify-content:space-between' }, '<span>0.1</span><span>1</span><span>10</span><span>100</span>'));
+    if (!showRange) { show(); return; }
     const meter = htmlEl('div', {}, '');
     el.appendChild(meter);
     const upd = () => {
@@ -1575,6 +1852,13 @@ header a.home:hover { text-decoration: underline; }
     };
     show(); upd();
   }
+  const MED_TEXT = 'a medicine that makes the liver break T4 down <b>twice as fast</b> (some seizure medicines do this)';
+  // What the meters show during the 30-day runs: the day, whether the medicine is on, free T4.
+  const medMeters = () => {
+    const a = app.axis, day = Math.max(0, (a.t - app.zero) / DAY), on = a.p.clearance > 1.2, F = a.FT4, ok = F >= 0.8 && F <= 1.8;
+    const started = app.run || app.range;
+    return [['Day', started ? day.toFixed(0) : '—'], ['Medicine', on ? 'ON: T4 broken down 2× faster' : !started || day < 8 ? 'starts on day 8' : 'stopped on day 22', on ? 'hot' : ''], ['Free T4', `${fT4(F)} ng/dL`, ok ? 'good' : 'hot']];
+  };
   const challengeSchedule = () => [
     { at: 8 * DAY, fn: () => { app.axis.p.clearance = 2; mark('day 8: medicine starts'); } },
     { at: 22 * DAY, fn: () => { app.axis.p.clearance = 1; mark('day 22: medicine stops'); } },
@@ -1594,11 +1878,60 @@ header a.home:hover { text-decoration: underline; }
       if (!manual || pct >= 80 || d.tries >= 2) c.complete();
       c.refresh();
     } });
+    app.spans.push({ t0: app.zero + 8 * DAY, t1: app.zero + 22 * DAY, label: 'medicine: T4 broken down 2× faster', color: 'rgba(176,53,43,0.08)' });
     if (manual) { const sl = $('#tsh-dial'); if (sl) sl.value = (Math.log10(1.5) + 1) / 3 * 100; }
     c.refresh();
   }
+  // Scene 3: put the steps of the feedback loop in order (the simplified exercise before the
+  // automatic pituitary). Click the cards in the order they happen.
+  const LOOP = [
+    'The medicine makes the liver break T4 down faster',
+    'Free T4 in the blood falls',
+    'Less T4 reaches the T4 receptors in the pituitary (and hypothalamus), so they are held back less',
+    'The pituitary releases more TSH',
+    'The thyroid makes more T4',
+    'Free T4 rises back toward normal',
+  ];
+  const LOOP_HINT = [
+    'Start with what the medicine does.',
+    'What happens to free T4 in the blood when it is removed faster than it is made?',
+    'Which cells are watching free T4, and what does less T4 do to them?',
+    'What does a pituitary that is held back less do?',
+    'What does more TSH tell the thyroid to do?',
+    'What does more T4 from the thyroid do to the level in the blood?',
+  ];
+  function loopBuilder(el, c) {
+    el.className = 'extra';
+    const d = c.stepState().data;
+    if (d.next == null) d.next = c.stepState().done ? LOOP.length : 0;
+    const order = [3, 0, 5, 2, 4, 1];
+    const render = () => {
+      el.innerHTML = '';
+      const built = htmlEl('ol', { style: 'margin:0 0 8px 18px;padding:0;font-size:14px' });
+      for (let i = 0; i < d.next; i++) built.appendChild(htmlEl('li', { style: 'margin-bottom:3px' }, LOOP[i]));
+      if (d.next) el.appendChild(built);
+      if (d.next >= LOOP.length) {
+        el.appendChild(htmlEl('div', { class: 'feedback good' }, '<b>A loop.</b> Step 6 undoes step 2: the response <b>opposes</b> the change that set it off. If free T4 rises too high, the same loop runs the other way: more T4 holds the pituitary back more, TSH falls, and the thyroid makes less.'));
+        return;
+      }
+      const cards = htmlEl('div', { class: 'options' });
+      for (const i of order) {
+        if (i < d.next) continue;
+        const b = htmlEl('button', { type: 'button' }, LOOP[i]);
+        b.addEventListener('click', () => {
+          if (i === d.next) { d.next++; if (d.next >= LOOP.length) { c.recordValue('loopTries', d.wrong || 0); c.complete(); } render(); }
+          else { d.wrong = (d.wrong || 0) + 1; b.classList.add('wrong'); fb.style.display = 'block'; fb.innerHTML = `<b>Not yet.</b> ${LOOP_HINT[d.next]}`; }
+        });
+        cards.appendChild(b);
+      }
+      const fb = htmlEl('div', { class: 'feedback bad', style: 'display:none' });
+      el.appendChild(htmlEl('div', { style: 'font-size:13px;color:var(--muted);margin-bottom:4px' }, d.next ? 'Next:' : 'First:'));
+      el.appendChild(cards); el.appendChild(fb);
+    };
+    render();
+  }
 
-  // Scene 5–7 helpers
+  // Scene 6–8 helpers
   function drawBloodAt(c, hour, key) {
     const d = c.stepState().data;
     if (app.run) return;
@@ -1626,7 +1959,7 @@ header a.home:hover { text-decoration: underline; }
     for (const [mg, days] of schedule) { const t = at; sch.push({ at: t, fn: () => { app.axis.setPrednisone(mg); mark(mg ? `${mg} mg` : 'stopped'); } }); at += days * DAY; }
     sch.push({ at, fn: () => { app.axis.setPrednisone(0); if (schedule[schedule.length - 1][0] !== 0) mark('stopped'); } });
     const startDay = Math.floor(app.axis.t / DAY);
-    startRun({ duration: at + 21 * DAY, speed: at > 20 * DAY ? 20160 : 10080, schedule: sch, onDone: () => {
+    startRun({ keepZero: true, duration: at + 21 * DAY, speed: at > 20 * DAY ? 20160 : 10080, schedule: sch, onDone: () => {
       // lowest daily glucocorticoid effect from the moment the drug was stopped
       const stopDay = startDay + Math.round(at / DAY);
       let min = Infinity, low = 0;
@@ -1668,30 +2001,98 @@ header a.home:hover { text-decoration: underline; }
   }
   function setPatient(name) { const ax = patient(name); ax.advanceTo(6); setAxis(ax); return ax; }
 
+  const BODY_FIND = (part, prompt, explain, slide) => ({
+    view: 'body', title: 'Find it', findPart: part,
+    enter: (c) => {
+      const v = c.view(); v.show(slide); v.names(c.stepState().done); v.highlight(c.stepState().done ? part : null);
+      v.onPart = (p) => {
+        if (p === part) { v.highlight(part); v.names(true); c.status(`<b>Yes.</b> ${explain}`, true); c.complete(); }
+        else c.status('Not that one. Read the description again.', false);
+      };
+    },
+    text: `<p>${prompt}</p>`,
+    waitFor: () => false, waitHint: 'Click the structure described',
+  });
+
   const LESSON = [
-    // ------------------------------------------------------------- 1. a message for every cell
+    // ------------------------------------------------------------- 1. where are the glands?
+    {
+      id: 'body', title: 'Where are the glands?', speed: 20,
+      steps: [
+        {
+          view: 'body', viewOpts: { slide: 0, caption: 'Maria, and three of her endocrine glands.' }, remount: true, clock: 'free',
+          traces: { window: 18 * HOUR, panels: [], note: 'Hormone levels will be graphed here from scene 2 on.' },
+          title: 'Why this matters: a patient',
+          enter: (c) => { setAxis(new Thyroid()); c.view().show(0); c.view().names(true); c.view().highlight(null); c.view().onPart = null; },
+          text: `<div class="case"><div class="case-h">Maria's case</div>${CASE_HTML}</div>
+                 <p>By the end of this lab your group will be able to answer three questions about Maria (they are on your worksheet):</p>${CASE_QUESTIONS}
+                 <p style="margin-top:8px">You can reopen her case at any time with the <b>Maria's case</b> button at the top.</p>`,
+          question: { prompt: 'Before you start, make a guess: how could one small gland in the neck make someone tired, cold and heavier?', options: [
+            { t: 'Its hormone sets how fast cells all over the body burn fuel', ok: true, fb: 'Keep your guess in mind. You will test it in scene 2.' },
+            { t: 'The gland presses on nerves in the neck', ok: true, fb: 'Keep your guess in mind. You will test it in scene 2.' },
+            { t: 'It controls appetite and digestion only', ok: true, fb: 'Keep your guess in mind. You will test it in scene 2.' },
+          ] },
+        },
+        {
+          view: 'body', title: 'Endocrine glands',
+          enter: (c) => { const v = c.view(); v.show(0); v.names(true); v.highlight(null); v.onPart = null; },
+          text: `<p>The glands labelled here are <b>endocrine glands</b>. In this lab you will follow two chains of them: the <b>hypothalamus</b> and <b>pituitary gland</b> at the base of the brain, which control the <b>thyroid gland</b> in the neck and the <b>adrenal glands</b> on top of the kidneys.</p>
+                 <p>Endocrine glands have no ducts (tubes) to carry what they make to where it is needed.</p>`,
+          question: { prompt: 'So how do their hormones reach the rest of the body?', options: [
+            { t: 'They are released into the blood, which carries them everywhere', ok: true, fb: 'Endocrine glands are packed with blood vessels and release their hormones straight into the blood. That is the difference from exocrine glands (sweat, saliva), which empty through ducts.' },
+            { t: 'Along nerves, like electrical signals', fb: 'Nerves carry electrical signals to particular places. Hormones are chemicals. With no ducts, where can a gland\'s chemicals go?' },
+            { t: 'Through ducts to the organs they control', fb: 'These glands have no ducts. Glands that do (sweat glands, salivary glands) are called exocrine glands.' },
+          ] },
+        },
+        Object.assign(BODY_FIND('pituitary', 'Zoom into the head. It is cut down the middle and seen from the side, with the face on the left. Click the <b>pituitary gland</b>: a pea-sized gland that hangs on a short stalk under the brain, resting in a pocket of bone just behind the eyes.', 'The <b>pituitary gland</b>. It is small, but it controls several other glands, including the thyroid and the adrenals.', 1), { viewOpts: { slide: 1, names: false, caption: 'The head, cut down the middle (a mid-sagittal section), seen from the side.' }, title: 'The pituitary gland' }),
+        Object.assign(BODY_FIND('hypothalamus', 'Now click the <b>hypothalamus</b>: the part of the brain itself that sits just above the pituitary\'s stalk.', 'The <b>hypothalamus</b> is brain tissue. It watches the body (temperature, hormone levels, stress) and tells the pituitary what to do.', 1), { title: 'The hypothalamus' }),
+        {
+          view: 'body', title: 'From brain to blood',
+          viewOpts: { slide: 2, caption: 'The hypothalamus and the pituitary, close up. The dots move with the model\'s hormone levels.' },
+          enter: (c) => { const v = c.view(); v.show(2); v.onPart = null; },
+          text: `<p>Nerve cells in the hypothalamus release <b>TRH</b> (green circles) into tiny blood vessels that run a few millimetres down the stalk. TRH tells cells in the <b>anterior pituitary</b> (the front part) to release <b>TSH</b> (purple diamonds) into the blood leaving the pituitary.</p>`,
+          question: { prompt: 'TSH has just entered the blood under the brain. Its target, the thyroid, is in the neck. How does TSH get there?', options: [
+            { t: 'The blood carries it to the heart, which pumps it through every tissue, including the thyroid', ok: true, fb: 'Within about a minute TSH has been through the heart and out to every organ. It reaches the thyroid simply because blood reaches the thyroid.' },
+            { t: 'Along a nerve from the pituitary to the thyroid', fb: 'TSH is a chemical in the blood, not a nerve signal. Which way is the blood leaving the pituitary heading?' },
+            { t: 'It soaks down through the tissues of the neck', fb: 'That would take far too long. Which way is the blood leaving the pituitary heading?' },
+          ] },
+        },
+        Object.assign(BODY_FIND('thyroid', 'Now the neck, from the front, with the skin and muscles removed. Click the <b>thyroid gland</b>: two lobes joined in the middle, wrapped around the front of the windpipe just below the larynx.', 'The <b>thyroid gland</b>. TSH arrives in the blood of the arteries that supply it.', 3), { viewOpts: { slide: 3, names: false, caption: 'The front of the neck.' }, title: 'The thyroid gland' }),
+        {
+          view: 'body', title: 'One bloodstream for the whole body',
+          viewOpts: { slide: 4, caption: 'The heart pumps the same blood through every tissue.' },
+          enter: (c) => { const v = c.view(); v.show(4); v.onPart = null; },
+          text: `<p>The blood carrying TSH passes through every tissue: the thyroid, but also the liver, the muscles, the skin, and everything else. The numbers mark four kinds of cell in four different places.</p>
+                 <p>In the next scene those four cells are drawn <b>side by side</b>, along one straight blood vessel that stands for the whole bloodstream. Keep this picture in mind: in the body they are far apart.</p>`,
+        },
+      ],
+    },
+    // ------------------------------------------------------------- 2. a message for every cell
     {
       id: 'message', title: 'A message for every cell', speed: 20,
       steps: [
         {
-          view: 'message', viewOpts: { caption: 'The pituitary gland, the blood, and four kinds of cell. Diamonds are TSH; circles are thyroid hormone.' }, clock: 'free', remount: true,
+          view: 'message', viewOpts: { marks: true, caption: 'Four kinds of cell from around the body, drawn side by side along the bloodstream.' }, clock: 'free', remount: true,
           traces: THY_TRACES(18 * HOUR, ['TSH']),
-          title: 'Why this matters: a patient',
-          enter: () => { setAxis(new Thyroid()); app.view.setT4(false); },
-          text: `<div class="case"><div class="case-h">Maria's case</div>${CASE_HTML}</div>
-                 <p>By the end of this lab your group will be able to answer three questions about Maria (they are on your worksheet):</p>${CASE_QUESTIONS}
-                 <p style="margin-top:8px">You can reopen her case at any time with the <b>Maria's case</b> button at the top.</p>`,
-          question: { prompt: 'Before you start, make a guess: why might one small gland in the neck make someone tired, cold and heavier?', options: [
-            { t: 'Its hormone sets how fast cells all over the body burn fuel', ok: true, fb: 'Keep your guess in mind. You will test it in this scene.' },
-            { t: 'The gland presses on nerves in the neck', ok: true, fb: 'Keep your guess in mind. You will test it in this scene.' },
-            { t: 'It controls appetite and digestion only', ok: true, fb: 'Keep your guess in mind. You will test it in this scene.' },
+          title: 'How to read this picture',
+          enter: () => { setAxis(new Thyroid()); app.view.setT4(false); app.view.setMarks(true); },
+          text: `<ol style="margin:0 0 6px 18px;padding:0">
+                 <li>The <b>pituitary</b> releases TSH into the blood.</li>
+                 <li>The pink band is <b>the bloodstream</b>. In the body it loops through every organ; here it is drawn as one straight vessel.</li>
+                 <li>The four boxes are <b>cells from four different places</b> (the tiny figures show where, as in scene 1).</li>
+                 <li>Purple diamonds are <b>TSH</b>. Later, orange circles will be <b>thyroid hormone</b>.</li>
+                 <li>The cups on top of the thyroid cell are <b>TSH receptors</b>: proteins in the cell membrane that TSH fits, like a key in a lock.</li></ol>
+                 <p>The graph below shows the TSH level in the blood over time. The green band is the normal range. The scale is a <b>log scale</b>: each line is 10 times the one below, because hormone levels can change a hundredfold.</p>`,
+          question: { prompt: 'In the picture the four cells sit next to each other. Where are they in the body?', options: [
+            { t: 'In four different places, all reached by the same bloodstream', ok: true, fb: 'The thyroid cell is in the neck, the liver cell in the abdomen, the muscle cell in the thigh, the skin cell in the skin. The picture lines them up so you can compare them.' },
+            { t: 'Next to each other, around the thyroid', fb: 'Look at the tiny figure beside each cell, or back at the last screen of scene 1.' },
+            { t: 'All in the brain, near the pituitary', fb: 'Look at the tiny figure beside each cell, or back at the last screen of scene 1.' },
           ] },
         },
         {
           view: 'message', title: 'A hormone travels in the blood',
-          enter: () => app.view.setT4(false),
-          text: `<p>Hormones are chemical messages carried by the blood. The pituitary gland, under the brain, releases <b>TSH</b> (thyroid-stimulating hormone). A little TSH is always circulating.</p>
-                 <p>You are about to release a large pulse of TSH into the blood.</p>`,
+          enter: () => { app.view.setT4(false); app.view.setMarks(false); },
+          text: `<p>A little TSH is always circulating. You are about to release a large pulse of it into the blood.</p>`,
           question: { prompt: 'Predict: which cells will the TSH reach?', options: [
             { t: 'Every cell the blood reaches', ok: true, fb: 'The blood carries the hormone everywhere. Release the pulse and watch where the diamonds go.' },
             { t: 'Only the thyroid cells: the hormone is sent to its target', fb: 'Hormones are not addressed like letters. The blood carries them to every tissue. Release the pulse and watch.' },
@@ -1703,96 +2104,152 @@ header a.home:hover { text-decoration: underline; }
         },
         {
           view: 'message', title: 'Which cells respond?',
-          text: `<p>Look at the four cells while the pulse lasts. Release another pulse if you missed it.</p>`,
+          text: `<p>Look at the four cells while the pulse lasts: which one changes? Release another pulse if you missed it.</p>`,
           actions: [{ label: 'Release another pulse', cls: 'hormone', run: () => { app.axis.injectTSH(15); mark('TSH pulse'); } }],
           question: { prompt: 'TSH reached all four cells. Which of them responded?', options: [
-            { t: 'Only the thyroid cell, the only one with TSH receptors', ok: true, fb: 'A cell responds to a hormone only if it has a <b>receptor</b> that the hormone fits. The thyroid cell\'s receptors (the cups on top) filled with TSH, and it made more T4. The other cells were bathed in TSH and ignored it.' },
+            { t: 'Only the thyroid cell, the only one with TSH receptors', ok: true, fb: 'A cell responds to a hormone only if it has a <b>receptor</b> that the hormone fits. The thyroid cell\'s receptors (the cups) filled with TSH, and it made more T4. The other cells were bathed in TSH and ignored it. Cells that respond to a hormone are called its <b>target cells</b>.' },
             { t: 'All four: they all received the message', fb: 'Receiving a hormone is not the same as responding to it. Which cell lit up, and what does it have on its surface that the others lack?' },
             { t: 'The thyroid and liver cells, because they are glands', fb: 'Watch the labels under the cells. What does the thyroid cell have on its surface that the liver cell does not?' },
           ] },
         },
         {
           view: 'message', title: 'The thyroid\'s own message',
-          enter: (c) => { app.view.setT4(true); },
-          text: `<p>The thyroid answers with its own hormone, <b>T4</b> (thyroxine; the circles). T4 is made from the amino acid tyrosine and <b>iodine</b>. Unlike TSH, it is fat-soluble: it slips into cells, where it is converted to its active form, <b>T3</b>, which acts on receptors <b>inside the nucleus</b>.</p>`,
-          question: { prompt: 'Which cells respond to T4?', options: [
-            { t: 'Nearly every cell in the body', ok: true, fb: 'Almost every cell has thyroid hormone receptors in its nucleus. T3 sets how fast cells burn fuel and make heat. That is why too little thyroid hormone makes Maria tired, cold and slow, all over her body.' },
-            { t: 'Only the pituitary', fb: 'The pituitary does respond to T4 (you will see why in scene 2), but look at the receptors drawn inside every nucleus.' },
+          enter: () => { app.view.setT4(true); },
+          text: `<p>The thyroid answers with its own hormone, <b>T4</b> (thyroxine; the orange circles), made from the amino acid tyrosine and <b>iodine</b>. Unlike TSH, it is fat-soluble: it slips through cell membranes. Inside the cell it is converted to its active form, <b>T3</b>, which binds receptors <b>inside the nucleus</b> (the small boxes now drawn in each nucleus).</p>`,
+          question: { prompt: 'Which cells respond to thyroid hormone?', options: [
+            { t: 'Nearly every cell in the body', ok: true, fb: 'Almost every cell has thyroid hormone receptors in its nucleus. Thyroid hormone sets how fast cells burn fuel and make heat. That is why too little of it makes Maria tired, cold and slow, all over her body.' },
+            { t: 'Only the pituitary', fb: 'The pituitary does respond to thyroid hormone (you will see why in scene 3), but look at the receptors drawn inside every nucleus.' },
             { t: 'Only muscle cells', fb: 'Look at the receptors drawn inside each nucleus: which cells have them?' },
           ] },
         },
         {
           view: 'message', title: 'How long does a message last?',
-          text: `<p>Your TSH pulse faded within a few hours: TSH has a <b>half-life</b> of about 1 hour (every hour, half of what is in the blood is removed). Hormones that are carried on proteins in the blood last much longer.</p>`,
-          question: { prompt: 'If Maria\'s thyroid stopped making T4 today, how long would it take for half the T4 in her blood to be gone?', options: [
-            { t: 'About a week', ok: true, fb: 'T4\'s half-life is about 7 days, because most of it rides on carrier proteins in the blood. That is why thyroid problems come on slowly, and why a change in dose takes weeks to show.' },
-            { t: 'About an hour, like TSH', fb: 'T4 is mostly carried on proteins in the blood, which protect it from being removed. Its half-life is much longer than TSH\'s.' },
+          text: `<p>Look at the graph: your TSH pulse faded within a few hours. TSH has a <b>half-life</b> of about 1 hour: every hour, the kidneys and liver remove half of what is in the blood. Hormones that ride on carrier proteins in the blood are protected and last much longer.</p>`,
+          question: { prompt: 'Most T4 rides on carrier proteins. If Maria\'s thyroid stopped making T4 today, how long would it take for half the T4 in her blood to be gone?', options: [
+            { t: 'About a week', ok: true, fb: 'T4\'s half-life is about 7 days. That is why thyroid problems come on slowly, and why a change in dose takes weeks to show. The small fraction of T4 that is <b>not</b> on a carrier protein, <b>free T4</b>, is the part that can enter cells, and it is what labs measure.' },
+            { t: 'About an hour, like TSH', fb: 'The carrier proteins protect T4 from being removed, so its half-life is much longer than TSH\'s.' },
             { t: 'About a year', fb: 'Too long: the body uses and replaces its T4 continuously.' },
           ] },
         },
       ],
     },
-    // ------------------------------------------------------------- 2. you are the pituitary
+    // ------------------------------------------------------------- 3. you are the pituitary
     {
       id: 'pituitary', title: 'You are the pituitary', speed: 1440,
       steps: [
         {
-          view: 'axis', viewOpts: { caption: 'The thyroid axis. You set the pituitary\'s TSH output.' }, remount: true,
+          view: 'axis', viewOpts: { marks: true, feedback: false, caption: 'The thyroid chain as a diagram.' }, remount: true,
           traces: THY_TRACES(32 * DAY, ['TSH', 'FT4']),
-          enter: () => { const ax = new Thyroid(); ax.p.manualTSH = 1.5; setAxis(ax); },
-          title: 'Your job',
-          text: `<p>Now <b>you</b> are the pituitary. Use the TSH dial to keep <b>free T4 in its normal range</b> (0.8–1.8 ng/dL, shaded green) for 30 days.</p>
-                 <p>On day 8 this person starts a medicine that makes the liver break T4 down <b>twice as fast</b>. It stops on day 22.</p>`,
-          question: { prompt: 'When free T4 starts to fall, what should you do?', options: [
-            { t: 'Raise TSH, so the thyroid makes more T4', ok: true, fb: 'Right. Start the 30 days and watch free T4.' },
+          enter: () => { const ax = new Thyroid(); ax.p.manualTSH = 1.5; setAxis(ax); app.view.setMarks(true); app.view.setFeedback(false); },
+          title: 'How to read this diagram',
+          text: `<p>This diagram follows one chain from scene 1, top to bottom:</p>
+                 <ol style="margin:0 0 6px 18px;padding:0">
+                 <li>The <b>hypothalamus</b>, part of the brain, sends <b>TRH</b> down the stalk to… (TRH cannot be measured in patients, so its gauge shows it compared with normal: × 1 is normal.)</li>
+                 <li>…the <b>anterior pituitary</b>, which releases <b>TSH</b>.</li>
+                 <li>The purple arrow is TSH carried by the blood to the thyroid (the heart and the rest of the circulation are left out).</li>
+                 <li>The <b>thyroid gland</b>, drawn at the size the model says it is: it can grow and shrink. It releases <b>T4</b>.</li>
+                 <li>The orange arrow is thyroid hormone going to cells all over the body.</li>
+                 <li>The <b>gauges</b> show each level right now; green is the normal range for a healthy adult. Don't memorize the units (mIU/L, ng/dL): compare each pointer with its green band. TSH uses a log scale (each tick is 10× the one before).</li></ol>
+                 <p>The graph shows the same levels over time.</p>`,
+          question: { prompt: 'The purple arrow goes straight from the pituitary to the thyroid. What does it stand for?', options: [
+            { t: 'TSH carried by the bloodstream, through the heart, to the thyroid', ok: true, fb: 'The diagram leaves out the heart and blood vessels to keep the chain readable, but every arrow between glands is a hormone travelling in the blood.' },
+            { t: 'A nerve that connects the pituitary to the thyroid', fb: 'Think back to scene 1: how did TSH get from the head to the neck?' },
+            { t: 'A duct that carries TSH only to the thyroid', fb: 'Endocrine glands have no ducts. Think back to scene 1: how did TSH get from the head to the neck?' },
+          ] },
+        },
+        {
+          view: 'axis', title: 'Learn the controls', clock: 'free',
+          enter: (c) => { app.view.setMarks(false); if (!c.stepState().done) { const ax = new Thyroid(); ax.p.manualTSH = 1.5; setAxis(ax); } const d = c.stepState().data; d.high = false; },
+          text: `<p>Now <b>you</b> are the pituitary: the dial sets how much TSH you release. This is a healthy person with no medicines, and time is running (1 day per second).</p>
+                 <p><b>Try it:</b> raise free T4 above <b>1.6 ng/dL</b> (the top of its green band). Then bring it back down to between <b>1.0 and 1.5</b>.</p>`,
+          extra: (el, c) => tshDial(el, c, false),
+          tick: (c) => { const d = c.stepState().data; if (app.axis.FT4 > 1.6) d.high = true; },
+          waitFor: (c) => { const d = c.stepState().data, F = app.axis.FT4; return d.high && F >= 1.0 && F <= 1.5; },
+          waitHint: 'Raise free T4 above 1.6, then bring it back to 1.0–1.5',
+          status: (c) => { const d = c.stepState().data, F = app.axis.FT4; return `${d.high ? '☑' : '☐'} Free T4 above 1.6 ng/dL<br>${c.stepState().done ? '☑' : '☐'} Then back to 1.0–1.5 ng/dL (now ${fT4(F)})`; },
+        },
+        {
+          view: 'axis', title: 'How fast did it respond?', clock: 'idle',
+          text: `<p>Look back at the graph of your practice: the purple TSH trace is what you did with the dial, and the orange free T4 trace is how the body answered.</p>`,
+          question: { prompt: 'When you changed TSH, how quickly did free T4 respond?', options: [
+            { t: 'Slowly: it kept changing for days after I moved the dial', ok: true, fb: 'Each day only a small part of the T4 in the blood is replaced (its half-life is about a week), so a change in TSH takes days to show fully. Keep that in mind for the next challenge.' },
+            { t: 'At once: it jumped to a new level within hours', fb: 'Watch the free T4 trace after you move the dial. How many days does it take to level off?' },
+            { t: 'Not at all', fb: 'Raise TSH a lot and watch the free T4 trace for a few days.' },
+          ] },
+        },
+        {
+          view: 'axis', title: 'The challenge: a medicine', clock: 'idle',
+          meters: medMeters,
+          enter: () => { const ax = new Thyroid(); ax.p.manualTSH = 1.5; setAxis(ax); app.spans.push({ t0: app.zero + 8 * DAY, t1: app.zero + 22 * DAY, label: 'medicine: T4 broken down 2× faster', color: 'rgba(176,53,43,0.08)' }); },
+          text: `<p>Now the real challenge. Keep free T4 in its normal range (0.8–1.8 ng/dL) for <b>30 days</b>.</p>
+                 <p>On <b>day 8</b> this person starts ${MED_TEXT}. They stop it on <b>day 22</b>. The shaded stretch on the graph shows when.</p>`,
+          question: { prompt: 'When the medicine starts on day 8, what will you need to do?', options: [
+            { t: 'Raise TSH, so the thyroid makes more T4 to keep up with the faster breakdown', ok: true, fb: 'T4 will be removed twice as fast while the thyroid makes it at the same rate, so free T4 will fall unless the thyroid makes more.' },
             { t: 'Lower TSH', fb: 'TSH tells the thyroid to make T4. Would less TSH make more T4?' },
-            { t: 'Nothing: T4 will correct itself', fb: 'Nothing in the thyroid knows that T4 is low; only you (the pituitary) are watching it.' },
+            { t: 'Nothing: the thyroid will notice and make more', fb: 'Nothing in the thyroid measures T4. It makes T4 when TSH tells it to.' },
           ] },
         },
         {
           view: 'axis', title: 'Keep free T4 in range for 30 days', keepRange: true,
-          text: `<p>Start the 30 days (1 day per second; slow it down with the Speed menu if you need to). Watch free T4 and adjust TSH.</p>`,
-          extra: (el, c) => tshDial(el, c),
+          meters: medMeters,
+          text: `<p>Start the 30 days (1 day per second; slow it down with the Speed menu if you need to). Watch free T4 and adjust TSH.</p>
+                 <p>Remember: on <b>day 8</b> the medicine starts doubling T4 breakdown, and on <b>day 22</b> it stops. The meters show when it is on.</p>`,
+          extra: (el, c) => tshDial(el, c, true),
           actions: [{ label: 'Start the 30 days', cls: 'hormone', run: (c) => startChallenge(c, true) }],
           waitFor: () => false, waitHint: 'Keep free T4 in range ≥ 80 % of the time (or try twice)',
           status: (c) => { const d = c.stepState().data; if (d.running) return 'Running… adjust the dial.'; if (d.pct == null) return ''; return d.pct >= 80 ? `<b>Well done: ${r0(d.pct)} % of the time in range.</b>` : `<b>${r0(d.pct)} % of the time in range.</b> ${d.tries >= 2 ? 'Good effort. Read on to see why this is hard.' : 'Try again: start the 30 days again.'}`; },
         },
         {
           view: 'axis', title: 'Why is it hard?',
-          text: (c) => `<p>Your best: <b>${r0(c.record.values.manualBest || 0)} %</b> of the time in range.</p>`,
-          question: { prompt: 'After you turned TSH up, free T4 kept changing for days. Why?', options: [
-            { t: 'T4 lasts about a week in the blood, so its level changes slowly; you have to act before it drifts out of range', ok: true, fb: 'Each day only a fraction of the T4 pool is replaced, so a change in TSH takes days to show fully. A good controller watches the trend, not just the level.' },
-            { t: 'TSH takes days to travel to the thyroid', fb: 'TSH reaches the thyroid within a minute of release (scene 1). The slow part is somewhere else.' },
+          text: (c) => `<p>Your best: <b>${r0(c.record.values.manualBest || 0)} %</b> of the time in range, with the medicine doubling T4 breakdown from day 8 to day 22.</p>`,
+          question: { prompt: 'Free T4 kept drifting for days after you moved the dial. Why is that a problem when the medicine starts or stops?', options: [
+            { t: 'T4 changes slowly, so by the time you see it falling, it is already on its way out of range; you have to act early and ease off early', ok: true, fb: 'Each change in TSH takes days to show. A good controller watches the <b>trend</b>, not just the level, and adjusts in small steps.' },
+            { t: 'TSH takes days to travel to the thyroid', fb: 'TSH reaches the thyroid within a minute (scene 1). The slow part is somewhere else.' },
             { t: 'The thyroid ignores TSH for the first few days', fb: 'The thyroid responds within hours. What is slow is how quickly the amount of T4 in the blood can change.' },
           ] },
         },
         {
-          view: 'axis', title: 'The automatic pituitary',
-          text: `<p>Now run the same 30 days with the real pituitary in charge.</p>`,
-          actions: [{ label: 'Run the 30 days on automatic', cls: 'hormone', run: (c) => startChallenge(c, false) }],
-          waitFor: () => false, waitHint: 'Run the 30 days on automatic',
-          status: (c) => { const v = c.record.values; if (c.stepState().data.running) return 'Running…'; return v.autoRange != null && c.stepState().done ? `<b>Automatic: ${r0(v.autoRange)} %</b> of the time in range (yours: ${r0(v.manualBest || 0)} %). Look at TSH on the trace: it rose while the medicine was speeding up T4 breakdown.` : ''; },
+          view: 'axis', title: 'What were you watching?',
+          enter: (c) => { const a = c.record.answers[`pituitary.${runner.runner.step}`]; app.view.setFeedback(!!(a && a.done)); },
+          question: { prompt: 'To decide when to turn the dial, what did you watch?', options: [
+            { t: 'The free T4 level: when it fell I raised TSH, when it rose I lowered it', ok: true, fb: 'The real pituitary does exactly this. Its cells, and the hypothalamus above it, have <b>receptors for thyroid hormone</b>, so the T4 in the blood is itself the signal. Those receptors are now drawn as the <b>red arrows</b>: T4 holding the pituitary and hypothalamus back.' },
+            { t: 'The size of the thyroid gland', fb: 'The size barely changed. Which gauge or trace made you move the dial?' },
+            { t: 'TRH from the hypothalamus', fb: 'You were not told what TRH was doing. Which gauge or trace made you move the dial?' },
+          ], onCorrect: () => app.view && app.view.setFeedback && app.view.setFeedback(true) },
         },
         {
-          view: 'axis', title: 'How did it know?',
-          question: { prompt: 'How did the real pituitary know when to raise TSH?', options: [
-            { t: 'It senses free T4 itself: when T4 falls, it is held back less, so it releases more TSH', ok: true, fb: 'The pituitary and hypothalamus have T4 receptors. T4 <b>inhibits</b> them (the red arrows). Less T4 means less inhibition, and more TSH.' },
-            { t: 'Nerves from the thyroid tell it', fb: 'The signal is chemical, not nervous: look at the red arrows on the diagram. What travels along them?' },
-            { t: 'It detects the medicine in the blood', fb: 'The pituitary never "sees" the medicine; it only sees its effect on T4.' },
+          view: 'axis', viewOpts: { feedback: true }, title: 'Build the loop',
+          enter: () => app.view.setFeedback(true),
+          text: `<p>Put what happens when the medicine starts in order. Click the steps in the order they happen.</p>`,
+          extra: (el, c) => loopBuilder(el, c),
+          waitFor: () => false, waitHint: 'Put all six steps in order',
+        },
+        {
+          view: 'axis', title: 'The automatic pituitary',
+          meters: medMeters,
+          enter: () => app.view.setFeedback(true),
+          text: `<p>Now run the same 30 days, with the same medicine from day 8 to day 22, but with the real pituitary in charge: it reads free T4 through its receptors, as in your loop.</p>`,
+          question: { prompt: 'Predict: what will the real pituitary do to TSH while the medicine is on?', options: [
+            { t: 'Raise it, as long as free T4 is below normal', ok: true, fb: 'Run it and watch TSH on the graph.' },
+            { t: 'Keep it constant', fb: 'What happens to the red arrows (T4 holding the pituitary back) when free T4 falls? Run it and check.' },
+            { t: 'Lower it, because the medicine is in the blood', fb: 'The pituitary has no receptor for the medicine. It only sees what happens to free T4. Run it and check.' },
           ] },
+          actions: [{ label: 'Run the 30 days on automatic', cls: 'hormone', run: (c) => startChallenge(c, false) }],
+          waitFor: () => false, waitHint: 'Run the 30 days on automatic',
+          status: (c) => { const v = c.record.values; if (c.stepState().data.running) return 'Running…'; return v.autoRange != null && c.stepState().done ? `<b>Automatic: ${r0(v.autoRange)} %</b> of the time in range (yours: ${r0(v.manualBest || 0)} %). On the graph, TSH rose soon after the medicine started, stayed up while it lasted, and fell when it stopped.` : ''; },
         },
         {
           view: 'axis', title: 'Negative feedback',
-          text: `<p>A loop in which a change causes a response that <b>opposes</b> the change is called <b>negative feedback</b>. Most hormones are controlled this way.</p>`,
-          question: { prompt: 'Which statement describes negative feedback?', options: [
-            { t: 'A fall in T4 causes a response (more TSH) that raises T4 back up, and a rise causes the opposite', ok: true, fb: '"Negative" refers to the direction of the response (it opposes the change), not to the hormone going down.' },
-            { t: 'The hormone level always goes down', fb: 'When T4 fell in your run, TSH went <i>up</i>. "Negative" means the response opposes the change.' },
-            { t: 'The pituitary switches the thyroid off for good once T4 is normal', fb: 'The control never stops: it adjusts TSH all the time in both directions.' },
+          text: `<p>A loop in which a change sets off a response that <b>opposes</b> the change is called <b>negative feedback</b>. "Negative" describes the direction of the response (against the change), not whether a level goes up or down. Most hormones are controlled this way.</p>`,
+          question: { prompt: 'Which everyday device works by negative feedback, like the pituitary and T4?', options: [
+            { t: 'A home thermostat: when the room cools, it turns the heater on; when the room warms, it turns it off', ok: true, fb: 'The thermostat senses the thing it controls (temperature) and responds against the change, just as the pituitary senses free T4. In the body, free T4 is the "temperature" and TSH is the "heater switch".' },
+            { t: 'A microphone squealing when it is held near its own speaker', fb: 'There, a small sound is amplified, comes back louder, and is amplified again: the response makes the change <i>bigger</i>. That is positive feedback.' },
+            { t: 'A light switch', fb: 'A light switch does what you tell it, once. It never senses the light and adjusts. Which device senses what it controls?' },
           ] },
         },
       ],
     },
-    // ------------------------------------------------------------- 3. pull the levers
+    // ------------------------------------------------------------- 4. pull the levers
     {
       id: 'levers', title: 'Pull the levers', speed: 10080,
       steps: [
@@ -1814,6 +2271,7 @@ header a.home:hover { text-decoration: underline; }
         },
         {
           view: 'axis', title: 'Experiment 2: T4 tablets for a healthy person',
+          enter: (c) => { if (!c.stepState().done) { setAxis(new Thyroid()); skip(14 * DAY); } },
           text: `<p>A healthy person takes T4 tablets (150 µg a day) on top of what their thyroid makes.</p>`,
           question: { prompt: 'Predict: TRH, TSH and free T4 will…', options: [
             { t: 'TRH ↓, TSH ↓, free T4 ↑ (but less than you might expect)', ok: true, fb: 'Run it and check.' },
@@ -1826,6 +2284,7 @@ header a.home:hover { text-decoration: underline; }
         },
         {
           view: 'axis', title: 'Experiment 3: block the pituitary',
+          enter: (c) => { if (!c.stepState().done) { setAxis(new Thyroid()); skip(14 * DAY); } },
           text: `<p>A tumour or injury can stop the pituitary from making TSH, while the hypothalamus and thyroid are healthy.</p>`,
           question: { prompt: 'Predict: TRH, TSH and free T4 will…', options: [
             { t: 'TRH ↑, TSH ↓, free T4 ↓', ok: true, fb: 'Run it and check.' },
@@ -1858,7 +2317,7 @@ header a.home:hover { text-decoration: underline; }
         },
       ],
     },
-    // ------------------------------------------------------------- 4. glands grow on command
+    // ------------------------------------------------------------- 5. glands grow on command
     {
       id: 'trophic', title: 'Glands grow on command', speed: 43200,
       steps: [
@@ -1885,7 +2344,7 @@ header a.home:hover { text-decoration: underline; }
         {
           view: 'axis', title: 'Why did it grow?',
           question: { prompt: 'Why did the thyroid grow, when it could not make enough hormone?', options: [
-            { t: 'TSH tells the thyroid to grow as well as to make T4, and TSH stayed high for months', ok: true, fb: 'Tropic hormones are also <b>trophic</b>: they keep their target gland large. Months of high TSH make the gland grow (a goiter). That is why salt is iodized in many countries.' },
+            { t: 'TSH tells the thyroid to grow as well as to make T4, and TSH stayed high for months', ok: true, fb: 'TSH is not only a "make T4" signal: it is also a <b>growth signal</b> for the thyroid. A hormone that keeps its target gland large is called <b>trophic</b> (from the Greek for "nourishing"). Months of high TSH made the gland grow into a goiter. That is why salt is iodized in many countries.' },
             { t: 'Iodine shrinks the thyroid, so without it the gland swells', fb: 'Iodine is a raw material, not a growth signal. Which hormone stayed high for months?' },
             { t: 'Swelling (inflammation) from the missing iodine', fb: 'There is no inflammation here. Which hormone stayed high for months, and what does it do to the gland?' },
           ] },
@@ -1916,8 +2375,8 @@ header a.home:hover { text-decoration: underline; }
           actions: [{ label: 'Start levothyroxine and run 8 weeks', cls: 'drug', run: (c) => {
             const d = c.stepState().data; if (d.running || c.stepState().done) return; d.running = true;
             const a = app.axis; d.t0 = { TSH: a.TSH, FT4: a.FT4 };
-            a.p.levothyroxine = 100; mark('levothyroxine starts');
-            const snap = (k, lab) => () => { d[k] = { TSH: a.TSH, FT4: a.FT4 }; mark(lab); };
+            a.p.levothyroxine = 100; mark(`start: TSH ${fv(a.TSH)}, free T4 ${fT4(a.FT4)}`);
+            const snap = (k, lab) => () => { d[k] = { TSH: a.TSH, FT4: a.FT4 }; mark(`${lab}: TSH ${fv(a.TSH)}, free T4 ${fT4(a.FT4)}`); };
             startRun({ duration: 56 * DAY, speed: 10080, schedule: [{ at: 7 * DAY, fn: snap('w1', 'week 1') }, { at: 14 * DAY, fn: snap('w2', 'week 2') }, { at: 42 * DAY, fn: snap('w6', 'week 6') }],
               onDone: () => { c.recordValue('maria', { start: d.t0, w1: d.w1, w2: d.w2, w6: d.w6 }); d.running = false; c.complete(); c.refresh(); } });
           } }],
@@ -1935,20 +2394,22 @@ header a.home:hover { text-decoration: underline; }
         },
       ],
     },
-    // ------------------------------------------------------------- 5. a second axis, a daily rhythm
+    // ------------------------------------------------------------- 6. a second axis, a daily rhythm
     {
       id: 'rhythm', title: 'A second axis, a daily rhythm', speed: 120,
       steps: [
+        Object.assign(BODY_FIND('adrenal', 'A second chain. Here are the kidneys from the front. Click an <b>adrenal gland</b>: the yellow cap sitting on top of a kidney.', 'An <b>adrenal gland</b>. Its outer layer, the <b>adrenal cortex</b>, makes <b>cortisol</b>; its centre, the medulla, makes adrenaline (a different system, not in this lab).', 5), { viewOpts: { slide: 5, names: false, caption: 'The kidneys and adrenal glands, from the front.' }, remount: true, clock: 'idle', traces: { window: DAY, panels: [], note: 'The graph starts on the next screen.' }, title: 'The adrenal glands' }),
         {
-          view: 'axis', viewOpts: { caption: 'The adrenal axis: CRH → ACTH → cortisol. The clock is in the top right corner.' }, remount: true, clock: 'free',
+          view: 'axis', viewOpts: { caption: 'The adrenal chain: CRH → ACTH → cortisol. The clock (top right) shows the time of day.' }, remount: true, clock: 'free',
           traces: ADR_TRACES(3 * DAY, ['ACTH', 'cortisol']),
           enter: () => { const ax = new Adrenal(); setAxis(ax); },
           title: 'The same pattern',
-          text: `<p>The adrenal cortex, on top of each kidney, makes <b>cortisol</b> when the pituitary sends <b>ACTH</b>, which it does when the hypothalamus sends <b>CRH</b>. Cortisol raises blood glucose, helps the body cope with stress, and damps down inflammation. And cortisol feeds back on the hypothalamus and pituitary.</p>`,
-          question: { prompt: 'Use the rule from scene 3: if the adrenal cortex is destroyed, what happens to ACTH?', options: [
-            { t: 'It rises', ok: true, fb: 'With no cortisol holding the pituitary back, ACTH rises. You will meet a patient with exactly this in scene 7.' },
-            { t: 'It falls', fb: 'Think of the thyroid removed in scene 3: what did TSH do?' },
-            { t: 'It stays the same', fb: 'Think of the thyroid removed in scene 3: what did TSH do?' },
+          text: `<p>The same kind of diagram as in scenes 3–5, for a second chain. The hypothalamus sends <b>CRH</b> to the anterior pituitary, which releases <b>ACTH</b> into the blood; ACTH tells the adrenal cortex to release <b>cortisol</b>. Cortisol raises blood glucose, helps the body cope with stress, and damps down inflammation. And, like T4, cortisol holds back the hypothalamus and pituitary (the red arrows).</p>
+                 <p>Time now passes at 2 hours per second; the clock in the corner shows the time of day.</p>`,
+          question: { prompt: 'Use the rule from scene 4: if the adrenal cortex is destroyed, what happens to ACTH?', options: [
+            { t: 'It rises', ok: true, fb: 'With no cortisol holding the pituitary back, ACTH rises. You will meet a patient with exactly this in scene 8.' },
+            { t: 'It falls', fb: 'Think of the thyroid removed in scene 4: what did TSH do?' },
+            { t: 'It stays the same', fb: 'Think of the thyroid removed in scene 4: what did TSH do?' },
           ] },
         },
         {
@@ -1997,17 +2458,18 @@ header a.home:hover { text-decoration: underline; }
         },
       ],
     },
-    // ------------------------------------------------------------- 6. the steroid taper
+    // ------------------------------------------------------------- 7. the steroid taper
     {
       id: 'taper', title: 'The steroid taper', speed: 10080,
       steps: [
         {
-          view: 'axis', viewOpts: { caption: 'The adrenal axis of Maria\'s neighbour, Daniel. Weeks pass at 1 week per second.' }, remount: true,
+          view: 'axis', viewOpts: { caption: 'The adrenal axis of Maria\'s neighbour, Daniel. Weeks pass in seconds (see Speed at the top).' }, remount: true,
           traces: Object.assign(ADR_TRACES(14 * 7 * DAY, ['ACTH', 'gc', 'asize']), { daily: true }),
           meters: gcMeter,
           enter: (c) => { const ax = new Adrenal(); setAxis(ax); skip(7 * DAY); },
           title: 'Eight weeks of prednisone',
-          text: `<div class="case"><div class="case-h">Daniel's case</div>${DANIEL_HTML}</div>`,
+          text: `<div class="case"><div class="case-h">Daniel's case</div>${DANIEL_HTML}</div>
+                 <p><b>Reading the graph:</b> purple is ACTH; brown adds Daniel's own cortisol and the prednisone together, because his tissues respond to both the same way; red-brown is the size of one adrenal gland. Each point is one day's average, so the daily rhythm is smoothed out.</p>`,
           question: { prompt: 'Predict: what will 20 mg of prednisone every morning for 8 weeks do to Daniel\'s ACTH and his adrenal glands?', options: [
             { t: 'ACTH falls and the adrenal glands shrink', ok: true, fb: 'Run the 8 weeks and check.' },
             { t: 'ACTH rises, because the adrenals have less work to do', fb: 'Prednisone acts like cortisol on the hypothalamus and pituitary too. What does cortisol do to the red arrows? Run it and check.' },
@@ -2018,7 +2480,7 @@ header a.home:hover { text-decoration: underline; }
             const a = app.axis; d.before = { size: a.mass * a.p.massRef };
             a.setPrednisone(20); mark('prednisone 20 mg/day');
             // end at 7:30 am, before that morning's dose, so "stopping today" means no dose today
-            startRun({ duration: 56 * DAY + 7.5 * HOUR, speed: 10080, onDone: () => { d.after = { size: a.mass * a.p.massRef, ACTH: a.ACTH, own: a.cortisol }; c.recordValue('pred8', d); taperState.snap = snapshotAdrenal(a); taperState.history = app.history.slice(); taperState.origin = app.origin; taperState.markers = app.markers.slice(); taperState.gc = JSON.parse(JSON.stringify(app.gcDays)); d.running = false; c.complete(); c.refresh(); } });
+            startRun({ duration: 56 * DAY + 7.5 * HOUR, speed: 10080, onDone: () => { d.after = { size: a.mass * a.p.massRef, ACTH: a.ACTH, own: a.cortisol }; c.recordValue('pred8', d); taperState.snap = snapshotAdrenal(a); taperState.history = app.history.slice(); taperState.origin = app.origin; taperState.zero = app.zero; taperState.markers = app.markers.slice(); taperState.gc = JSON.parse(JSON.stringify(app.gcDays)); d.running = false; c.complete(); c.refresh(); } });
           } }],
           waitFor: () => false, waitHint: 'Run the 8 weeks',
           status: (c) => { const d = c.stepState().data; return d.after ? `<b>Observed at week 8:</b> adrenal ${fv(d.before.size)} → <b>${fv(d.after.size)} g</b>; morning ACTH ${fv(d.after.ACTH)} pg/mL; his own cortisol only ${fv(d.after.own)} µg/dL. The prednisone is doing cortisol\'s job.` : d.running ? 'Weeks are passing…' : ''; },
@@ -2059,7 +2521,7 @@ header a.home:hover { text-decoration: underline; }
         },
       ],
     },
-    // ------------------------------------------------------------- 7. tests that push the loop
+    // ------------------------------------------------------------- 8. tests that push the loop
     {
       id: 'tests', title: 'Tests that push the loop', speed: 360,
       steps: [
@@ -2122,12 +2584,12 @@ header a.home:hover { text-decoration: underline; }
       ],
     },
   ];
-  // scene 6: the state at week 8, so the abrupt stop and the taper start from the same place
+  // scene 7: the state at week 8, so the abrupt stop and the taper start from the same place
   const taperState = { snap: null };
   function restoreWeek8() {
-    if (!taperState.snap) { const a = new Adrenal(); a.advance(7 * DAY); a.setPrednisone(20); a.advance(56 * DAY + 7.5 * HOUR); taperState.snap = snapshotAdrenal(a); taperState.history = []; taperState.origin = a.t - 63 * DAY; taperState.markers = []; taperState.gc = {}; }
+    if (!taperState.snap) { const a = new Adrenal(); a.advance(7 * DAY); a.setPrednisone(20); a.advance(56 * DAY + 7.5 * HOUR); taperState.snap = snapshotAdrenal(a); taperState.history = []; taperState.origin = a.t - 63 * DAY; taperState.zero = a.t - 56 * DAY - 7.5 * HOUR; taperState.markers = []; taperState.gc = {}; }
     setAxis(snapshotAdrenal(taperState.snap));
-    app.history = taperState.history.slice(); app.origin = taperState.origin; app.markers = taperState.markers.slice(); app.gcDays = JSON.parse(JSON.stringify(taperState.gc));
+    app.history = taperState.history.slice(); app.origin = taperState.origin; app.zero = taperState.zero; app.markers = taperState.markers.slice(); app.gcDays = JSON.parse(JSON.stringify(taperState.gc));
     app.axis.setPrednisone(20);
   }
 
@@ -2151,27 +2613,27 @@ header a.home:hover { text-decoration: underline; }
   function resultsLines() {
     const v = runner.runner.record.values, L = [];
     L.push('EndoSim Part A: our results');
-    L.push('Scene 2 · You are the pituitary');
+    L.push('Scene 3 · You are the pituitary');
     if (v.manualBest != null) L.push(`  Our best time with free T4 in range: ${r0(v.manualBest)} %`);
     if (v.autoRange != null) L.push(`  The automatic pituitary: ${r0(v.autoRange)} %`);
-    L.push('Scene 3 · Pull the levers (TRH / TSH / free T4 after 8 weeks)');
+    L.push('Scene 4 · Pull the levers (TRH / TSH / free T4 after 8 weeks)');
     for (const [k, name] of [['remove', 'Thyroid removed'], ['tablets', 'T4 tablets'], ['pituitary', 'Pituitary blocked']]) {
       const r = v['lever_' + k];
       if (r) L.push(`  ${name}: TRH ${ARROW[r.TRH]} (× ${r.after.TRH.toFixed(2)}), TSH ${ARROW[r.TSH]} (${fv(r.after.TSH)} mIU/L), free T4 ${ARROW[r.FT4]} (${fT4(r.after.FT4)} ng/dL)`);
     }
-    L.push('Scene 4 · Glands grow on command');
+    L.push('Scene 5 · Glands grow on command');
     if (v.iodine) L.push(`  Iodine-poor diet, 6 months: thyroid ${r0(v.iodine.before.size)} → ${r0(v.iodine.after.size)} g; TSH ${fv(v.iodine.after.TSH)} mIU/L; free T4 ${fT4(v.iodine.after.FT4)} ng/dL`);
     if (v.tablets6) L.push(`  T4 tablets, 6 months: thyroid ${r0(v.tablets6.before.size)} → ${r0(v.tablets6.after.size)} g; own T4 output ${r0(v.tablets6.before.glandT4)} → ${r0(v.tablets6.after.glandT4)} µg/day`);
     if (v.maria && v.maria.w6) L.push(`  Maria on levothyroxine 100 µg: TSH ${fv(v.maria.start.TSH)} → week 1 ${fv(v.maria.w1.TSH)} → week 2 ${fv(v.maria.w2.TSH)} → week 6 ${fv(v.maria.w6.TSH)} mIU/L; free T4 ${fT4(v.maria.start.FT4)} → ${fT4(v.maria.w1.FT4)} → ${fT4(v.maria.w2.FT4)} → ${fT4(v.maria.w6.FT4)} ng/dL`);
-    L.push('Scene 5 · A daily rhythm');
+    L.push('Scene 6 · A daily rhythm');
     if (v.draw_am) L.push(`  Cortisol at ${v.draw_am.time}: ${fv(v.draw_am.cortisol)} µg/dL (ACTH ${fv(v.draw_am.ACTH)} pg/mL)`);
     if (v.draw_mid) L.push(`  Cortisol at ${v.draw_mid.time}: ${fv(v.draw_mid.cortisol)} µg/dL (ACTH ${fv(v.draw_mid.ACTH)} pg/mL)`);
     if (v.stress) L.push(`  Cortisol at 6 pm with stress: ${fv(v.stress.stressed)} µg/dL (without: ${fv(v.stress.normal)})`);
-    L.push('Scene 6 · Daniel and prednisone');
+    L.push('Scene 7 · Daniel and prednisone');
     if (v.pred8 && v.pred8.after) L.push(`  After 8 weeks of 20 mg/day: adrenal ${fv(v.pred8.before.size)} → ${fv(v.pred8.after.size)} g; morning ACTH ${fv(v.pred8.after.ACTH)} pg/mL`);
     if (v.abrupt) L.push(`  Stopped abruptly: lowest daily cortisol effect ${fv(v.abrupt.min)} µg/dL; ${v.abrupt.crisisDays} crisis days`);
     if (v.taper) L.push(`  Tapered: lowest daily cortisol effect ${fv(v.taper.min)} µg/dL; ${v.taper.crisisDays} crisis days`);
-    L.push('Scene 7 · Tests');
+    L.push('Scene 8 · Tests');
     if (v.dexHealthy) L.push(`  Healthy, dexamethasone 1 mg: 8 am cortisol ${fv(v.dexHealthy.cortisol)} µg/dL`);
     if (v.cosynHealthy) L.push(`  Healthy, cosyntropin: cortisol ${fv(v.cosynHealthy.before)} → ${fv(v.cosynHealthy.after)} µg/dL`);
     if (v.dexP1) L.push(`  Patient 1 (Ms. Rivera), dexamethasone 1 mg: 8 am cortisol ${fv(v.dexP1.cortisol)} µg/dL`);
@@ -2219,6 +2681,7 @@ header a.home:hover { text-decoration: underline; }
   });
   $('#verify-close').addEventListener('click', () => $('#verify').classList.remove('on'));
   window.__endosim.completionCode = completionCode;
+  window.__endosim.LOOP = LOOP;
   window.__endosim.results = () => resultsLines().join('\n');
 
   // =========================================================================

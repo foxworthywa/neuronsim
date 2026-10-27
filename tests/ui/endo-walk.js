@@ -37,7 +37,7 @@ const URL = process.argv[2] ? (process.argv[2].includes('://') ? process.argv[2]
       const at = await page.evaluate(() => { const r = window.__endosim.runner().runner; return [r.scene, r.step]; });
       if (at[0] !== si || at[1] !== ki) { report.push(`!! expected ${si}.${ki} but at ${at}`); await page.evaluate(([a, b]) => window.__endosim.goto(a, b), [si, ki]); }
       // the dial challenge: two tries always completes it
-      const reps = id === 'pituitary' && ki === 1 ? 2 : 1;
+      const reps = st.title.startsWith('Keep free T4') ? 2 : 1;
       for (let rep = 0; rep < reps; rep++) {
         const n = await page.locator('.actions button').count();
         for (let i = 0; i < n; i++) {
@@ -47,6 +47,20 @@ const URL = process.argv[2] ? (process.argv[2].includes('://') ? process.argv[2]
           await page.waitForTimeout(120);
           await finishRuns();
         }
+      }
+      // find-the-structure steps: click the part the step asks for
+      await page.evaluate(() => { const st = window.__endosim.runner().currentStep(), a = window.__endosim.app; if (st.findPart && a.view.onPart) a.view.onPart(st.findPart); });
+      // the loop-ordering exercise: one wrong card first, then the cards in order
+      if (await page.locator('.extra .options button').count()) {
+        const loop = await page.evaluate(() => window.__endosim.LOOP);
+        await page.locator('.extra .options button', { hasText: loop[3] }).first().click();
+        for (const t of loop) { await page.locator('.extra .options button', { hasText: t }).first().click(); await page.waitForTimeout(60); }
+      }
+      // learning the dial: push free T4 above 1.6, then back into 1.0–1.5
+      if (st.title === 'Learn the controls') {
+        await page.evaluate(() => { const a = window.__endosim.app; a.speed = 10080; a.axis.p.manualTSH = 10; });
+        await page.waitForFunction(() => window.__endosim.app.axis.FT4 > 1.65, null, { timeout: 20000 });
+        await page.evaluate(() => { window.__endosim.app.axis.p.manualTSH = 1.5; });
       }
       // steps that wait on free-running time: speed the clock up
       await page.evaluate(() => { const a = window.__endosim.app; if (a.clock === 'free' && a.viewName === 'axis') a.speed = 2880; });

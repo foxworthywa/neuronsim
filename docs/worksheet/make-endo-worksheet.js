@@ -82,16 +82,21 @@ const student = [
 
   part('B · Working through the sim', 'keyed to the scene numbers (14 points)'),
 
-  scene(1, 'A message for every cell', 'Which cells respond?', 1),
+  scene(1, 'Where are the glands?', 'Endocrine glands · From brain to blood', 1),
+  q('The hypothalamus is ____________ tissue; the pituitary hangs below it on a ____________. In one sentence: how does TSH get from the pituitary to the thyroid in the neck?'),
+  ...lines(1),
+
+  scene(2, 'A message for every cell', 'How to read this picture · Which cells respond?', 1),
   q('TSH reached ______ of the four cells. ______ of them responded. What decides whether a cell responds to a hormone? Half-life of TSH ________; of T4 ________.'),
   ...lines(1),
 
-  scene(2, 'You are the pituitary', 'Keep free T4 in range for 30 days', 2),
-  q('Our best time with free T4 in range: ______ %.     The automatic pituitary: ______ %.'),
-  q('What made it hard for you? What does the real pituitary sense that lets it do better?', true),
-  ...lines(2),
+  scene(3, 'You are the pituitary', 'Learn the controls · Keep free T4 in range · Build the loop', 2),
+  q('Practice (no medicine): after you raised TSH, about how many days did free T4 take to level off? ______'),
+  q('With the medicine (days 8–22): our best time in range ______ %;  the automatic pituitary ______ %.'),
+  q('What made it hard for you? Then write the feedback loop from the sim in your own words, starting with “the medicine makes T4 break down faster”.', true),
+  ...lines(3),
 
-  scene(3, 'Pull the levers', 'Experiments 1–3', 3),
+  scene(4, 'Pull the levers', 'Experiments 1–3', 3),
   q('Before each run, write your group’s prediction (↑, ↓ or –). After the run, write what happened. Circle any prediction that was wrong.'),
   table([3300, 1250, 1250, 1250, 1250, 1250, 1250], [
     ['Experiment', 'TRH predicted', 'TRH observed', 'TSH predicted', 'TSH observed', 'Free T4 predicted', 'Free T4 observed'],
@@ -102,23 +107,23 @@ const student = [
   q('Our rule, in our own words: when one level of the chain fails, the hormone it makes ________, and the hormone above it ________, because ____________________________________________.'),
   ...lines(1),
 
-  scene(4, 'Glands grow on command', 'No iodine · T4 tablets for 6 months · Maria starts levothyroxine', 3),
+  scene(5, 'Glands grow on command', 'No iodine · T4 tablets for 6 months · Maria starts levothyroxine', 2),
   q('Iodine-poor diet, 6 months: thyroid ______ → ______ g;  TSH ______ mIU/L;  free T4 ______ ng/dL.'),
   q('T4 tablets, 6 months: thyroid ______ → ______ g;  the thyroid’s own T4 output ______ → ______ µg/day.'),
   q('Maria on levothyroxine:  TSH at start ______, week 1 ______, week 6 ______ mIU/L;  free T4 at start ______, week 1 ______ ng/dL.'),
   q('In one sentence, using the word trophic: why did the thyroid grow in one experiment and shrink in the other?', true),
   ...lines(1),
 
-  scene(5, 'A second axis, a daily rhythm', 'When was the blood drawn? · Stress', 2),
+  scene(6, 'A second axis, a daily rhythm', 'When was the blood drawn? · Stress', 2),
   q('Cortisol at 8 am ______ µg/dL;  at midnight ______ µg/dL.  With 6 hours of stress, cortisol at 6 pm ______ (without stress ______).'),
   q('A nurse draws blood for cortisol at 9 pm and the result is 4 µg/dL. Is that low? What would you want to know before deciding?', true),
   ...lines(1),
 
-  scene(6, 'The steroid taper', 'Eight weeks of prednisone · Daniel stops all at once · A taper', 2),
+  scene(7, 'The steroid taper', 'Eight weeks of prednisone · Daniel stops all at once · A taper', 2),
   q('Adrenal size at the start ______ g; after 8 weeks of prednisone ______ g.'),
   q('Stopped abruptly: lowest daily cortisol effect ______ µg/dL, ______ crisis days.   Tapered: lowest ______ µg/dL, ______ crisis days.'),
 
-  scene(7, 'Tests that push the loop', 'A suppression test · A stimulation test · Patients 1 and 2', 1),
+  scene(8, 'Tests that push the loop', 'A suppression test · A stimulation test · Patients 1 and 2', 1),
   table([2200, 1500, 1500, 2600, 3000], [
     ['Person', '8 am cortisol', '8 am ACTH', 'Test and result', 'Where is the problem?'],
     ['Healthy', '', '', 'Dexamethasone 1 mg → 8 am cortisol ______', 'none'],
@@ -133,7 +138,7 @@ const student = [
   ...lines(5),
   q('2. Why six weeks? Using your week-1 and week-6 numbers for Maria, explain why her doctor rechecks TSH after six weeks rather than one. Include the half-life of T4 and what happened to TSH. What could go wrong if the dose were changed at week 1?', false, 4),
   ...lines(5),
-  q('3. Maria’s sister. Her sister wants to take thyroid pills to lose weight. Predict what would happen to her sister’s TSH, her thyroid’s own T4 output and the size of her thyroid. What might happen if she then stopped suddenly? Use your scene 3 and 4 results, and what you saw with Daniel.', true, 3),
+  q('3. Maria’s sister. Her sister wants to take thyroid pills to lose weight. Predict what would happen to her sister’s TSH, her thyroid’s own T4 output and the size of her thyroid. What might happen if she then stopped suddenly? Use your scene 4 and 5 results, and what you saw with Daniel.', true, 3),
   ...lines(4),
   q('4. Daniel’s crisis. Explain, as a chain of at least four causes and effects, why stopping prednisone suddenly made Daniel ill. Then explain why the taper prevented it, using your numbers. Finish with one thing a nurse should teach a patient starting a long course of prednisone.', false, 4),
   ...lines(6),

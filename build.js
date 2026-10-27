@@ -2,12 +2,12 @@
 // <link rel="stylesheet" href="..."> that points at a local file is inlined (nested paths such
 // as scenes/shared.js included). Pages that do not exist yet are skipped with a note.
 // Frozen releases (v1/) are copied through untouched so their URLs keep working forever.
-// Pages in their own folder (heart/) resolve their files relative to that folder.
-// Usage: node build.js            → dist/index.html, dist/muscle.html, dist/heart.html, dist/v1/*
+// Pages in their own folder (heart/, endo/) resolve their files relative to that folder.
+// Usage: node build.js            → dist/index.html, dist/muscle.html, dist/heart.html, dist/endo.html, dist/v1/*
 const fs = require('fs'), path = require('path');
 const root = __dirname;
 const PAGES = ['index.html', 'muscle.html'];
-const FOLDER_PAGES = [['heart/index.html', 'heart.html']];   // [source, published name]
+const FOLDER_PAGES = [['heart/index.html', 'heart.html'], ['endo/index.html', 'endo.html']];   // [source, published name]
 const FROZEN = ['v1'];   // already-bundled snapshots: copied verbatim, never rebuilt
 const isLocal = (p) => !/^(https?:)?\/\//.test(p) && !p.startsWith('data:');
 

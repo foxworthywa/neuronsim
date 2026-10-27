@@ -30,6 +30,25 @@ at `heart.html#verify`); the graded work is a worksheet (`assignments/heart-part
 model: `docs/HEART_MODULE.md`. Tests: `tests/heart.test.js` (physiology) and `npm run test:heart`
 (walks all 54 steps in Chromium).
 
+**EndoSim (BIO 142), Part A: hormones and feedback:** https://foxworthywa.github.io/neuronsim/endo.html.
+A separate page in `endo/` with its own engine (`endo/engine.js`: the thyroid and adrenal axes,
+with negative feedback, gland growth and shrinkage, the daily cortisol rhythm, and drugs and tests)
+and the shared lesson runner. Eight scenes: a zoom from the whole person into a mid-sagittal head,
+the hypothalamus and pituitary, the thyroid in the neck, and the bloodstream; a TSH pulse reaches
+every cell but only the thyroid responds; the student is the pituitary (practice, then 30 days with
+a medicine that speeds T4 breakdown), then builds the feedback loop before the real pituitary takes
+over; removing the thyroid, giving T4 tablets and blocking the pituitary to find the localization
+rule; goiter and gland shrinkage; the cortisol rhythm and stress; a prednisone course stopped
+abruptly versus tapered; dexamethasone and cosyntropin tests on two patients. Each diagram opens
+with a numbered "how to read this" step. Patient cases: Maria (Hashimoto's, starting levothyroxine) and
+her neighbour Daniel (adrenal crisis after stopping prednisone). Built for **groups**: the
+completion code comes from all the group's names (instructors check it at `endo.html#verify`), and
+the graded work is a group worksheet (`docs/worksheet/EndoSim-partA-worksheet.pdf`, built by
+`node docs/worksheet/make-endo-worksheet.js`; Canvas page `assignments/endo-part-A.md`). Design
+and model, including the plan for Part B (blood glucose) and Part C (GLP-1 and related drugs):
+`docs/ENDO_MODULE.md`. Tests: `tests/endo.test.js` (physiology) and `npm run test:endo` (walks every
+step in Chromium).
+
 No build step. Open `index.html` in a browser (or serve the folder with any static server).
 
 ```

@@ -165,3 +165,18 @@ Targets and model details: `HEART_MODULE.md`.
 - Arterial pressure falls between beats as blood runs off into the tissues; the elastic aorta keeps
   it from falling to zero.
 - A stiffer aorta widens pulse pressure at a similar MAP.
+
+## Endocrine feedback axes (EndoSim; targets in `ENDO_MODULE.md`)
+
+- A hormone reaches every tissue the blood reaches; only cells with its receptor respond. TSH and
+  ACTH (proteins) act on surface receptors; T3 and cortisol (lipid-soluble) on receptors inside
+  the cell.
+- Negative feedback: the gland's hormone inhibits both the hypothalamus and the pituitary. When one
+  level fails, its hormone falls and the hormone above it rises (the localization rule).
+- Half-lives set the time scales: TSH ≈ 1 h, ACTH ≈ 10 min, cortisol ≈ 60–90 min, T4 ≈ 7 days.
+  A change in levothyroxine dose takes about 5–6 weeks to settle, and TSH lags behind free T4.
+- Tropic hormones are also trophic: months of high TSH enlarge the thyroid (goiter), months of
+  suppressed TSH or ACTH shrink the thyroid or adrenals.
+- Healthy adult: TSH 0.4–4.0 mIU/L, free T4 0.8–1.8 ng/dL; 8 am cortisol 5–25 µg/dL, much lower
+  at midnight; 8 am ACTH 10–60 pg/mL; dexamethasone 1 mg overnight → 8 am cortisol < 1.8 µg/dL;
+  cosyntropin → cortisol ≥ ≈ 18 µg/dL at 60 min.

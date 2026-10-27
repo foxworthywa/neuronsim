@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EndoSim — Hormones and feedback</title>
+<link rel="stylesheet" href="../lib/base.css">
+<style>
+  :root {
+    --rh: #12877f;        /* releasing hormones (TRH, CRH) */
+    --tropic: #7b3f99;    /* pituitary hormones (TSH, ACTH) */
+    --target: #c77d0a;    /* gland hormones (T4/T3, cortisol) */
+    --drug: #3d6fb6;
+    --gland: #c98b7c;
+  }
+  #trace { height: 250px; }
+  #meters { position: absolute; right: 12px; bottom: 74px; justify-content: flex-end; display: none; gap: 8px; flex-wrap: wrap; max-width: 60%; }
+  #meters.on { display: flex; }
+  #meters .m { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 4px 9px; font-size: 12px; color: var(--muted); }
+  #meters .m b { display: block; font-size: 16px; color: var(--ink); font-variant-numeric: tabular-nums; }
+  #meters .m.hot { border-color: var(--bad); background: #fff5f4; }
+  #meters .m.good { border-color: var(--good); background: #f1faf4; }
+  #vm-badge { min-width: 150px; text-align: center; }
+  .record textarea { width: 100%; height: 190px; font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; border: 1px solid var(--line); border-radius: 8px; padding: 8px; resize: vertical; }
+  .record input[type=text] { font: inherit; width: 100%; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; }
+  .record label { font-size: 13px; color: var(--muted); display: block; margin: 4px 0 2px; }
+  .record .row { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+  .record .code { margin-top: 6px; font-size: 15px; }
+  .record .warn { color: #8a4b0f; background: #fff3d6; border-radius: 8px; padding: 6px 10px; margin: 8px 0 0; font-size: 14px; }
+  .dialog { position: fixed; inset: 0; background: rgba(31, 36, 48, .45); display: none; align-items: center; justify-content: center; z-index: 10; }
+  .dialog.on { display: flex; }
+  .dialog .box { background: #fff; border-radius: 12px; padding: 16px 18px; width: min(640px, 92vw); max-height: 90vh; overflow: auto; display: flex; flex-direction: column; gap: 8px; }
+  .dialog input { font: inherit; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; }
+  .dialog .result { font-weight: 600; }
+  .dialog p { margin: 0 0 6px; }
+  .case { border-left: 4px solid #7b3f99; background: #f8f3fb; border-radius: 8px; padding: 8px 12px; margin: 6px 0; font-size: 14px; }
+  .case p { margin: 0 0 6px; }
+  .case p:last-child { margin-bottom: 0; }
+  .case-h { font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: #5d2c76; font-weight: 700; margin-bottom: 4px; }
+  /* lab report */
+  .labrep { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; font-size: 13px; }
+  .labrep .lh { background: #f1efe8; padding: 4px 8px; font-weight: 650; display: flex; justify-content: space-between; gap: 8px; }
+  .labrep table { width: 100%; border-collapse: collapse; }
+  .labrep td, .labrep th { padding: 3px 8px; border-top: 1px solid #eceae3; text-align: left; font-variant-numeric: tabular-nums; }
+  .labrep th { font-weight: 600; color: var(--muted); font-size: 12px; }
+  .labrep td.v { text-align: right; font-weight: 650; }
+  .labrep td.f { width: 26px; font-weight: 700; }
+  .labrep tr.H td.f, .labrep tr.H td.v { color: #b0352b; }
+  .labrep tr.L td.f, .labrep tr.L td.v { color: #2457a6; }
+  .labrep td.r { color: var(--muted); font-size: 12px; }
+  /* prediction / observation table */
+  .ptable { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .ptable th, .ptable td { border: 1px solid var(--line); padding: 3px 6px; text-align: center; }
+  .ptable th { background: #f1efe8; font-weight: 600; }
+  .ptable td.l { text-align: left; }
+  .ptable .up { color: #b0352b; font-weight: 700; } .ptable .down { color: #2457a6; font-weight: 700; } .ptable .same { color: var(--muted); }
+  .dial { display: flex; flex-direction: column; gap: 6px; border: 1px solid #e3d2ee; background: #faf6fc; border-radius: 10px; padding: 8px 10px; }
+  .dial input[type=range] { width: 100%; accent-color: var(--tropic); }
+  .dial .big { font-size: 20px; font-weight: 700; color: var(--tropic); font-variant-numeric: tabular-nums; }
+  .meterbar { height: 10px; background: #eceae3; border-radius: 6px; overflow: hidden; }
+  .meterbar i { display: block; height: 100%; background: var(--good); }
+  .actions button.hormone { border-color: var(--tropic); color: #5d2c76; }
+  .actions button.drug { border-color: var(--drug); color: #23497f; }
+  #stage [tabindex]:focus { outline: none; }
+  #trace-head { flex-wrap: wrap; row-gap: 2px; }
+  #trace-head .legend { flex-wrap: wrap; font-size: 12px; gap: 8px; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>EndoSim</h1>
+    <div class="sub">Part A · Hormones and feedback</div>
+  </div>
+  <nav id="progress" aria-label="Scenes"></nav>
+  <div class="spacer"></div>
+  <button id="btn-case" type="button" title="Reopen the patient case">Maria's case</button>
+  <label class="sub">Speed
+    <select id="speed" title="How much simulated time passes per second of real time">
+      <option value="10">10 minutes per second</option>
+      <option value="60">1 hour per second</option>
+      <option value="120">2 hours per second</option>
+      <option value="360">6 hours per second</option>
+      <option value="720">½ day per second</option>
+      <option value="1440" selected>1 day per second</option>
+      <option value="10080">1 week per second</option>
+      <option value="20160">2 weeks per second</option>
+      <option value="43200">1 month per second</option>
+    </select>
+  </label>
+  <button id="btn-pause" type="button" title="Pause / resume the simulation clock (P)">Pause</button>
+</header>
+<main>
+  <div id="stage-wrap">
+    <div id="stage-top">
+      <div id="stage-caption"></div>
+      <div id="vm-badge" aria-live="off"><span id="badge-label">Clock</span> <b id="badge-value">—</b></div>
+    </div>
+    <div id="stage"></div>
+    <div id="meters" aria-live="off"></div>
+    <div id="paused-badge">Paused</div>
+    <div id="narrator" aria-live="off"></div>
+    <div id="sr-live" class="sr-only" aria-live="polite"></div>
+  </div>
+  <aside id="panel" aria-label="Lesson"></aside>
+  <div id="trace-wrap">
+    <div id="trace-head">
+      <span id="trace-title">Hormone levels</span>
+      <span class="legend" id="trace-legend"></span>
+      <span style="flex:1"></span>
+      <span id="sim-clock" style="font-variant-numeric: tabular-nums">day 0</span>
+    </div>
+    <canvas id="trace" role="img" aria-label="Hormone levels over time, with the reference range shaded"></canvas>
+  </div>
+</main>
+<div id="verify" class="dialog" role="dialog" aria-modal="true" aria-labelledby="verify-title">
+  <div class="box">
+    <h2 id="verify-title" style="margin:0;font-size:16px">Check a completion code (instructor)</h2>
+    <p style="margin:0;font-size:14px;color:var(--muted)">Type the group's names as they entered them and the code from their worksheet. The order of the names, capitals and extra spaces do not matter.</p>
+    <label class="sub" for="verify-name">Names</label><input type="text" id="verify-name">
+    <label class="sub" for="verify-code">Completion code</label><input type="text" id="verify-code" placeholder="EA-XXXXX-XXXXX">
+    <div class="result" id="verify-result" role="status"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" id="verify-close">Close</button><button type="button" class="primary" id="verify-check">Check</button></div>
+  </div>
+</div>
+<div id="case" class="dialog" role="dialog" aria-modal="true" aria-labelledby="case-title">
+  <div class="box">
+    <h2 id="case-title" style="margin:0;font-size:16px">Maria's case</h2>
+    <div id="case-body" style="font-size:15px"></div>
+    <div style="display:flex;justify-content:flex-end"><button type="button" class="primary" id="case-close">Close</button></div>
+  </div>
+</div>
+<script src="../lib/lesson.js"></script>
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

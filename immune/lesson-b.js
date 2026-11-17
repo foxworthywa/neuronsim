@@ -156,12 +156,12 @@
       id: 'windows', title: 'Every cell shows what it is making', speed: 24,
       steps: [
         {
-          view: 'windows', viewOpts: { caption: 'Twelve cells from the lining of the airway. Two of them are infected.' }, remount: true,
+          view: 'windows', viewOpts: { caption: 'Twelve cells from the lining of the airway, each with MHC class I molecules on its surface. Two of the cells are infected.' }, remount: true,
           timeline: { window: 14, traces: [], note: 'The timeline returns when you run Elena\'s infection.' }, meters: null,
           title: 'How to read this picture',
           setup: () => { setSim(person(), { kind: 'virus' }); cache.patch = new Patch({ n: 12, infected: [[3, 2], [8, 0.3]] }); },
           enter: (c) => { const v = c.view(); v.setPatch(cache.patch); v.setMarks(true); v.onCell = null; },
-          text: `<ol style="margin:0 0 6px 18px;padding:0"><li>One <b>cell</b>, with its nucleus.</li><li>On its surface, <b>MHC class I molecules</b>: protein holders like the ones in scene 7, but a different class. Every cell with a nucleus constantly chops up samples of the proteins it is making and displays the fragments in them, like goods in a shop window.</li><li>The key: grey shapes are fragments of the cell's own proteins.</li></ol>`,
+          text: `<ol style="margin:0 0 6px 18px;padding:0"><li>One <b>cell</b>, with its nucleus.</li><li>On its surface, <b>MHC class I molecules</b>. These are <b>not</b> the MHC class II molecules of scene 7. Class II is found only on antigen-presenting cells, and shows fragments of what the cell has <i>swallowed</i>. <b>Class I is on nearly every cell of the body</b>, and shows fragments of the proteins the cell is <i>making inside itself</i>: every cell with a nucleus constantly chops up samples of them and displays the pieces, like goods in a shop window.</li><li>The key: grey shapes are fragments of the cell's own proteins.</li></ol>`,
           question: { prompt: 'A cell was infected an hour ago and has started making viral proteins. What will appear in its MHC class I molecules?', options: [
             { t: 'Fragments of viral protein, alongside fragments of its own', ok: true, fb: nameBox('Nearly every cell in the body has <b>MHC class I molecules</b> (only antigen-presenting cells also have class II). They show the outside world what the cell is making <i>inside</i>, so an infected cell cannot help giving itself away.') },
             { t: 'Nothing different: the virus is hidden inside', fb: 'The cell samples <i>whatever</i> proteins it is making. If it is making viral proteins, what will be among the samples?' },

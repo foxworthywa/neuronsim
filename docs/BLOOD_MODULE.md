@@ -108,8 +108,9 @@ eosinophils about 1 count in 9; at least one flagged value in about half of coun
 6. **The slide in scene 4 is chosen** so that its first 20 cells include at least four of the
    five kinds (otherwise most groups would name only neutrophils and lymphocytes). The field in
    scene 1 is likewise one that holds 3 to 5 white cells.
-7. **Graded work:** none built. The results and completion code are meant to be pasted into the
-   existing lab handout; `assignments/blood.md` suggests three questions to add to it.
+7. **Graded work:** no separate handout. The lab's own handout (a Google Doc) opens with a page
+   for the simulation, "Part 1. Before your smear: BloodSim", with one box per scene and a place
+   for the completion code; `assignments/blood.md` lists what it asks.
 
 ## Files
 

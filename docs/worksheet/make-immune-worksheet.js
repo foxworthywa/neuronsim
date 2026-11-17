@@ -113,7 +113,7 @@ const student = [
   q('Did the library change when the pathogen changed? What does that tell you about where a fitting receptor comes from?', true),
   ...lines(1),
 
-  scene(6, 'One cell is not enough', 'Watch the clone grow · The lump in her groin', 1),
+  scene(6, 'One cell is not enough', 'Watch the clone multiply · The lump in her groin', 1),
   q('B-lymphocytes that fit:  day 2 ________   day 4 ________   day 6 ________.     The lump in Priya’s groin is ____________________________.'),
 
   scene(7, 'Two keys', 'Steps 1 to 3 · Why insist on two cells?', 1),

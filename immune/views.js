@@ -500,7 +500,7 @@
     const SP = 12.6, X0 = 110, Y0 = 68;
     function posOf(slot) { return { x: X0 + (slot % GRID) * SP, y: Y0 + Math.floor(slot / GRID) * SP }; }
     function build() {
-      gridG.innerHTML = ''; cellsEl.length = 0;
+      gridG.innerHTML = ''; clusterG.innerHTML = ''; cellsEl.length = 0;
       const lib = body().lib[view.lib];
       lib.forEach((c, i) => {
         const p = posOf(order[i]);
@@ -509,6 +509,19 @@
         cellsEl.push({ e, c, p });
       });
       title.textContent = `${fmt(lib.length)} ${view.lib === 'B' ? 'B-lymphocytes' : view.lib === 'Th' ? 'helper T-lymphocytes' : 'cytotoxic T-lymphocytes'}, each with a differently shaped receptor`;
+    }
+    // A clone that has multiplied is drawn as a cluster of more cells, each the same size as before
+    // (never as one bigger cell), with the number of cells written beside it.
+    const clusterG = svgEl('g', { 'pointer-events': 'none' }, svg);
+    function drawCluster(ce, cells) {
+      const want = cells > 6 && ce.c.present ? clamp(Math.round(7 * Math.pow(Math.log10(cells), 1.5)), 4, 70) : 0;
+      if (!ce.kids) { if (!want) return; ce.kids = []; ce.kg = svgEl('g', {}, clusterG); ce.kt = svgEl('text', { 'text-anchor': 'middle', 'font-size': 13.5, 'font-weight': 650, fill: '#0b3f3b', stroke: '#eef3e2', 'stroke-width': 3.5, 'paint-order': 'stroke' }, clusterG); }
+      const cx = clamp(ce.p.x, 104, 556), cy = clamp(ce.p.y, 92, 470);
+      while (ce.kids.length < want) { const i = ce.kids.length, rr = 5.1 * Math.sqrt(i + 0.6), th = i * 2.39996; ce.kids.push(svgEl('circle', { cx: (cx + rr * Math.cos(th)).toFixed(1), cy: (cy + rr * Math.sin(th)).toFixed(1), r: 4.4, fill: COL[view.lib], stroke: '#0b4f4a', 'stroke-width': 1 }, ce.kg)); }
+      while (ce.kids.length > want) ce.kids.pop().remove();
+      const text = want ? `${fmt(cells)} cells` : '';
+      if (ce.kt.textContent !== text) ce.kt.textContent = text;
+      if (want) setAttrs(ce.kt, { x: cx, y: cy + 5.1 * Math.sqrt(want) + 17 });
     }
     const sel = svgEl('circle', { r: 10, fill: 'none', stroke: '#f0b429', 'stroke-width': 3.5, opacity: 0, 'pointer-events': 'none' }, svg);
     const antigenDots = swarm(svg, { x: 70, y: 60, w: 500, h: 440 }, dot(COL.pathogen, 3));
@@ -561,10 +574,10 @@
         if (c.self && view.showSelf === 'made') { fill = '#f3c9c4'; stroke = '#b0352b'; sw = 2.2; }
         else if (!c.present) op = c.self && view.showSelf ? 0.12 : (c.self ? 0 : 0.15);
         if (view.revealed && good && c.present) { fill = COL[view.lib]; sw = 2.5; stroke = '#0b4f4a'; rad = 7.5; }
-        if (cells > 6 && c.present) { rad = Math.min(30, 4.4 + 5.2 * Math.log10(cells / 3)); fill = COL[view.lib]; op = 0.85; }
+        if (cells > 6 && c.present) { fill = COL[view.lib]; rad = 4.4; }
         else if (view.tested.has(c.id) && !good) { fill = '#e3e1da'; }
         setAttrs(ce.e, { r: rad.toFixed(1), fill, stroke, 'stroke-width': sw, opacity: op });
-        if (rad > 8 && ce.e.nextSibling) gridG.appendChild(ce.e);   // big clones on top
+        if (cells > 6 || ce.kids) drawCluster(ce, cells);
       }
       const A = b.antigens[P.key] ? b.antigens[P.key].A : 0;
       antigenDots.set(view.revealed || A > 0.02 ? clamp(6 + 40 * A, 6, 46) : 0, dtReal, { jitter: 80 });
@@ -578,8 +591,10 @@
     view.narrate = () => {
       const b = body(); if (!(b instanceof Immune)) return null;
       const sp = b.specific(app.kind, app.strain, view.lib), d = IM.dayNow();
-      if (sp.effector > 5) return { key: 'expand', html: `<b>Day ${d.toFixed(1)}.</b> The cells that fit are dividing: <b>${fmt(sp.total)}</b> now. Every one of them carries the same receptor as the cell it came from: they are a <b>clone</b>.` };
-      if (sp.memory > 5) return { key: 'memory', html: `The infection is over. Most of the clone has died, but <b>${fmt(sp.memory)} memory cells</b> remain where there were only a few cells before.` };
+      const an = b.antigens[antigenShape(app.kind, app.strain).key], dividing = an && an.A > 0.1;
+      if (sp.effector > 5 && dividing) return { key: 'expand', html: `<b>Day ${d.toFixed(1)}.</b> The cells that fit are dividing: there are <b>${fmt(sp.total)}</b> of them now. The cells stay the same size; there are more of them. Every one carries the same receptor as the cell it came from: they are a <b>clone</b>.` };
+      if (sp.effector > 50) return { key: 'contract', html: `<b>Day ${d.toFixed(1)}.</b> The antigen is gone, so the cells of the clone have stopped dividing and most are dying: <b>${fmt(sp.total)}</b> left, of which ${fmt(sp.memory)} are long-lived memory cells.` };
+      if (sp.memory > 5) return { key: 'memory', html: `The infection is over. Most of the cells of the clone have died, but <b>${fmt(sp.memory)} memory cells</b> remain where there were only a few cells before.` };
       if (view.revealed) return { key: 'revealed', html: `Antigen carried in from the wound has drifted through the node. It stuck only to the cells whose receptor fits: <b>${view.fitting().length} of ${fmt(b.lib[view.lib].length)}</b>.` };
       return { key: 'library', html: 'Every circle is one lymphocyte. Each was made with a receptor of a different shape, before this infection began.' };
     };

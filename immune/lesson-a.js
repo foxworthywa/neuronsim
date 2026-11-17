@@ -585,10 +585,10 @@
           ] },
         },
         {
-          view: 'node', title: 'Watch the clone grow',
+          view: 'node', title: 'Watch the clone multiply',
           setup: () => { setSim(person((b) => b.infect('bacterium')), { kind: 'bacterium' }); skip(24); },
           enter: (c) => c.view().reveal(true),
-          text: `<p>Run to day 7. Watch the node, and the green curve on the timeline. The count of B-lymphocytes that fit will be noted on days 2, 4 and 6.</p>`,
+          text: `<p>Run to day 7. Watch the node, and the green curve on the timeline. Each cell that fits becomes a cluster of identical cells: the cells do not get bigger, there are more of them. The count of B-lymphocytes that fit will be noted on days 2, 4 and 6.</p>`,
           actions: [{ label: 'Run to day 7', cls: 'lym', disabled: (c) => busy(c) || data(c).ran, run: (c) => {
             const note = (d) => ({ at: (d - 1) * DAY, fn: () => { const n = app.sim.specific('bacterium', 'A', 'B').total; (data(c).counts = data(c).counts || {})[d] = n; mark(`day ${d}: ${fmt(n)}`); } });
             experiment(c, { hours: 6 * DAY, speed: 12, zero: false, schedule: [note(2), note(4), note(6)], after: (b, c) => c.recordValue('clone', Object.assign({ firstAb: markerDay('first antibody'), bact5: null }, data(c).counts)) });
@@ -788,13 +788,13 @@
           title: 'After the fight',
           setup: () => { const f = firstInfection(); setSim(f.sim.copy(), { kind: 'bacterium' }); app.history = f.rows.slice(); app.zero = 0; app.lastSample = app.sim.t; },
           enter: (c) => { const v = c.view(); v.reveal(true); v.setSelf(false); },
-          text: () => `<p>Day 12. The bacteria are gone, and the node holds <b>${fmt(firstInfection().sim.specific('bacterium', 'A', 'B').total)}</b> B-lymphocytes that fit this antigen. Keeping that many cells for every microbe ever met would be impossible. Let four more weeks pass and watch the big clones in the node.</p>`,
+          text: () => `<p>Day 12. The bacteria are gone, and the node holds <b>${fmt(firstInfection().sim.specific('bacterium', 'A', 'B').total)}</b> B-lymphocytes that fit this antigen. Keeping that many cells for every microbe ever met would be impossible. Let four more weeks pass and watch the clusters of cells in the node, and the number written beside each.</p>`,
           actions: [{ label: 'Let four more weeks pass', cls: 'lym', disabled: (c) => busy(c) || data(c).ran, run: (c) => experiment(c, { hours: 30 * DAY, speed: 96, zero: false, after: (b, c) => { const sp = b.specific('bacterium', 'A'), start = firstInfection().rows[0].lymph; c.recordValue('memory', { peak: peakOf(app.history, 'lymph'), day42: sp.total, memory: sp.memory, start, ab42: b.antibodyTo('bacterium', 'A') }); } }) }],
           status: (c) => { const v = c.record.values.memory; return data(c).ran && v ? `Lymphocytes that fit this antigen: before the infection <b>${fmt(v.start)}</b> · at the peak <b>${fmt(v.peak)}</b> · day 42 <b>${fmt(v.day42)}</b>` : ''; },
           question: { prompt: 'Compare the library now with the library before the infection. What is different?', options: [
-            { t: 'The clones that fit this bacterium are hundreds of times larger than they were', ok: true, fb: nameBox('Most of the clone has died, but the survivors are long-lived <b>memory cells</b>. The library has changed: for this one antigen, Priya now starts with thousands of cells instead of a handful. A little antibody remains in her blood as well.') },
+            { t: 'There are hundreds of times more lymphocytes that fit this bacterium than there were', ok: true, fb: nameBox('Most of the clone has died, but the survivors are long-lived <b>memory cells</b>. The library has changed: for this one antigen, Priya now starts with thousands of cells instead of a handful. A little antibody remains in her blood as well.') },
             { t: 'Nothing: it has gone back to how it was', fb: 'Compare the numbers under the buttons: how many lymphocytes fit this antigen before the infection, and how many now?' },
-            { t: 'Every lymphocyte now has the receptor for this bacterium', fb: 'Look at the node: most circles are unchanged. Only the clones that fit grew.' },
+            { t: 'Every lymphocyte now has the receptor for this bacterium', fb: 'Look at the node: most circles are unchanged. Only the few cells that fit multiplied.' },
           ] },
           waitFor: (c) => data(c).ran, waitHint: 'Let four weeks pass',
         },
@@ -817,7 +817,7 @@
           view: 'places', title: 'Was she infected?',
           text: `<p>Look at the red curve for the second infection.</p>`,
           question: { prompt: 'People say Priya is now "immune" to this bacterium. Was she infected the second time?', options: [
-            { t: 'Yes: the bacteria got in and multiplied for some hours, but the response cleared them before she felt ill', ok: true, fb: nameBox('The first response is the <b>primary response</b>; the faster, larger one from memory cells is the <b>secondary response</b>. Being immune does not mean the microbe cannot get in. It means the response is already days ahead.') },
+            { t: 'Yes: the bacteria got in and multiplied for some hours, but the response cleared them before she felt ill', ok: true, fb: nameBox('The first response is the <b>primary response</b>; the faster, stronger one from memory cells is the <b>secondary response</b>. Being immune does not mean the microbe cannot get in. It means the response is already days ahead.') },
             { t: 'No: memory cells keep the bacteria out', fb: 'Look at the start of the red curve: the bacteria were there, and their number rose. What stopped them so soon?' },
             { t: 'No: they were killed the moment they arrived', fb: 'Look at the first hours of the red curve: it rises before it falls.' },
           ] },
@@ -843,7 +843,7 @@
             rows: [
               { label: 'Starts working', cells: [{ options: ['within hours', 'after several days'], answer: 'within hours' }, { options: ['within hours', 'after several days'], answer: 'after several days' }] },
               { label: 'Recognises', cells: [{ options: ['one antigen exactly', 'features shared by many microbes'], answer: 'features shared by many microbes' }, { options: ['one antigen exactly', 'features shared by many microbes'], answer: 'one antigen exactly' }] },
-              { label: 'Second exposure', cells: [{ options: ['faster and larger', 'the same as the first'], answer: 'the same as the first' }, { options: ['faster and larger', 'the same as the first'], answer: 'faster and larger' }] },
+              { label: 'Second exposure', cells: [{ options: ['faster and stronger', 'the same as the first'], answer: 'the same as the first' }, { options: ['faster and stronger', 'the same as the first'], answer: 'faster and stronger' }] },
             ],
             done: '<b>Innate immunity</b> (left) and <b>adaptive immunity</b> (right). Adaptive immunity is specific and has memory, and pays for both with a slow start. Innate immunity holds the line while it gets ready.',
           }),

@@ -326,7 +326,7 @@
           actions: [{ label: 'Priya breathes in the virus (run 10 days)', cls: 'germ', disabled: (c) => busy(c) || data(c).ran, run: (c) => experiment(c, { before: (b) => b.infect('virus'), hours: 10 * DAY, speed: 36, after: (b, c) => c.recordValue('vaxExposed', { peak: peakOf(app.history, 'infected'), elena: peakOf(elenaRows(), 'infected'), fever: peakOf(app.history, 'fever'), elenaFever: peakOf(elenaRows(), 'fever') }) }) }],
           status: (c) => { const v = c.record.values.vaxExposed; return data(c).ran && v ? `Most cells infected: <b>${fmt(v.peak)}</b> (Elena: ${fmt(v.elena)}) · fever and aching at worst: <b>${pct(v.fever)}</b> (Elena: ${pct(v.elenaFever)})` : ''; },
           question: { prompt: 'Priya met the same virus as Elena. What protected her?', options: [
-            { t: 'Antibody already in her blood and airway coated the virus before it could enter cells, and her expanded clones stood ready', ok: true, fb: 'This is scene 10\'s "antibody first" experiment, except that Priya made the antibody herself, and has memory cells to make more.' },
+            { t: 'Antibody already in her blood and airway coated the virus before it could enter cells, and the thousands of lymphocytes that now fit it stood ready', ok: true, fb: 'This is scene 10\'s "antibody first" experiment, except that Priya made the antibody herself, and has memory cells to make more.' },
             { t: 'The vaccine was still in her body, killing the virus', fb: 'A vaccine contains nothing that can kill a virus: it is antigen. What did her own body make in response to it?' },
             { t: 'The vaccine strengthened her immune system in general', fb: 'Test that idea in the next step, with a virus the vaccine did not match.' },
           ] },

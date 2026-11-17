@@ -513,11 +513,13 @@
         },
         {
           view: 'node', title: 'Let the antigen find it',
-          enter: (c) => { const v = c.view(); v.reveal(false); v.onPick = (cl, f) => { if (f >= GOOD_FIT && v.revealed) { data(c).found = true; } }; },
-          text: `<p>You do not have to search. Antigen carried in from the wound drifts through the whole node, past every lymphocyte, and <b>sticks only where it fits</b>.</p><p>Release it. Then click one of the cells it has marked, and check its fit in the close-up.</p>`,
-          actions: [{ label: 'Let the antigen drift through the node', cls: 'germ', run: (c) => { c.view().reveal(true); data(c).released = true; c.recordValue('fitting', c.view().fitting().length); } }],
+          enter: (c) => { const v = c.view(); v.reveal(!!data(c).released || c.stepState().done); if (c.stepState().done) data(c).released = data(c).found = true; v.onPick = (cl, f) => { if (f >= GOOD_FIT && v.revealed) { data(c).found = true; } }; },
+          text: `<p>You do not have to search. Antigen carried in from the wound drifts through the whole node, past every lymphocyte, and <b>sticks only where it fits</b>.</p>
+                 <p>Three things to do here: <b>1</b> release the antigen; <b>2</b> click one of the cells it marks, to see its fit in the close-up; <b>3</b> answer the question.</p>`,
+          actions: [{ label: '1. Let the antigen drift through the node', cls: 'germ', disabled: (c) => data(c).released, run: (c) => { c.view().reveal(true); data(c).released = true; c.recordValue('fitting', c.view().fitting().length); c.refresh(); } }],
+          status: (c) => { const d = data(c), v = c.view(); if (!d.released || !v || !v.fitting) return ''; return d.found ? '<b>That is one of them.</b> Its receptor sits snugly on the antigen.' : `<span class="warn" style="display:block"><b>2. Now click one of the ${v.fitting().length} marked cells</b> in the lymph node (dark, with a pulsing yellow ring) to see its fit in the close-up.</span>`; },
           question: { type: 'number', prompt: 'Of the 1,296 B-lymphocytes shown, how many have a receptor that fits this antigen? (Release the antigen and count the filled circles.)', unit: 'cells', answer: (c) => c.view().fitting().length, tol: 0, hint: () => 'Count the dark, filled circles after you release the antigen. The tally at the bottom right also gives the number.', explain: () => 'A handful out of more than a thousand here; in a real person, of the order of one lymphocyte in a hundred thousand.' },
-          waitFor: (c) => data(c).found, waitHint: 'Release the antigen, then click a marked cell',
+          waitFor: (c) => data(c).found, waitHint: 'Click one of the marked cells (yellow ring)',
         },
         {
           view: 'meet', viewOpts: { caption: 'The lymphocyte the antigen found, at full size.' }, remount: true,
@@ -536,14 +538,15 @@
           view: 'node', viewOpts: { lib: 'B', caption: 'The lymph node, zoomed out again.' }, remount: true, title: 'A different pathogen',
           setup: () => { app.strain = 'A'; },
           enter: (c) => { const v = c.view(); v.reveal(true); v.reset(); v.onPick = (cl, f) => { if (f >= GOOD_FIT && data(c).swapped) data(c).found = true; }; },
-          text: `<p>Now swap in the antigen of a <b>different strain</b>. Nothing else changes: watch the library as you press the button. Then click a cell the new antigen has marked.</p>`,
-          actions: [{ label: 'Swap in a different strain', cls: 'germ', disabled: (c) => data(c).swapped, run: (c) => { app.strain = 'B'; const v = c.view(); v.reset(); v.reveal(true); data(c).swapped = true; c.recordValue('fittingB', v.fitting().length); c.refresh(); } }],
+          text: `<p>Now swap in the antigen of a <b>different strain</b>. Nothing else changes: watch the library as you press the button. Then <b>click a cell the new antigen has marked</b>, and answer the question.</p>`,
+          actions: [{ label: '1. Swap in a different strain', cls: 'germ', disabled: (c) => data(c).swapped, run: (c) => { app.strain = 'B'; const v = c.view(); v.reset(); v.reveal(true); data(c).swapped = true; c.recordValue('fittingB', v.fitting().length); c.refresh(); } }],
+          status: (c) => { const d = data(c), v = c.view(); if (!d.swapped || !v || !v.fitting) return ''; return d.found ? '<b>A different cell fits this antigen.</b> The library itself did not change.' : `<span class="warn" style="display:block"><b>2. Now click one of the ${v.fitting().length} cells the new antigen has marked</b> (dark, with a pulsing yellow ring).</span>`; },
           question: { prompt: 'The library did not change when the pathogen did, yet a fitting cell was there both times. What does that tell you?', options: [
             { t: 'The receptors are made first, in enormous variety; the antigen only picks out the cells that happen to fit', ok: true, fb: 'The body does not design a receptor for a new microbe. It makes hundreds of millions of different lymphocytes in advance, and the microbe <b>selects</b> the few that fit it. That is why Priya can respond to a bacterium no one in her family has ever met.' },
             { t: 'The lymphocytes changed their receptors to match the new antigen', fb: 'Watch the library when you press the button: every circle stays where it was, and no receptor changes. Different cells are marked, that is all.' },
             { t: 'Most receptors fit most antigens loosely', fb: 'You tested receptors by hand in the last step. What were their fits?' },
           ] },
-          waitFor: (c) => data(c).found, waitHint: 'Swap the strain, then click a marked cell',
+          waitFor: (c) => data(c).found, waitHint: 'Click one of the marked cells (yellow ring)',
         },
         {
           view: 'node', title: 'Why doesn\'t the library attack Priya?',

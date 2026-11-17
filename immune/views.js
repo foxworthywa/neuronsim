@@ -500,7 +500,7 @@
     const SP = 12.6, X0 = 110, Y0 = 68;
     function posOf(slot) { return { x: X0 + (slot % GRID) * SP, y: Y0 + Math.floor(slot / GRID) * SP }; }
     function build() {
-      gridG.innerHTML = ''; clusterG.innerHTML = ''; cellsEl.length = 0;
+      gridG.innerHTML = ''; clusterG.innerHTML = ''; cellsEl.length = 0; markKey = '?';
       const lib = body().lib[view.lib];
       lib.forEach((c, i) => {
         const p = posOf(order[i]);
@@ -522,6 +522,22 @@
       const text = want ? `${fmt(cells)} cells` : '';
       if (ce.kt.textContent !== text) ce.kt.textContent = text;
       if (want) setAttrs(ce.kt, { x: cx, y: cy + 5.1 * Math.sqrt(want) + 17 });
+    }
+    // Cells the antigen has marked get a pulsing ring and a click target much larger than the cell.
+    const markG = svgEl('g', {}, svg);
+    let markKey = null, markRings = [];
+    function drawMarks(t) {
+      const key = view.revealed ? `${view.lib}|${app.kind}|${app.strain}` : null;
+      if (key !== markKey) {
+        markKey = key; markG.innerHTML = ''; markRings = [];
+        if (key) for (const ce of cellsEl) {
+          if (!ce.c.present || body().fit(ce.c, app.kind, app.strain) < GOOD_FIT) continue;
+          markRings.push(svgEl('circle', { cx: ce.p.x, cy: ce.p.y, r: 12, fill: 'none', stroke: '#f0b429', 'stroke-width': 3, 'pointer-events': 'none' }, markG));
+          const hit = svgEl('circle', { cx: ce.p.x, cy: ce.p.y, r: 17, fill: 'transparent' }, markG);
+          clickable(hit, 'A lymphocyte the antigen has marked', () => view.pick(ce.c));
+        }
+      }
+      markRings.forEach((r, i) => r.setAttribute('r', (12 + 2.5 * Math.sin(t * 4 + i)).toFixed(1)));
     }
     const sel = svgEl('circle', { r: 10, fill: 'none', stroke: '#f0b429', 'stroke-width': 3.5, opacity: 0, 'pointer-events': 'none' }, svg);
     const antigenDots = swarm(svg, { x: 70, y: 60, w: 500, h: 440 }, dot(COL.pathogen, 3));
@@ -561,6 +577,7 @@
     view.reset = () => { view.tested = new Set(); view.best = 0; view.selected = null; sel.setAttribute('opacity', 0); dock.set(pt(), null); fitText.textContent = 'Pick a lymphocyte to test its receptor.'; fitText.setAttribute('fill', COL.ink); fitSub.textContent = ''; fitBar.setAttribute('width', 0); };
     view.setSelf = (mode) => { view.showSelf = mode; };   // 'made': show the cells that fit self; 'screened': show them removed
     build(); view.reset();
+    let nodeClock = 0;
     view.update = (dtReal) => {
       const b = body();
       if (!(b instanceof Immune)) return;
@@ -579,6 +596,7 @@
         setAttrs(ce.e, { r: rad.toFixed(1), fill, stroke, 'stroke-width': sw, opacity: op });
         if (cells > 6 || ce.kids) drawCluster(ce, cells);
       }
+      nodeClock += dtReal / 1000; drawMarks(nodeClock);
       const A = b.antigens[P.key] ? b.antigens[P.key].A : 0;
       antigenDots.set(view.revealed || A > 0.02 ? clamp(6 + 40 * A, 6, 46) : 0, dtReal, { jitter: 80 });
       const sp = b.specific(app.kind, app.strain, view.lib);

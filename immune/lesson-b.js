@@ -176,7 +176,7 @@
             v.onCell = (i) => {
               const p = cache.patch, shown = p.shows(i), was = p.kill(i);
               if (!was) return;
-              c.status(was === 'healthy' ? '<b>That cell was healthy.</b> Its MHC class I molecules showed only its own proteins. A killer that does not read them destroys healthy tissue.' : shown ? '<b>Infected cell destroyed</b> before it could release more virus.' : '<b>That cell was infected</b>, but its MHC class I molecules did not show it yet. You could not have known: a lucky hit.', was !== 'healthy');
+              data(c).msg = (was === 'healthy' ? '<b>That cell was healthy.</b> Its MHC class I molecules showed only its own proteins. A killer that does not read them destroys healthy tissue.' : shown ? '<b>Infected cell destroyed</b> before it could release more virus.' : '<b>That cell was infected</b>, but its MHC class I molecules did not show it yet. You could not have known: a lucky hit.');
               c.recordValue('byHand', { hours: p.t, healthyKilled: p.killedHealthy, healthyLeft: p.healthy, lost: p.lost });
             };
           },
@@ -184,9 +184,14 @@
                  <p><b>Read each cell's MHC class I molecules. Click a cell to kill it.</b> Then let time pass and read them again. Stop the infection while losing as few cells as you can.</p>`,
           actions: [
             { label: 'Let 2 hours pass', cls: 'germ', run: (c) => { cache.patch.advance(2); c.recordValue('byHand', { hours: cache.patch.t, healthyKilled: cache.patch.killedHealthy, healthyLeft: cache.patch.healthy, lost: cache.patch.lost }); } },
-            { label: 'Start again', run: (c) => { cache.patch = new Patch({ n: 12, infected: [[3, 2], [8, 0.3]] }); c.view().setPatch(cache.patch); c.status('', false); } },
+            { label: 'Start again', run: (c) => { cache.patch = new Patch({ n: 12, infected: [[3, 2], [8, 0.3]] }); c.view().setPatch(cache.patch); data(c).msg = ''; } },
           ],
-          status: () => '',
+          status: (c) => {
+            const p = cache.patch, msg = data(c).msg || ''; if (!p) return msg;
+            const showing = p.cells.some((x, i) => p.shows(i));
+            const next = p.infected === 0 && p.t >= 2 ? '<b>The infection is over.</b>' : showing ? '<span class="warn" style="display:block"><b>Next:</b> a cell is showing a viral fragment (red triangle). Click that cell to kill it.</span>' : '<span class="warn" style="display:block"><b>Next:</b> no cell is showing a viral fragment right now, but one may be infected too recently to show it. Press <b>Let 2 hours pass</b> and read the cells again.</span>';
+            return (msg ? msg + ' ' : '') + next;
+          },
           waitFor: () => cache.patch && cache.patch.infected === 0 && cache.patch.t >= 2, waitHint: 'Kill the infected cells; let time pass to check for more',
         },
         {

@@ -1960,7 +1960,7 @@ window.IM_ANATOMY = {
     const SP = 12.6, X0 = 110, Y0 = 68;
     function posOf(slot) { return { x: X0 + (slot % GRID) * SP, y: Y0 + Math.floor(slot / GRID) * SP }; }
     function build() {
-      gridG.innerHTML = ''; clusterG.innerHTML = ''; cellsEl.length = 0;
+      gridG.innerHTML = ''; clusterG.innerHTML = ''; cellsEl.length = 0; markKey = '?';
       const lib = body().lib[view.lib];
       lib.forEach((c, i) => {
         const p = posOf(order[i]);
@@ -1982,6 +1982,22 @@ window.IM_ANATOMY = {
       const text = want ? `${fmt(cells)} cells` : '';
       if (ce.kt.textContent !== text) ce.kt.textContent = text;
       if (want) setAttrs(ce.kt, { x: cx, y: cy + 5.1 * Math.sqrt(want) + 17 });
+    }
+    // Cells the antigen has marked get a pulsing ring and a click target much larger than the cell.
+    const markG = svgEl('g', {}, svg);
+    let markKey = null, markRings = [];
+    function drawMarks(t) {
+      const key = view.revealed ? `${view.lib}|${app.kind}|${app.strain}` : null;
+      if (key !== markKey) {
+        markKey = key; markG.innerHTML = ''; markRings = [];
+        if (key) for (const ce of cellsEl) {
+          if (!ce.c.present || body().fit(ce.c, app.kind, app.strain) < GOOD_FIT) continue;
+          markRings.push(svgEl('circle', { cx: ce.p.x, cy: ce.p.y, r: 12, fill: 'none', stroke: '#f0b429', 'stroke-width': 3, 'pointer-events': 'none' }, markG));
+          const hit = svgEl('circle', { cx: ce.p.x, cy: ce.p.y, r: 17, fill: 'transparent' }, markG);
+          clickable(hit, 'A lymphocyte the antigen has marked', () => view.pick(ce.c));
+        }
+      }
+      markRings.forEach((r, i) => r.setAttribute('r', (12 + 2.5 * Math.sin(t * 4 + i)).toFixed(1)));
     }
     const sel = svgEl('circle', { r: 10, fill: 'none', stroke: '#f0b429', 'stroke-width': 3.5, opacity: 0, 'pointer-events': 'none' }, svg);
     const antigenDots = swarm(svg, { x: 70, y: 60, w: 500, h: 440 }, dot(COL.pathogen, 3));
@@ -2021,6 +2037,7 @@ window.IM_ANATOMY = {
     view.reset = () => { view.tested = new Set(); view.best = 0; view.selected = null; sel.setAttribute('opacity', 0); dock.set(pt(), null); fitText.textContent = 'Pick a lymphocyte to test its receptor.'; fitText.setAttribute('fill', COL.ink); fitSub.textContent = ''; fitBar.setAttribute('width', 0); };
     view.setSelf = (mode) => { view.showSelf = mode; };   // 'made': show the cells that fit self; 'screened': show them removed
     build(); view.reset();
+    let nodeClock = 0;
     view.update = (dtReal) => {
       const b = body();
       if (!(b instanceof Immune)) return;
@@ -2039,6 +2056,7 @@ window.IM_ANATOMY = {
         setAttrs(ce.e, { r: rad.toFixed(1), fill, stroke, 'stroke-width': sw, opacity: op });
         if (cells > 6 || ce.kids) drawCluster(ce, cells);
       }
+      nodeClock += dtReal / 1000; drawMarks(nodeClock);
       const A = b.antigens[P.key] ? b.antigens[P.key].A : 0;
       antigenDots.set(view.revealed || A > 0.02 ? clamp(6 + 40 * A, 6, 46) : 0, dtReal, { jitter: 80 });
       const sp = b.specific(app.kind, app.strain, view.lib);
@@ -3099,11 +3117,13 @@ window.IM_ANATOMY = {
         },
         {
           view: 'node', title: 'Let the antigen find it',
-          enter: (c) => { const v = c.view(); v.reveal(false); v.onPick = (cl, f) => { if (f >= GOOD_FIT && v.revealed) { data(c).found = true; } }; },
-          text: `<p>You do not have to search. Antigen carried in from the wound drifts through the whole node, past every lymphocyte, and <b>sticks only where it fits</b>.</p><p>Release it. Then click one of the cells it has marked, and check its fit in the close-up.</p>`,
-          actions: [{ label: 'Let the antigen drift through the node', cls: 'germ', run: (c) => { c.view().reveal(true); data(c).released = true; c.recordValue('fitting', c.view().fitting().length); } }],
+          enter: (c) => { const v = c.view(); v.reveal(!!data(c).released || c.stepState().done); if (c.stepState().done) data(c).released = data(c).found = true; v.onPick = (cl, f) => { if (f >= GOOD_FIT && v.revealed) { data(c).found = true; } }; },
+          text: `<p>You do not have to search. Antigen carried in from the wound drifts through the whole node, past every lymphocyte, and <b>sticks only where it fits</b>.</p>
+                 <p>Three things to do here: <b>1</b> release the antigen; <b>2</b> click one of the cells it marks, to see its fit in the close-up; <b>3</b> answer the question.</p>`,
+          actions: [{ label: '1. Let the antigen drift through the node', cls: 'germ', disabled: (c) => data(c).released, run: (c) => { c.view().reveal(true); data(c).released = true; c.recordValue('fitting', c.view().fitting().length); c.refresh(); } }],
+          status: (c) => { const d = data(c), v = c.view(); if (!d.released || !v || !v.fitting) return ''; return d.found ? '<b>That is one of them.</b> Its receptor sits snugly on the antigen.' : `<span class="warn" style="display:block"><b>2. Now click one of the ${v.fitting().length} marked cells</b> in the lymph node (dark, with a pulsing yellow ring) to see its fit in the close-up.</span>`; },
           question: { type: 'number', prompt: 'Of the 1,296 B-lymphocytes shown, how many have a receptor that fits this antigen? (Release the antigen and count the filled circles.)', unit: 'cells', answer: (c) => c.view().fitting().length, tol: 0, hint: () => 'Count the dark, filled circles after you release the antigen. The tally at the bottom right also gives the number.', explain: () => 'A handful out of more than a thousand here; in a real person, of the order of one lymphocyte in a hundred thousand.' },
-          waitFor: (c) => data(c).found, waitHint: 'Release the antigen, then click a marked cell',
+          waitFor: (c) => data(c).found, waitHint: 'Click one of the marked cells (yellow ring)',
         },
         {
           view: 'meet', viewOpts: { caption: 'The lymphocyte the antigen found, at full size.' }, remount: true,
@@ -3122,14 +3142,15 @@ window.IM_ANATOMY = {
           view: 'node', viewOpts: { lib: 'B', caption: 'The lymph node, zoomed out again.' }, remount: true, title: 'A different pathogen',
           setup: () => { app.strain = 'A'; },
           enter: (c) => { const v = c.view(); v.reveal(true); v.reset(); v.onPick = (cl, f) => { if (f >= GOOD_FIT && data(c).swapped) data(c).found = true; }; },
-          text: `<p>Now swap in the antigen of a <b>different strain</b>. Nothing else changes: watch the library as you press the button. Then click a cell the new antigen has marked.</p>`,
-          actions: [{ label: 'Swap in a different strain', cls: 'germ', disabled: (c) => data(c).swapped, run: (c) => { app.strain = 'B'; const v = c.view(); v.reset(); v.reveal(true); data(c).swapped = true; c.recordValue('fittingB', v.fitting().length); c.refresh(); } }],
+          text: `<p>Now swap in the antigen of a <b>different strain</b>. Nothing else changes: watch the library as you press the button. Then <b>click a cell the new antigen has marked</b>, and answer the question.</p>`,
+          actions: [{ label: '1. Swap in a different strain', cls: 'germ', disabled: (c) => data(c).swapped, run: (c) => { app.strain = 'B'; const v = c.view(); v.reset(); v.reveal(true); data(c).swapped = true; c.recordValue('fittingB', v.fitting().length); c.refresh(); } }],
+          status: (c) => { const d = data(c), v = c.view(); if (!d.swapped || !v || !v.fitting) return ''; return d.found ? '<b>A different cell fits this antigen.</b> The library itself did not change.' : `<span class="warn" style="display:block"><b>2. Now click one of the ${v.fitting().length} cells the new antigen has marked</b> (dark, with a pulsing yellow ring).</span>`; },
           question: { prompt: 'The library did not change when the pathogen did, yet a fitting cell was there both times. What does that tell you?', options: [
             { t: 'The receptors are made first, in enormous variety; the antigen only picks out the cells that happen to fit', ok: true, fb: 'The body does not design a receptor for a new microbe. It makes hundreds of millions of different lymphocytes in advance, and the microbe <b>selects</b> the few that fit it. That is why Priya can respond to a bacterium no one in her family has ever met.' },
             { t: 'The lymphocytes changed their receptors to match the new antigen', fb: 'Watch the library when you press the button: every circle stays where it was, and no receptor changes. Different cells are marked, that is all.' },
             { t: 'Most receptors fit most antigens loosely', fb: 'You tested receptors by hand in the last step. What were their fits?' },
           ] },
-          waitFor: (c) => data(c).found, waitHint: 'Swap the strain, then click a marked cell',
+          waitFor: (c) => data(c).found, waitHint: 'Click one of the marked cells (yellow ring)',
         },
         {
           view: 'node', title: 'Why doesn\'t the library attack Priya?',
@@ -3629,7 +3650,7 @@ window.IM_ANATOMY = {
             v.onCell = (i) => {
               const p = cache.patch, shown = p.shows(i), was = p.kill(i);
               if (!was) return;
-              c.status(was === 'healthy' ? '<b>That cell was healthy.</b> Its MHC class I molecules showed only its own proteins. A killer that does not read them destroys healthy tissue.' : shown ? '<b>Infected cell destroyed</b> before it could release more virus.' : '<b>That cell was infected</b>, but its MHC class I molecules did not show it yet. You could not have known: a lucky hit.', was !== 'healthy');
+              data(c).msg = (was === 'healthy' ? '<b>That cell was healthy.</b> Its MHC class I molecules showed only its own proteins. A killer that does not read them destroys healthy tissue.' : shown ? '<b>Infected cell destroyed</b> before it could release more virus.' : '<b>That cell was infected</b>, but its MHC class I molecules did not show it yet. You could not have known: a lucky hit.');
               c.recordValue('byHand', { hours: p.t, healthyKilled: p.killedHealthy, healthyLeft: p.healthy, lost: p.lost });
             };
           },
@@ -3637,9 +3658,14 @@ window.IM_ANATOMY = {
                  <p><b>Read each cell's MHC class I molecules. Click a cell to kill it.</b> Then let time pass and read them again. Stop the infection while losing as few cells as you can.</p>`,
           actions: [
             { label: 'Let 2 hours pass', cls: 'germ', run: (c) => { cache.patch.advance(2); c.recordValue('byHand', { hours: cache.patch.t, healthyKilled: cache.patch.killedHealthy, healthyLeft: cache.patch.healthy, lost: cache.patch.lost }); } },
-            { label: 'Start again', run: (c) => { cache.patch = new Patch({ n: 12, infected: [[3, 2], [8, 0.3]] }); c.view().setPatch(cache.patch); c.status('', false); } },
+            { label: 'Start again', run: (c) => { cache.patch = new Patch({ n: 12, infected: [[3, 2], [8, 0.3]] }); c.view().setPatch(cache.patch); data(c).msg = ''; } },
           ],
-          status: () => '',
+          status: (c) => {
+            const p = cache.patch, msg = data(c).msg || ''; if (!p) return msg;
+            const showing = p.cells.some((x, i) => p.shows(i));
+            const next = p.infected === 0 && p.t >= 2 ? '<b>The infection is over.</b>' : showing ? '<span class="warn" style="display:block"><b>Next:</b> a cell is showing a viral fragment (red triangle). Click that cell to kill it.</span>' : '<span class="warn" style="display:block"><b>Next:</b> no cell is showing a viral fragment right now, but one may be infected too recently to show it. Press <b>Let 2 hours pass</b> and read the cells again.</span>';
+            return (msg ? msg + ' ' : '') + next;
+          },
           waitFor: () => cache.patch && cache.patch.infected === 0 && cache.patch.t >= 2, waitHint: 'Kill the infected cells; let time pass to check for more',
         },
         {

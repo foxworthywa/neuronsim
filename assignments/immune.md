@@ -4,8 +4,9 @@
 one for online sections; submission type **File upload**). The questions are on the handout, which
 comes in two versions with the same questions, numbering and points:*
 
-- ***Print version:** `docs/worksheet/ImmuneSim-handout.pdf` (four pages, written and drawn by
-  hand).*
+- ***Print version:** `docs/worksheet/ImmuneSim-handout.pdf` (eight pages, four sheets printed on
+  both sides; written and drawn by hand). Every place a student writes is shaded yellow and sized
+  for large handwriting.*
 - ***Type-in version:** `docs/worksheet/ImmuneSim-handout-typed.docx`, made to be uploaded to
   Google Drive and opened as a Google Doc. Before sharing it, put an empty drawing in each of its
   two drawing places (the red notes in the document say how; a drawing cannot be added

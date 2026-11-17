@@ -2,7 +2,7 @@
 // the same questions, numbering and points (50: A 4, B 16 + 2, C 28):
 //   ImmuneSim-handout.docx        PRINT version: eight pages (four sheets, both sides). Every place
 //                                 a student writes is shaded yellow and sized for large handwriting:
-//                                 tall blanks, ruled lines 24 pt apart, tall table rows, big boxes.
+//                                 tall blanks, open boxes for written answers, tall table rows.
 //                                 Its page breaks are fixed, so no answer space is split.
 //   ImmuneSim-handout-typed.docx  TYPE-IN version: yellow spaces to type in and answer boxes that
 //                                 grow; made to be uploaded to Google Drive as a Google Doc. Its two
@@ -79,8 +79,9 @@ function rich(t, o) {
 // END marks the last paragraph before a page break: it must not be kept with the next paragraph,
 // or Google Docs carries it over and leaves it alone on a page of its own.
 const q = (t, talk, points, brk, end) => p([].concat(talk ? [TALK_TAG()] : [], rich(t), points ? [pts(points)] : []), Object.assign({ keepNext: TYPE || !end || undefined, pageBreakBefore: (!TYPE && !!brk) || undefined }, !TYPE && /_{3,}/.test(t) ? { spacing: { after: 40 } } : {}));
-// Space for a written answer. Print: a pale yellow block of ruled lines 24 pt apart (close to wide
-// ruled paper), for handwriting larger than the type. Type-in: a pale yellow box that grows.
+// Space for a written answer. Print: one open pale yellow box with no ruled lines, so that students
+// write at whatever size suits them; its height allows the given number of lines of large
+// handwriting (about wide-ruled spacing). Type-in: a pale yellow box that grows.
 const answerBox = (n) => new Table({
   width: { size: TEXT_W, type: WidthType.DXA }, columnWidths: [TEXT_W],
   rows: [new TableRow({ height: { value: 250 * n + 150, rule: HeightRule.ATLEAST }, children: [new TableCell({
@@ -88,15 +89,15 @@ const answerBox = (n) => new Table({
     shading: { type: ShadingType.CLEAR, fill: 'fffbe0' }, verticalAlign: VerticalAlign.TOP, children: [text('')],
   })] })],
 });
-const RULE = 480;      // 24 pt between ruled lines
-const lines = (typed, print) => (TYPE ? [answerBox(typed), spacer(60)] : [ruled(print), spacer(80)]);
-const ruled = (n) => new Table({
+const LINE_H = 490;      // 24.5 pt for each line of handwriting the space is sized for
+const lines = (typed, print) => (TYPE ? [answerBox(typed), spacer(60)] : [openSpace(print), spacer(80)]);
+const openSpace = (n) => new Table({
   width: { size: TEXT_W, type: WidthType.DXA }, columnWidths: [TEXT_W],
-  rows: Array.from({ length: n }, (_, i) => new TableRow({ height: { value: RULE, rule: HeightRule.EXACT }, cantSplit: true, children: [new TableCell({
+  rows: [new TableRow({ height: { value: LINE_H * n, rule: HeightRule.ATLEAST }, cantSplit: true, children: [new TableCell({
     width: { size: TEXT_W, type: WidthType.DXA }, borders: { top: b(), bottom: b(), left: b(), right: b() }, margins: { top: 0, bottom: 0, left: 120, right: 120 },
-    shading: { type: ShadingType.CLEAR, fill: FILL },
-    children: [new Paragraph({ spacing: { after: 0 }, keepNext: i < n - 1 || undefined, children: [run('', { size: 16 })] })],
-  })] })),
+    shading: { type: ShadingType.CLEAR, fill: FILL }, verticalAlign: VerticalAlign.TOP,
+    children: [new Paragraph({ spacing: { after: 0 }, children: [run('', { size: 16 })] })],
+  })] })],
 });
 const b = () => ({ style: BorderStyle.SINGLE, size: 4, color: LINE });
 const cell = (content, w, o) => new TableCell(Object.assign({
@@ -141,7 +142,7 @@ const sheet = () => [
     p([run('The idea in one line: ', { bold: true, size: 20 }), run('an infection is a race. A fast, general defense holds the line within hours; a slow, exact one is selected from cells that already exist, takes days to multiply, and is remembered.', { size: 20 })]),
     TYPE
       ? p([run('How to use this document. ', { bold: true, size: 20 }), run('First make your own copy (File → Make a copy) if you were not given one. Type between the yellow brackets [   ] and in the pale yellow boxes; they grow as you type. Where there is a choice (yes / no), delete the choices that do not apply. Do Part A before you open the sim. In Part B the numbers match the circles across the top of the sim: when a box names a scene, stop there and fill it in. Write predictions BEFORE you press the run button. ', { size: 20 }), TALK_TAG(), run('means every person says their answer out loud before anyone types. Working alone? Type your own first answer before you run the experiment, then add what changed. Part C is answered after the sim, in full sentences, using your own numbers. The sim takes about 90 minutes, with a natural break after scene 9. You can return to any scene with the numbered circles. There is also a print version of this handout with the same questions.', { size: 20 })])
-      : p([run('How to use this sheet. ', { bold: true, size: 20 }), run('Everything shaded yellow is yours to fill in: write on the yellow lines and in the yellow table cells, draw in the yellow boxes, and where there are choices, circle one. Do Part A before you open the sim. In Part B the numbers match the circles across the top of the sim: when a box names a scene, stop there and fill it in. Write predictions BEFORE you press the run button. ', { size: 20 }), TALK_TAG(), run('means every person says their answer out loud before anyone writes. Working alone? Write your own first answer before you run the experiment, then add what changed. Part C is answered after the sim, in full sentences, using your own numbers. The sim takes about 90 minutes, with a natural break after scene 9. You can return to any scene with the numbered circles. There is also a type-in version of this handout (a Google Doc) with the same questions.', { size: 20 })]),
+      : p([run('How to use this sheet. ', { bold: true, size: 20 }), run('Everything shaded yellow is yours to fill in: write on the yellow blanks and in the yellow boxes and table cells, draw in the two large yellow boxes, and where there are choices, circle one. Do Part A before you open the sim. In Part B the numbers match the circles across the top of the sim: when a box names a scene, stop there and fill it in. Write predictions BEFORE you press the run button. ', { size: 20 }), TALK_TAG(), run('means every person says their answer out loud before anyone writes. Working alone? Write your own first answer before you run the experiment, then add what changed. Part C is answered after the sim, in full sentences, using your own numbers. The sim takes about 90 minutes, with a natural break after scene 9. You can return to any scene with the numbered circles. There is also a type-in version of this handout (a Google Doc) with the same questions.', { size: 20 })]),
   ]]]),
 
   part('A · Before you open the sim', 'what you think now; there are no wrong answers here (4 points)'),

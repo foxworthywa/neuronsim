@@ -203,8 +203,9 @@ Draft cases (names and details to be confirmed):
 The before-and-after drawing is the direct check on whether the mental model changed.
 
 The print version shades every place a student writes in yellow and sizes it for large handwriting
-(blanks at least 1.1 in wide on lines 22 pt apart, ruled answer lines 24 pt apart, table rows at
-least 28 pt tall, a 3 in drawing box and a 3.5 in timeline box). It runs to eight pages with fixed
+(blanks at least 1.1 in wide on lines 22 pt apart, one open box for each written answer with no
+ruled lines, so that students choose their own line spacing, table rows at least 28 pt tall, a 3 in
+drawing box and a 3.5 in timeline box). It runs to eight pages with fixed
 page breaks, so that it paginates the same way from Word, LibreOffice and Google Docs.
 
 ## The model

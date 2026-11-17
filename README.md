@@ -73,6 +73,23 @@ System" by OpenStax College, CC BY 3.0, which is not covered by this repository'
 (`immune/img/CREDITS.md`). Design and model: `docs/IMMUNE_MODULE.md`. Tests:
 `tests/immune.test.js` (physiology) and `npm run test:immune` (performs every step in Chromium).
 
+**BloodSim (BIO 142): the white blood cell differential:** https://foxworthywa.github.io/neuronsim/blood.html.
+A 20-minute pre-lab in `blood/`, done before students stain and count a smear of their own blood;
+it comes before ImmuneSim and does not assume it. Five scenes: finding the few white cells in a
+smear and matching the handout's descriptions to the five kinds; **deciding which white cell
+leaves the blood** for five problems in a patch of tissue (bacteria, the debris left behind, a
+parasite too big to swallow, pollen in an allergic person, a virus inside cells), so that each
+cell's job is found by experiment; the count as a balance between the marrow's reserve and exit to
+the tissues, with a bacterial infection, hay fever and mononucleosis run on it (and lymphocytes
+seen to fall as a percentage while unchanged as a number); naming 20 cells and counting 100, then
+counting the same healthy slide again and again to see how far a count of 100 strays by chance;
+and matching four questionnaires to four reports. Its own engine (`blood/engine.js`: five pools
+of cells per microliter, a tissue bench, and counts drawn as samples) and the shared lesson
+runner. No separate handout: results and a completion code (checked at `blood.html#verify`) are
+pasted into the lab's own handout (`assignments/blood.md`). Design, model and open decisions:
+`docs/BLOOD_MODULE.md`. Tests: `tests/blood.test.js` (biology) and `npm run test:blood` (performs
+every step in Chromium).
+
 No build step. Open `index.html` in a browser (or serve the folder with any static server).
 
 ```

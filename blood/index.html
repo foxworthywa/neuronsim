@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BloodSim — The white blood cell differential</title>
+<link rel="stylesheet" href="../lib/base.css">
+<style>
+  /* no graph strip in this module: the picture gets the full height */
+  #stage-wrap { grid-row: 1 / span 2; }
+  #stage-top { flex-wrap: wrap; row-gap: 4px; min-height: 34px; }
+  #stage-caption { min-width: 180px; }
+  #stage { position: relative; overflow: hidden; }
+  #stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #hot { position: absolute; inset: 0; pointer-events: none; }
+  #hot button { position: absolute; pointer-events: auto; background: transparent; border: 0; border-radius: 50%; padding: 0; cursor: pointer; }
+  #side { position: absolute; top: 8px; right: 8px; bottom: 8px; width: 318px; overflow: auto; display: none; flex-direction: column; gap: 8px; }
+  #side.on { display: flex; }
+  #side.wide { width: 384px; }
+  #side.full { left: 8px; width: auto; flex-direction: row; flex-wrap: wrap; align-content: flex-start; gap: 10px; }
+  #side.full > * { flex: 1 1 250px; max-width: 360px; }
+  #meters { display: none; gap: 6px; flex-wrap: wrap; align-items: center; }
+  #meters.on { display: flex; }
+  #meters .m { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 2px 8px; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  #meters .m b { font-size: 14px; color: var(--ink); font-variant-numeric: tabular-nums; }
+  #meters .m.good { border-color: var(--good); background: #f1faf4; }
+  #meters .m .bar { display: inline-block; height: 8px; width: 56px; background: #eceae3; border-radius: 4px; overflow: hidden; }
+  #meters .m .bar i { display: block; height: 100%; background: #c0584f; }
+  .record textarea { width: 100%; height: 190px; font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; border: 1px solid var(--line); border-radius: 8px; padding: 8px; resize: vertical; }
+  .record input[type=text] { font: inherit; width: 100%; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; }
+  .record label { font-size: 13px; color: var(--muted); display: block; margin: 4px 0 2px; }
+  .record .row { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+  .record .code { margin-top: 6px; font-size: 15px; }
+  .nav button { white-space: nowrap; flex-shrink: 0; }
+  .warn { color: #8a4b0f; background: #fff3d6; border-radius: 8px; padding: 6px 10px; margin: 8px 0 0; font-size: 14px; }
+  .dialog { position: fixed; inset: 0; background: rgba(31, 36, 48, .45); display: none; align-items: center; justify-content: center; z-index: 10; }
+  .dialog.on { display: flex; }
+  .dialog .box { background: #fff; border-radius: 12px; padding: 16px 18px; width: min(640px, 92vw); max-height: 90vh; overflow: auto; display: flex; flex-direction: column; gap: 8px; }
+  .dialog input { font: inherit; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; }
+  .dialog .result { font-weight: 600; }
+  .question .options button.noted, .question .options button.noted:disabled { border-color: var(--accent); background: #eaf1fd; color: var(--ink); }
+  .feedback.note { background: #eaf1fd; border: 1px solid #c3d5f3; }
+  .name { border-left: 4px solid #f0b429; background: #fff8e6; border-radius: 8px; padding: 6px 12px; margin: 6px 0; font-size: 14px; }
+  .case { border-left: 4px solid #7b3f99; background: #f7f1fa; border-radius: 8px; padding: 6px 10px; font-size: 13.5px; }
+  .case b.who { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: #5b2d73; }
+  /* lab report */
+  .labrep { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; font-size: 13px; background: #fff; }
+  .labrep .lh { background: #f1efe8; padding: 4px 8px; font-weight: 650; display: flex; justify-content: space-between; gap: 8px; }
+  .labrep table { width: 100%; border-collapse: collapse; }
+  .labrep td, .labrep th { padding: 3px 6px; border-top: 1px solid #eceae3; text-align: left; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .labrep th { font-weight: 600; color: var(--muted); font-size: 12px; }
+  .labrep td.v { text-align: right; font-weight: 650; }
+  .labrep td.f { width: 14px; font-weight: 700; padding-left: 0; }
+  .labrep td.H { color: #b0352b; } .labrep td.L { color: #2457a6; }
+  .labrep td.r, .labrep td.was { color: var(--muted); font-size: 12px; }
+  .labrep td.was { text-align: right; }
+  .labrep.tight td, .labrep.tight th { padding: 3px 4px; font-size: 12.5px; }
+  .labrep.tight th { font-size: 11.5px; }
+  .labrep .foot { padding: 4px 8px; font-size: 12px; color: var(--muted); border-top: 1px solid #eceae3; white-space: normal; }
+  .labrep td img { vertical-align: middle; margin-right: 4px; }
+  /* tables the student fills in */
+  .ptable { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .ptable th, .ptable td { border: 1px solid var(--line); padding: 4px 6px; text-align: left; vertical-align: top; }
+  .ptable th { background: #f1efe8; font-weight: 600; }
+  .ptable select { font: inherit; font-size: 13px; max-width: 100%; width: 100%; padding: 2px 4px; border-radius: 6px; border: 1px solid var(--line); background: #fff; }
+  .ptable button { font-size: 12.5px; padding: 3px 7px; }
+  .ptable td.right select { border-color: var(--good); background: #eaf7ee; }
+  .ptable td.wrong select { border-color: var(--bad); background: #fdeeec; }
+  .ptable td img { vertical-align: middle; margin-right: 4px; }
+  .actions button.cellbtn { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 6px; }
+  .actions button.cellbtn.won { border-color: var(--good); background: #eaf7ee; }
+  .actions button.cellbtn.lost { color: var(--muted); background: #f7f7f4; }
+  /* repeated counts: one dot per count */
+  .dots { font-size: 12.5px; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+  .dots .row { display: grid; grid-template-columns: 92px 1fr 54px; align-items: center; gap: 6px; margin: 3px 0; }
+  .dots .axis { position: relative; height: 36px; background: #f6f5f0; border-radius: 4px; overflow: hidden; }
+  .dots .axis .ref { position: absolute; top: 0; bottom: 0; background: #dff0e4; }
+  .dots .axis i { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: #3c4353; opacity: .8; transform: translate(-50%, 0); }
+  .dots .axis i.out { background: #b0352b; }
+  .dots .axis i.mine { background: #2f6fd6; width: 8px; height: 8px; opacity: 1; z-index: 1; }
+  .dots .rng { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 600; }
+  .dots .key { color: var(--muted); font-size: 12px; margin-top: 4px; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>BloodSim</h1>
+    <div class="sub">The white blood cell differential</div>
+  </div>
+  <nav id="progress" aria-label="Scenes"></nav>
+  <div class="spacer"></div>
+  <label class="sub">Speed
+    <select id="speed" title="How fast the simulation runs">
+      <option value="0.5">Slower</option>
+      <option value="1" selected>Normal</option>
+      <option value="2.5">Faster</option>
+    </select>
+  </label>
+  <button id="btn-pause" type="button" title="Pause / resume the simulation clock (P)">Pause</button>
+</header>
+<main>
+  <div id="stage-wrap">
+    <div id="stage-top">
+      <div id="stage-caption"></div>
+      <div id="meters" aria-live="off"></div>
+    </div>
+    <div id="stage">
+      <canvas id="cv" role="img" aria-label="The picture for this step. Everything that can be done in it can also be done with the buttons."></canvas>
+      <div id="hot"></div>
+      <div id="side"></div>
+    </div>
+    <div id="paused-badge">Paused</div>
+    <div id="narrator" aria-live="off"></div>
+    <div id="sr-live" class="sr-only" aria-live="polite"></div>
+  </div>
+  <aside id="panel" aria-label="Lesson"></aside>
+</main>
+<div id="verify" class="dialog" role="dialog" aria-modal="true" aria-labelledby="verify-title">
+  <div class="box">
+    <h2 id="verify-title" style="margin:0;font-size:16px">Check a completion code (instructor)</h2>
+    <p style="margin:0;font-size:14px;color:var(--muted)">Type the names as the student or group entered them, and the code they wrote down. The order of the names, capitals and extra spaces do not matter.</p>
+    <label class="sub" for="verify-name">Names</label><input type="text" id="verify-name">
+    <label class="sub" for="verify-code">Completion code</label><input type="text" id="verify-code" placeholder="BL-XXXXX-XXXXX">
+    <div class="result" id="verify-result" role="status"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" id="verify-close">Close</button><button type="button" class="primary" id="verify-check">Check</button></div>
+  </div>
+</div>
+<div id="resume" class="dialog" role="dialog" aria-modal="true" aria-labelledby="resume-title">
+  <div class="box">
+    <h2 id="resume-title" style="margin:0;font-size:16px">Continue where you left off?</h2>
+    <p style="margin:0;font-size:15px">This browser has saved progress in BloodSim.</p>
+    <p id="resume-info" style="margin:0;font-size:14px;color:var(--muted)"></p>
+    <p style="margin:0;font-size:14px;color:var(--muted)">If that was not you (on a shared computer, for example), start again.</p>
+    <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" id="resume-restart">Start again</button><button type="button" class="primary" id="resume-continue">Continue</button></div>
+  </div>
+</div>
+<script src="../lib/lesson.js"></script>
+<script src="engine.js"></script>
+<script src="app.js"></script>
+<script src="views.js"></script>
+<script src="lesson.js"></script>
+</body>
+</html>

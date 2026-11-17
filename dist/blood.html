@@ -1,0 +1,2321 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BloodSim — The white blood cell differential</title>
+<style>
+/* Shared base styles for the models (layout: stage + side panel + trace strip). See docs/VISUAL_STYLE.md. */
+:root {
+  --bg: #f6f5f0;
+  --panel: #ffffff;
+  --ink: #1f2430;
+  --muted: #5f6675;
+  --line: #d9d6cc;
+  --accent: #2f6fd6;
+  --accent-ink: #ffffff;
+  --good: #2f9e5b;
+  --bad: #d24b3f;
+  --warn: #c98a1b;
+  --na: #e8772e;
+  --k: #8e5cf0;
+  --cl: #3cae6c;
+  --ca: #2d8fd5;
+  --anion: #8f97a6;
+  --nt: #d63c8a;
+  --membrane: #2a2f3a;
+  --outside: #f2f5fb;
+  --inside: #fbf3e6;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+}
+header {
+  display: flex; align-items: center; gap: 14px; padding: 8px 16px;
+  background: var(--panel); border-bottom: 1px solid var(--line);
+}
+header h1 { font-size: 17px; margin: 0; font-weight: 650; letter-spacing: .2px; }
+header .sub { color: var(--muted); font-size: 13px; }
+header .spacer { flex: 1; }
+header button, .panel button, .actions button, .lab button {
+  font: inherit; font-size: 14px; padding: 6px 12px; border-radius: 8px;
+  border: 1px solid var(--line); background: #fff; color: var(--ink); cursor: pointer;
+}
+header button:hover, .panel button:hover, .actions button:hover, .lab button:hover { border-color: #b8b4a6; background: #faf9f5; }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button.primary:hover { background: #2a62bd; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+header select { font: inherit; font-size: 13px; padding: 4px 6px; border-radius: 6px; border: 1px solid var(--line); background: #fff; }
+#progress { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+#progress button {
+  width: 26px; height: 26px; padding: 0; border-radius: 50%; font-size: 12px; color: var(--muted);
+  border: 1px solid var(--line); background: #fff;
+}
+#progress button.done { background: #e2ecfb; border-color: #b9cdf0; color: #2f4f86; }
+#progress button.current { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 380px; grid-template-rows: minmax(0, 1fr) auto; gap: 10px; padding: 10px 16px 14px; }
+#stage-wrap { grid-column: 1; grid-row: 1; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; position: relative; overflow: hidden; min-height: 420px; display: flex; flex-direction: column; }
+#stage-top { display: flex; align-items: center; gap: 10px; padding: 6px 12px 4px; }
+#stage { flex: 1; min-height: 0; width: 100%; display: block; background: var(--bg); }
+#stage svg { width: 100%; height: 100%; display: block; }
+#stage-caption { flex: 1; font-size: 13px; color: var(--muted); }
+#vm-badge { font-size: 13px; font-variant-numeric: tabular-nums; background: #fff; border: 1px solid var(--line); padding: 3px 10px; border-radius: 8px; white-space: nowrap; }
+#vm-badge b { font-size: 16px; }
+#narrator { margin: 4px 10px 10px; font-size: 14px; line-height: 1.35; background: #fbfaf6; border: 1px solid var(--line); border-left: 4px solid var(--accent); padding: 7px 12px; border-radius: 8px; min-height: 44px; color: var(--ink); }
+#narrator:empty { visibility: hidden; }
+#narrator b { font-weight: 650; }
+#narrator .dir { font-weight: 700; letter-spacing: .3px; }
+#paused-badge { position: absolute; left: 50%; bottom: 70px; transform: translateX(-50%); font-size: 12px; background: #fff3d6; border: 1px solid #ecd9a6; color: #7a5a10; padding: 3px 10px; border-radius: 999px; display: none; }
+
+#panel { grid-column: 2; grid-row: 1 / span 2; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
+#panel h2 { margin: 0; font-size: 16px; }
+#panel .scene-label { font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); }
+#panel .text p { margin: 0 0 8px; }
+#panel .text p:last-child { margin-bottom: 0; }
+.question { border: 1px solid #cfdcf3; background: #f3f7fe; border-radius: 10px; padding: 10px 12px; }
+.question .prompt { font-weight: 600; margin-bottom: 8px; }
+.question .options { display: flex; flex-direction: column; gap: 6px; }
+.question .options button { text-align: left; }
+.question .options button.correct { border-color: var(--good); background: #eaf7ee; }
+.question .options button.wrong { border-color: var(--bad); background: #fdeeec; }
+.feedback { margin-top: 8px; padding: 8px 10px; border-radius: 8px; font-size: 14px; }
+.feedback.good { background: #eaf7ee; border: 1px solid #bfe3ca; }
+.feedback.bad { background: #fdeeec; border: 1px solid #f0c3bd; }
+.actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.actions button.na { border-color: var(--na); color: #a04d12; }
+.actions button.k { border-color: var(--k); color: #5b39a8; }
+.actions button.cl { border-color: var(--cl); color: #23724a; }
+.actions button.ca { border-color: var(--ca); color: #1c5f92; }
+.actions button.held { background: #fff1e6; }
+.status { font-size: 13px; color: var(--muted); }
+.status.ok { color: var(--good); }
+.nav { margin-top: auto; display: flex; gap: 8px; justify-content: space-between; align-items: center; padding-top: 8px; border-top: 1px solid var(--line); }
+.hint { font-size: 13px; color: var(--muted); }
+.ion { display: inline-block; padding: 0 5px; border-radius: 999px; color: #fff; font-size: 12px; font-weight: 600; }
+.ion.na { background: var(--na); } .ion.k { background: var(--k); } .ion.cl { background: var(--cl); } .ion.ca { background: var(--ca); } .ion.nt { background: var(--nt); }
+kbd.part { background: #eef0f4; border: 1px solid #d6dae2; border-radius: 4px; padding: 0 5px; font: inherit; font-size: 13px; }
+
+#trace-wrap { grid-column: 1; grid-row: 2; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px 6px; }
+#trace-head { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+#trace-head label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+#trace { width: 100%; height: 200px; display: block; }
+#trace.with-g { height: 250px; }
+.legend { display: inline-flex; gap: 10px; align-items: center; }
+.legend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 4px; }
+
+.lab { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.lab .row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.lab .row label { flex: 1; }
+.lab .row input[type=range] { flex: 2; }
+.lab .row .val { width: 62px; text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+.lab h3 { margin: 6px 0 0; font-size: 13px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
+
+.loop-diagram { display: flex; flex-direction: column; gap: 4px; align-items: stretch; font-size: 13px; }
+.loop-diagram .node { padding: 5px 8px; border-radius: 8px; border: 1px solid var(--line); background: #fafaf7; text-align: center; transition: background .2s, border-color .2s; }
+.loop-diagram .node.hot { background: #fff1e6; border-color: var(--na); font-weight: 600; }
+.loop-diagram .arrow { text-align: center; color: var(--muted); line-height: 1; }
+
+@media (max-height: 640px) {
+  body { height: auto; min-height: 100vh; overflow: auto; }
+  main { display: flex; flex-direction: column; }
+  #stage-wrap { min-height: 420px; }
+}
+@media (max-width: 980px) {
+  body { height: auto; min-height: 100vh; overflow: auto; }
+  main { grid-template-columns: 1fr; grid-template-rows: auto auto auto; }
+  #stage-wrap { grid-column: 1; grid-row: 1; min-height: 340px; }
+  #trace-wrap { grid-column: 1; grid-row: 2; }
+  #panel { grid-column: 1; grid-row: 3; }
+}
+
+/* --- additions used by the shared lesson runner (lib/lesson.js) ---------------------------- */
+:focus-visible { outline: 3px solid #f0b429; outline-offset: 2px; }
+/* answered questions stay readable: only the chosen answer keeps its colour */
+.question .options button:disabled { opacity: 1; color: var(--muted); background: #f7f7f4; }
+.question .options button.correct:disabled { color: var(--ink); background: #eaf7ee; border-color: var(--good); }
+.numrow { display: flex; gap: 6px; align-items: center; }
+.numrow input { font: inherit; width: 110px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; }
+.numrow .unit { color: var(--muted); }
+.actions button.blood { border-color: #c23b33; color: #8f2620; }
+.actions button.blood.held { background: #fdecea; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }
+header a.home { color: var(--muted); font-size: 13px; text-decoration: none; }
+header a.home:hover { text-decoration: underline; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+@media (max-width: 700px) {
+  header { flex-wrap: wrap; gap: 6px 10px; padding: 8px 12px; }
+  header .spacer { display: none; }
+  #progress { order: 3; width: 100%; }
+  main { padding: 8px 10px 12px; }
+  #stage-wrap { min-height: 300px; }
+}
+
+</style>
+<style>
+  /* no graph strip in this module: the picture gets the full height */
+  #stage-wrap { grid-row: 1 / span 2; }
+  #stage-top { flex-wrap: wrap; row-gap: 4px; min-height: 34px; }
+  #stage-caption { min-width: 180px; }
+  #stage { position: relative; overflow: hidden; }
+  #stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #hot { position: absolute; inset: 0; pointer-events: none; }
+  #hot button { position: absolute; pointer-events: auto; background: transparent; border: 0; border-radius: 50%; padding: 0; cursor: pointer; }
+  #side { position: absolute; top: 8px; right: 8px; bottom: 8px; width: 318px; overflow: auto; display: none; flex-direction: column; gap: 8px; }
+  #side.on { display: flex; }
+  #side.wide { width: 384px; }
+  #side.full { left: 8px; width: auto; flex-direction: row; flex-wrap: wrap; align-content: flex-start; gap: 10px; }
+  #side.full > * { flex: 1 1 250px; max-width: 360px; }
+  #meters { display: none; gap: 6px; flex-wrap: wrap; align-items: center; }
+  #meters.on { display: flex; }
+  #meters .m { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 2px 8px; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  #meters .m b { font-size: 14px; color: var(--ink); font-variant-numeric: tabular-nums; }
+  #meters .m.good { border-color: var(--good); background: #f1faf4; }
+  #meters .m .bar { display: inline-block; height: 8px; width: 56px; background: #eceae3; border-radius: 4px; overflow: hidden; }
+  #meters .m .bar i { display: block; height: 100%; background: #c0584f; }
+  .record textarea { width: 100%; height: 190px; font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; border: 1px solid var(--line); border-radius: 8px; padding: 8px; resize: vertical; }
+  .record input[type=text] { font: inherit; width: 100%; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; }
+  .record label { font-size: 13px; color: var(--muted); display: block; margin: 4px 0 2px; }
+  .record .row { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+  .record .code { margin-top: 6px; font-size: 15px; }
+  .nav button { white-space: nowrap; flex-shrink: 0; }
+  .warn { color: #8a4b0f; background: #fff3d6; border-radius: 8px; padding: 6px 10px; margin: 8px 0 0; font-size: 14px; }
+  .dialog { position: fixed; inset: 0; background: rgba(31, 36, 48, .45); display: none; align-items: center; justify-content: center; z-index: 10; }
+  .dialog.on { display: flex; }
+  .dialog .box { background: #fff; border-radius: 12px; padding: 16px 18px; width: min(640px, 92vw); max-height: 90vh; overflow: auto; display: flex; flex-direction: column; gap: 8px; }
+  .dialog input { font: inherit; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; }
+  .dialog .result { font-weight: 600; }
+  .question .options button.noted, .question .options button.noted:disabled { border-color: var(--accent); background: #eaf1fd; color: var(--ink); }
+  .feedback.note { background: #eaf1fd; border: 1px solid #c3d5f3; }
+  .name { border-left: 4px solid #f0b429; background: #fff8e6; border-radius: 8px; padding: 6px 12px; margin: 6px 0; font-size: 14px; }
+  .case { border-left: 4px solid #7b3f99; background: #f7f1fa; border-radius: 8px; padding: 6px 10px; font-size: 13.5px; }
+  .case b.who { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: #5b2d73; }
+  /* lab report */
+  .labrep { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; font-size: 13px; background: #fff; }
+  .labrep .lh { background: #f1efe8; padding: 4px 8px; font-weight: 650; display: flex; justify-content: space-between; gap: 8px; }
+  .labrep table { width: 100%; border-collapse: collapse; }
+  .labrep td, .labrep th { padding: 3px 6px; border-top: 1px solid #eceae3; text-align: left; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .labrep th { font-weight: 600; color: var(--muted); font-size: 12px; }
+  .labrep td.v { text-align: right; font-weight: 650; }
+  .labrep td.f { width: 14px; font-weight: 700; padding-left: 0; }
+  .labrep td.H { color: #b0352b; } .labrep td.L { color: #2457a6; }
+  .labrep td.r, .labrep td.was { color: var(--muted); font-size: 12px; }
+  .labrep td.was { text-align: right; }
+  .labrep.tight td, .labrep.tight th { padding: 3px 4px; font-size: 12.5px; }
+  .labrep.tight th { font-size: 11.5px; }
+  .labrep .foot { padding: 4px 8px; font-size: 12px; color: var(--muted); border-top: 1px solid #eceae3; white-space: normal; }
+  .labrep td img { vertical-align: middle; margin-right: 4px; }
+  /* tables the student fills in */
+  .ptable { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .ptable th, .ptable td { border: 1px solid var(--line); padding: 4px 6px; text-align: left; vertical-align: top; }
+  .ptable th { background: #f1efe8; font-weight: 600; }
+  .ptable select { font: inherit; font-size: 13px; max-width: 100%; width: 100%; padding: 2px 4px; border-radius: 6px; border: 1px solid var(--line); background: #fff; }
+  .ptable button { font-size: 12.5px; padding: 3px 7px; }
+  .ptable td.right select { border-color: var(--good); background: #eaf7ee; }
+  .ptable td.wrong select { border-color: var(--bad); background: #fdeeec; }
+  .ptable td img { vertical-align: middle; margin-right: 4px; }
+  .actions button.cellbtn { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 6px; }
+  .actions button.cellbtn.won { border-color: var(--good); background: #eaf7ee; }
+  .actions button.cellbtn.lost { color: var(--muted); background: #f7f7f4; }
+  /* repeated counts: one dot per count */
+  .dots { font-size: 12.5px; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+  .dots .row { display: grid; grid-template-columns: 92px 1fr 54px; align-items: center; gap: 6px; margin: 3px 0; }
+  .dots .axis { position: relative; height: 36px; background: #f6f5f0; border-radius: 4px; overflow: hidden; }
+  .dots .axis .ref { position: absolute; top: 0; bottom: 0; background: #dff0e4; }
+  .dots .axis i { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: #3c4353; opacity: .8; transform: translate(-50%, 0); }
+  .dots .axis i.out { background: #b0352b; }
+  .dots .axis i.mine { background: #2f6fd6; width: 8px; height: 8px; opacity: 1; z-index: 1; }
+  .dots .rng { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 600; }
+  .dots .key { color: var(--muted); font-size: 12px; margin-top: 4px; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>BloodSim</h1>
+    <div class="sub">The white blood cell differential</div>
+  </div>
+  <nav id="progress" aria-label="Scenes"></nav>
+  <div class="spacer"></div>
+  <label class="sub">Speed
+    <select id="speed" title="How fast the simulation runs">
+      <option value="0.5">Slower</option>
+      <option value="1" selected>Normal</option>
+      <option value="2.5">Faster</option>
+    </select>
+  </label>
+  <button id="btn-pause" type="button" title="Pause / resume the simulation clock (P)">Pause</button>
+</header>
+<main>
+  <div id="stage-wrap">
+    <div id="stage-top">
+      <div id="stage-caption"></div>
+      <div id="meters" aria-live="off"></div>
+    </div>
+    <div id="stage">
+      <canvas id="cv" role="img" aria-label="The picture for this step. Everything that can be done in it can also be done with the buttons."></canvas>
+      <div id="hot"></div>
+      <div id="side"></div>
+    </div>
+    <div id="paused-badge">Paused</div>
+    <div id="narrator" aria-live="off"></div>
+    <div id="sr-live" class="sr-only" aria-live="polite"></div>
+  </div>
+  <aside id="panel" aria-label="Lesson"></aside>
+</main>
+<div id="verify" class="dialog" role="dialog" aria-modal="true" aria-labelledby="verify-title">
+  <div class="box">
+    <h2 id="verify-title" style="margin:0;font-size:16px">Check a completion code (instructor)</h2>
+    <p style="margin:0;font-size:14px;color:var(--muted)">Type the names as the student or group entered them, and the code they wrote down. The order of the names, capitals and extra spaces do not matter.</p>
+    <label class="sub" for="verify-name">Names</label><input type="text" id="verify-name">
+    <label class="sub" for="verify-code">Completion code</label><input type="text" id="verify-code" placeholder="BL-XXXXX-XXXXX">
+    <div class="result" id="verify-result" role="status"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" id="verify-close">Close</button><button type="button" class="primary" id="verify-check">Check</button></div>
+  </div>
+</div>
+<div id="resume" class="dialog" role="dialog" aria-modal="true" aria-labelledby="resume-title">
+  <div class="box">
+    <h2 id="resume-title" style="margin:0;font-size:16px">Continue where you left off?</h2>
+    <p style="margin:0;font-size:15px">This browser has saved progress in BloodSim.</p>
+    <p id="resume-info" style="margin:0;font-size:14px;color:var(--muted)"></p>
+    <p style="margin:0;font-size:14px;color:var(--muted)">If that was not you (on a shared computer, for example), start again.</p>
+    <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" id="resume-restart">Start again</button><button type="button" class="primary" id="resume-continue">Continue</button></div>
+  </div>
+</div>
+<script>
+/*
+ * Lesson runner shared by the models (see docs/PEDAGOGY.md).
+ *
+ * A lesson is a list of scenes; each scene a list of steps. A step can show text, ask a question
+ * (multiple choice with targeted feedback, or a number read off the model), offer actions
+ * (click or hold), and wait for an activity to be done in the simulation. Continue is enabled only
+ * when the question is answered correctly and the activity is done.
+ *
+ * The runner also keeps a record of what the student did: their first answer to every question
+ * (their prediction), how many tries it took, and values they measured. Models turn that into a
+ * lab record for the LMS.
+ *
+ * Stage, traces and simulation belong to each model; the model passes a `host` with
+ * applyStep(), which the runner calls whenever a step is entered.
+ */
+(function (root) {
+  'use strict';
+
+  function htmlEl(tag, attrs, html) {
+    const e = document.createElement(tag);
+    if (attrs) for (const k in attrs) {
+      if (attrs[k] == null) continue;
+      if (k === 'class') e.className = attrs[k]; else e.setAttribute(k, attrs[k]);
+    }
+    if (html != null) e.innerHTML = html;
+    return e;
+  }
+
+  // A button that acts while held: pointer, or Space/Enter on the keyboard.
+  function makeHoldButton(b, down, up) {
+    let held = false;
+    const start = (e) => { if (held) return; held = true; if (e) e.preventDefault(); b.classList.add('held'); down(); };
+    const stop = () => { if (!held) return; held = false; b.classList.remove('held'); up(); };
+    b.addEventListener('pointerdown', start);
+    b.addEventListener('pointerup', stop); b.addEventListener('pointerleave', stop); b.addEventListener('pointercancel', stop);
+    b.addEventListener('keydown', (e) => { if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat) start(e); });
+    b.addEventListener('keyup', (e) => { if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); stop(); } });
+    b.addEventListener('blur', stop);
+    b.addEventListener('click', (e) => e.preventDefault());
+  }
+
+  function createRunner(opts) {
+    const { lesson, panel, progress, host } = opts;
+    const inheritKeys = opts.inheritKeys || ['view', 'viewOpts', 'speed'];
+    const runner = {
+      scene: 0, step: 0, state: null, freeMode: false,
+      record: { started: new Date(), answers: {}, values: {}, notes: [], visited: new Set(), completed: new Set() },
+    };
+
+    const ctx = Object.assign({
+      complete() { if (runner.state && !runner.state.done) { runner.state.done = true; markCompleted(); refreshNav(); } },
+      status(msg, ok) { const s = panel.querySelector('.status'); if (s) { s.innerHTML = msg; s.classList.toggle('ok', !!ok); } },
+      next() { goto(runner.scene, runner.step + 1); },
+      refresh() { renderPanel(); },
+      stepState: () => runner.state,
+      recordValue(key, value) { runner.record.values[key] = value; },
+      note(text) { runner.record.notes.push(text); },
+      record: runner.record,
+    }, host.ctx || {});
+
+    function currentStep() { return lesson[runner.scene].steps[runner.step]; }
+    function markCompleted() { runner.record.completed.add(stepKey(runner.scene, runner.step)); }
+    function stepKey(si, ki) { return `${lesson[si].id}.${ki}`; }
+
+    function goto(si, ki) {
+      if (si >= lesson.length) si = lesson.length - 1;
+      if (ki >= lesson[si].steps.length) { if (si + 1 < lesson.length) { si++; ki = 0; } else ki = lesson[si].steps.length - 1; }
+      if (ki < 0) { if (si > 0) { si--; ki = lesson[si].steps.length - 1; } else ki = 0; }
+      runner.freeMode = false;
+      const sceneChanged = si !== runner.scene || runner.state == null;
+      runner.scene = si; runner.step = ki;
+      runner.record.visited.add(stepKey(si, ki));
+      const scene = lesson[si], step = scene.steps[ki];
+      // A step finished once stays finished: going Back must never trap a student in an activity
+      // whose moment has passed (e.g. a valve event that already happened).
+      runner.state = { done: !step.waitFor || runner.record.completed.has(stepKey(si, ki)), answered: !step.question, attempts: 0, data: {} };
+      // Steps inherit view settings from earlier steps of the same scene, so jumping into the
+      // middle of a scene (or stepping back into it) shows the right picture.
+      const eff = {};
+      for (let j = 0; j <= ki; j++) for (const k of inheritKeys) if (scene.steps[j][k] != null) eff[k] = scene.steps[j][k];
+      if (eff.speed == null && scene.speed != null) eff.speed = scene.speed;
+      host.applyStep({ scene, step, eff, sceneChanged, si, ki });
+      if (step.enter) step.enter(ctx);
+      renderPanel();
+      renderProgress();
+    }
+
+    function renderProgress() {
+      if (!progress) return;
+      progress.innerHTML = '';
+      lesson.forEach((s, i) => {
+        const b = htmlEl('button', { title: s.title, 'aria-label': `Scene ${i + 1}: ${s.title}` }, String(i + 1));
+        b.className = runner.freeMode ? '' : (i < runner.scene ? 'done' : i === runner.scene ? 'current' : '');
+        if (i === runner.scene && !runner.freeMode) b.setAttribute('aria-current', 'step');
+        b.addEventListener('click', () => goto(i, 0));
+        progress.appendChild(b);
+      });
+    }
+
+    function renderPanel() {
+      const scene = lesson[runner.scene], step = currentStep(), st = runner.state;
+      panel.innerHTML = '';
+      panel.appendChild(htmlEl('div', { class: 'scene-label' }, `${opts.partLabel ? opts.partLabel + ' · ' : ''}Scene ${runner.scene + 1} of ${lesson.length} · ${scene.title}`));
+      panel.appendChild(htmlEl('h2', {}, step.title || scene.title));
+      const text = typeof step.text === 'function' ? step.text(ctx) : step.text;
+      if (text) panel.appendChild(htmlEl('div', { class: 'text' }, text));
+      if (step.question) panel.appendChild(renderQuestion(step.question, st));
+      if (step.actions && step.actions.length) {
+        const a = htmlEl('div', { class: 'actions' });
+        for (const act of step.actions) {
+          const b = htmlEl('button', { class: act.cls || '', type: 'button' }, act.label);
+          if (act.hold) makeHoldButton(b, () => act.down(ctx), () => act.up(ctx));
+          else b.addEventListener('click', () => { act.run(ctx); });
+          if (act.disabled && act.disabled(ctx)) b.disabled = true;
+          a.appendChild(b);
+        }
+        panel.appendChild(a);
+      }
+      panel.appendChild(htmlEl('div', { class: 'status', role: 'status' }, step.status ? (typeof step.status === 'function' ? step.status(ctx) : step.status) : ''));
+      if (step.extra) { const ex = htmlEl('div', { class: 'extra' }); step.extra(ex, ctx); panel.appendChild(ex); }
+      const nav = htmlEl('div', { class: 'nav' });
+      const back = htmlEl('button', { type: 'button' }, '← Back');
+      back.addEventListener('click', () => goto(runner.scene, runner.step - 1));
+      if (runner.scene === 0 && runner.step === 0) back.disabled = true;
+      const hint = htmlEl('span', { class: 'hint' }, '');
+      const last = runner.scene === lesson.length - 1 && runner.step === scene.steps.length - 1;
+      const cont = htmlEl('button', { class: 'primary', id: 'btn-continue', type: 'button' }, step.continueLabel || 'Continue →');
+      cont.addEventListener('click', () => {
+        if (step.onContinue) step.onContinue(ctx);
+        if (step.continueTo) step.continueTo(ctx); else if (!last) goto(runner.scene, runner.step + 1);
+      });
+      if (last && !step.continueTo) cont.style.display = 'none';
+      nav.appendChild(back); nav.appendChild(hint); nav.appendChild(cont);
+      panel.appendChild(nav);
+      refreshNav();
+    }
+
+    function refreshNav() {
+      const st = runner.state, step = currentStep(), b = panel.querySelector('#btn-continue'), hint = panel.querySelector('.nav .hint');
+      if (!b || !st) return;
+      const ok = st.answered && st.done;
+      b.disabled = !ok;
+      if (hint) hint.textContent = ok ? '' : (!st.answered ? 'Answer the question to continue' : (step.waitHint || 'Complete the activity to continue'));
+    }
+
+    // Records the student's first answer (their prediction) and how many tries it took.
+    function noteAnswer(q, given, correct) {
+      const key = stepKey(runner.scene, runner.step);
+      let r = runner.record.answers[key];
+      if (!r) r = runner.record.answers[key] = { scene: runner.scene + 1, prompt: stripHtml(q.prompt), first: given, firstCorrect: correct, attempts: 0, done: false };
+      if (!r.done) { r.attempts++; if (correct) { r.done = true; r.final = given; } }
+    }
+
+    function renderQuestion(q, st) {
+      const box = htmlEl('div', { class: 'question' });
+      const promptId = 'q-' + Math.random().toString(36).slice(2, 8);
+      box.appendChild(htmlEl('div', { class: 'prompt', id: promptId }, q.prompt));
+      const fb = htmlEl('div', { class: 'feedback', style: 'display:none', role: 'status' });
+      const prior = runner.record.answers[stepKey(runner.scene, runner.step)];
+      if (q.type === 'number') {
+        const row = htmlEl('div', { class: 'numrow' });
+        const inp = htmlEl('input', { type: 'number', inputmode: 'decimal', step: 'any', 'aria-labelledby': promptId });
+        const unit = htmlEl('span', { class: 'unit' }, q.unit || '');
+        const check = htmlEl('button', { type: 'button' }, 'Check');
+        const submit = () => {
+          const v = parseFloat(inp.value);
+          if (!isFinite(v)) { fb.className = 'feedback bad'; fb.innerHTML = 'Type a number first.'; fb.style.display = 'block'; return; }
+          st.attempts++;
+          const target = q.answer(ctx), tol = typeof q.tol === 'function' ? q.tol(ctx) : q.tol;
+          const ok = Math.abs(v - target) <= tol;
+          noteAnswer(q, `${v} ${q.unit || ''}`.trim(), ok);
+          if (q.recordAs) ctx.recordValue(q.recordAs, { entered: v, model: target });
+          if (ok) {
+            fb.className = 'feedback good'; fb.innerHTML = '<b>Right.</b> ' + (typeof q.explain === 'function' ? q.explain(ctx, v) : (q.explain || ''));
+            inp.disabled = true; check.disabled = true; st.answered = true;
+            if (q.onCorrect) q.onCorrect(ctx, v);
+            refreshNav();
+          } else {
+            fb.className = 'feedback bad'; fb.innerHTML = '<b>Not quite.</b> ' + (q.hint ? q.hint(ctx, v, target) : 'Read the value again from the graph.');
+          }
+          fb.style.display = 'block';
+        };
+        check.addEventListener('click', submit);
+        inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
+        row.appendChild(inp); row.appendChild(unit); row.appendChild(check);
+        box.appendChild(row); box.appendChild(fb);
+        if (prior && prior.done) { inp.value = parseFloat(prior.final); inp.disabled = true; check.disabled = true; st.answered = true; fb.className = 'feedback good'; fb.innerHTML = '<b>Answered.</b>'; fb.style.display = 'block'; }
+        return box;
+      }
+      const opts = htmlEl('div', { class: 'options', role: 'group', 'aria-labelledby': promptId });
+      displayOrder(q).forEach((o) => {
+        const b = htmlEl('button', { type: 'button' }, o.t);
+        b.addEventListener('click', () => {
+          st.attempts++;
+          noteAnswer(q, stripHtml(o.t), !!o.ok);
+          Array.from(opts.children).forEach(c => c.classList.remove('wrong'));
+          if (o.ok) {
+            // o.neutral: an opening guess with no right answer yet; it is recorded, not judged
+            b.classList.add(o.neutral ? 'noted' : 'correct');
+            Array.from(opts.children).forEach(c => { c.disabled = true; });
+            fb.className = o.neutral ? 'feedback note' : 'feedback good'; fb.innerHTML = (o.neutral ? '<b>Noted.</b> ' : '<b>Right.</b> ') + (o.fb || q.explain || '');
+            st.answered = true;
+            if (q.onCorrect) q.onCorrect(ctx);
+            refreshNav();
+          } else {
+            b.classList.add('wrong');
+            fb.className = 'feedback bad'; fb.innerHTML = '<b>Not quite.</b> ' + (o.fb || '');
+          }
+          fb.style.display = 'block';
+        });
+        opts.appendChild(b);
+      });
+      box.appendChild(opts); box.appendChild(fb);
+      if (prior && prior.done) {
+        st.answered = true;
+        const right = q.options.find(o => o.ok), neutral = !!(right && right.neutral);
+        Array.from(opts.children).forEach(c => { c.disabled = true; if (stripHtml(c.innerHTML) === prior.final) c.classList.add(neutral ? 'noted' : 'correct'); });
+        fb.className = neutral ? 'feedback note' : 'feedback good'; fb.innerHTML = (neutral ? '<b>Noted.</b> ' : '<b>Right.</b> ') + ((right && right.fb) || q.explain || ''); fb.style.display = 'block';
+      }
+      return box;
+    }
+
+    // Called every animation frame by the model with the simulation events since the last frame.
+    function tick(events, dtSim) {
+      if (runner.freeMode || !runner.state) return;
+      const step = currentStep();
+      if (step.tick) step.tick(ctx, events, dtSim);
+      if (step.waitFor && !runner.state.done && step.waitFor(ctx, events)) {
+        runner.state.done = true;
+        markCompleted();
+        if (step.onDone) step.onDone(ctx);
+        refreshNav();
+      }
+      if (typeof step.status === 'function') {
+        const s = panel.querySelector('.status');
+        if (s) { const html = step.status(ctx); if (s.innerHTML !== html) s.innerHTML = html; }
+      }
+    }
+
+    function enterFreeMode() { runner.freeMode = true; renderProgress(); }
+
+    return { goto, tick, ctx, runner, currentStep, refreshNav, renderPanel, renderProgress, enterFreeMode };
+  }
+
+  // Answer options in a shuffled order that is the same every time a question is shown (seeded
+  // by its prompt), so the right answer is not always in the same place. q.fixedOrder keeps the
+  // authored order (e.g. options that form a scale).
+  function displayOrder(q) {
+    const opts = q.options.slice();
+    if (q.fixedOrder) return opts;
+    let h = 2166136261;
+    for (const ch of q.prompt) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0;
+    for (let i = opts.length - 1; i > 0; i--) {
+      h = Math.imul(h ^ (h >>> 15), 2246822507) >>> 0; h = Math.imul(h ^ (h >>> 13), 3266489909) >>> 0;
+      const j = h % (i + 1); [opts[i], opts[j]] = [opts[j], opts[i]];
+    }
+    return opts;
+  }
+
+  function stripHtml(s) { return String(s).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim(); }
+
+  // Short check code over the text of a lab record (FNV-1a). It deters casual editing of a pasted
+  // record; it is not security.
+  function checkCode(text, salt) {
+    let h1 = 0x811c9dc5, h2 = 0x01000193 ^ 0x5bd1e995;
+    const s = (salt || '') + '|' + text.replace(/\r\n/g, '\n').trim();
+    for (let i = 0; i < s.length; i++) {
+      const c = s.charCodeAt(i);
+      h1 = Math.imul(h1 ^ c, 0x01000193) >>> 0;
+      h2 = Math.imul(h2 ^ c, 0x5bd1e995) >>> 0;
+    }
+    const a = h1.toString(36).toUpperCase().padStart(7, '0').slice(-5), b = h2.toString(36).toUpperCase().padStart(7, '0').slice(-5);
+    return `${a}-${b}`;
+  }
+
+  root.Lesson = { createRunner, htmlEl, makeHoldButton, stripHtml, checkCode };
+})(typeof self !== 'undefined' ? self : this);
+
+</script>
+<script>
+/*
+ * BloodSim engine: the white blood cell differential. See docs/BLOOD_MODULE.md.
+ *
+ * Three small models, all semi-quantitative (docs/PEDAGOGY.md §9). Time is in hours.
+ *
+ *   Blood   the five white cells as pools in the blood (cells per microlitre). Each pool is a
+ *           balance: cells enter from a reserve (the bone marrow; for lymphocytes, the lymph nodes
+ *           and spleen) and leave for the tissues after a few hours to a day. A condition (a
+ *           bacterial infection, a virus, an allergy, a parasite) "calls" one kind of cell, which
+ *           raises its release, its exit and, after a lag, its production.
+ *   Bench   a patch of tissue with one problem in it (bacteria, debris, a parasitic worm, pollen
+ *           in an allergic person, virus-infected cells) and one kind of white cell called out of
+ *           the blood, in proportion to how many of that kind the blood carries.
+ *   counts  a differential is a sample: `differential(n)` draws n white cells from the blood, and
+ *           the binomial helpers say how far such a count strays by chance.
+ *
+ * No DOM here: the same file runs in the browser and under Node (tests/blood.test.js).
+ */
+(function (root) {
+  'use strict';
+
+  const DAY = 24;
+  const TYPES = ['neut', 'lymph', 'mono', 'eos', 'baso'];
+  const NAMES = { neut: 'neutrophil', lymph: 'lymphocyte', mono: 'monocyte', eos: 'eosinophil', baso: 'basophil' };
+  const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+
+  // Seeded random numbers (mulberry32), so tests repeat and each group's slide can differ.
+  function rng(seed) {
+    let a = seed >>> 0;
+    return function () {
+      a = (a + 0x6D2B79F5) >>> 0;
+      let t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // The five cells. n0: cells per microlitre of blood in a healthy adult (55, 36, 6, 2.5 and 0.5 %
+  // of 7,000). tau: mean time a cell spends in the blood, hours (a half-life of about 7 h for
+  // neutrophils). reserve: cells waiting to be released, as a multiple of the number in the blood.
+  // gRel, gExit, gProd: how strongly a call raises release, exit to the tissues and production.
+  // lag: hours for production to follow a call.
+  // ---------------------------------------------------------------------------------------------
+  const CELL = {
+    neut:  { n0: 3850, tau: 10, reserve: 15, gRel: 3.5, gExit: 0.5, gProd: 3.5, lag: 36 },
+    lymph: { n0: 2520, tau: 24, reserve: 0,  gRel: 1,   gExit: 0,   gProd: 0,   lag: 1 },
+    mono:  { n0: 420,  tau: 30, reserve: 2,  gRel: 1.2, gExit: 0.4, gProd: 1.2, lag: 36 },
+    eos:   { n0: 175,  tau: 24, reserve: 4,  gRel: 3,   gExit: 0.3, gProd: 3,   lag: 60 },
+    baso:  { n0: 35,   tau: 48, reserve: 2,  gRel: 0.8, gExit: 0.2, gProd: 0.8, lag: 60 },
+  };
+  const RBC_PER_UL = 5.0e6;
+
+  // Reference ranges. Percentages are the ones printed on the lab handout (El Brihi and Pathak,
+  // StatPearls, 2024); the absolute ranges are the usual adult ones.
+  const REF = {
+    pct: { neut: [40, 60], lymph: [20, 40], mono: [2, 8], eos: [0, 4], baso: [0, 1] },
+    abs: { neut: [1500, 8000], lymph: [1000, 4800], mono: [200, 950], eos: [0, 500], baso: [0, 200] },
+    wbc: [4500, 11000],
+  };
+  const flag = (v, r) => (v < r[0] ? 'L' : v > r[1] ? 'H' : '');
+
+  // What each condition calls, and how fast the call builds and fades (hours).
+  const CONDITION = {
+    // An acute bacterial infection that the body clears in about six days.
+    bacterial: { rise: 6, fall: 18, lasts: 6 * DAY, calls: { neut: 1, mono: 0.6 } },
+    // Seasonal allergy: lasts for as long as the person is exposed.
+    allergy: { rise: 4 * DAY, fall: 5 * DAY, lasts: Infinity, calls: { eos: 1, baso: 0.5 } },
+    // A parasitic worm: a stronger, slower call for the same cell.
+    parasite: { rise: 7 * DAY, fall: 7 * DAY, lasts: Infinity, calls: { eos: 3, baso: 0.5 } },
+    // A virus such as the one that causes mononucleosis: the lymphocytes selected by the virus
+    // multiply in the lymph nodes and spill into the blood, peaking about day 12.
+    viral: { peak: 12 * DAY, size: 2 },
+  };
+
+  class Blood {
+    constructor(o) {
+      o = o || {};
+      this.t = 0;
+      this.n = {}; this.reserve = {}; this.prod = {};
+      for (const k of TYPES) { this.n[k] = CELL[k].n0; this.reserve[k] = CELL[k].reserve * CELL[k].n0; this.prod[k] = CELL[k].n0 / CELL[k].tau; }
+      this.conditions = [];
+      this.supply = 1;            // 1 = normal release from the reserves (tests set it to 0 to measure lifetimes)
+      this.flow = { release: {}, exit: {} };
+      this._flows();
+      if (o.condition) this.start(o.condition, o);
+    }
+    copy() {
+      const b = new Blood();
+      b.t = this.t; b.supply = this.supply;
+      Object.assign(b.n, this.n); Object.assign(b.reserve, this.reserve); Object.assign(b.prod, this.prod);
+      b.conditions = this.conditions.map(c => Object.assign({}, c));
+      b._flows();
+      return b;
+    }
+    start(kind, o) {
+      if (!CONDITION[kind]) throw new Error('unknown condition: ' + kind);
+      this.conditions.push({ kind, t0: this.t, severity: (o && o.severity) || 1, level: 0, on: true });
+      return this;
+    }
+    end(kind) { for (const c of this.conditions) if (c.kind === kind) c.on = false; return this; }
+    active(kind) { return this.conditions.some(c => c.kind === kind && c.on); }
+    // How strongly the tissues are calling for this kind of cell right now (0 = not at all).
+    call(type) {
+      let s = 0;
+      for (const c of this.conditions) { const def = CONDITION[c.kind]; if (def.calls && def.calls[type]) s += def.calls[type] * c.severity * c.level; }
+      return s;
+    }
+    // Extra lymphocytes entering the blood from the lymph nodes, as a multiple of the normal supply.
+    expansion() {
+      let s = 0;
+      for (const c of this.conditions) {
+        const def = CONDITION[c.kind]; if (!def.peak) continue;
+        const x = (this.t - c.t0) / def.peak;
+        if (x > 0) s += def.size * c.severity * x * x * Math.exp(2 * (1 - x));
+      }
+      return s;
+    }
+    _flows() {
+      for (const k of TYPES) {
+        const p = CELL[k], base = p.n0 / p.tau, c = this.call(k);
+        if (k === 'lymph') this.flow.release[k] = base * (1 + this.expansion()) * this.supply;
+        else this.flow.release[k] = base * (1 + p.gRel * c) * clamp(this.reserve[k] / (0.2 * p.reserve * p.n0), 0, 1) * this.supply;
+        this.flow.exit[k] = this.n[k] / p.tau * (1 + p.gExit * c);
+      }
+    }
+    advance(dt) {
+      const H = 0.25;
+      let left = dt;
+      while (left > 1e-9) {
+        const h = Math.min(H, left); left -= h;
+        for (const c of this.conditions) {
+          const def = CONDITION[c.kind]; if (!def.calls) continue;
+          if (c.on && this.t - c.t0 >= def.lasts) c.on = false;
+          c.level += ((c.on ? 1 : 0) - c.level) * (1 - Math.exp(-h / (c.on ? def.rise : def.fall)));
+        }
+        this._flows();
+        for (const k of TYPES) {
+          const p = CELL[k], base = p.n0 / p.tau;
+          this.n[k] = Math.max(0, this.n[k] + (this.flow.release[k] - this.flow.exit[k]) * h);
+          if (k === 'lymph') continue;
+          // production follows the call after a lag, and refills the reserve over about three days
+          const full = p.reserve * p.n0;
+          const target = base * (1 + p.gProd * this.call(k)) + (full - this.reserve[k]) / 72;
+          this.prod[k] += (target - this.prod[k]) * (1 - Math.exp(-h / p.lag));
+          this.reserve[k] = Math.max(0, this.reserve[k] + (this.prod[k] - this.flow.release[k]) * h);
+        }
+        this.t += h;
+      }
+      this._flows();
+      return this;
+    }
+    get total() { return TYPES.reduce((s, k) => s + this.n[k], 0); }
+    get percent() { const T = this.total, o = {}; for (const k of TYPES) o[k] = 100 * this.n[k] / T; return o; }
+    // The report an analyser would print: it counts thousands of cells, so chance plays no part.
+    report() {
+      const pc = this.percent;
+      return {
+        wbc: { value: this.total, range: REF.wbc, flag: flag(this.total, REF.wbc) },
+        rows: TYPES.map(k => ({ type: k, pct: pc[k], pctRange: REF.pct[k], pctFlag: flag(Math.round(pc[k] * 10) / 10, REF.pct[k]), abs: this.n[k], absRange: REF.abs[k], absFlag: flag(this.n[k], REF.abs[k]) })),
+      };
+    }
+    // A manual differential: n white cells met one after another on the smear. Returns their types in order.
+    cells(n, rand) {
+      const T = this.total, out = [];
+      for (let i = 0; i < n; i++) {
+        let u = rand() * T, type = TYPES[TYPES.length - 1];
+        for (const k of TYPES) { if (u < this.n[k]) { type = k; break; } u -= this.n[k]; }
+        out.push(type);
+      }
+      return out;
+    }
+    differential(n, rand) { return tally(this.cells(n, rand)); }
+  }
+  function tally(cells) { const o = {}; for (const k of TYPES) o[k] = 0; for (const c of cells) o[c]++; return o; }
+  // Which lines of a count of n cells fall outside the handout's reference ranges.
+  function flags(count, n) {
+    const o = {};
+    for (const k of TYPES) { const f = flag(100 * count[k] / n, REF.pct[k]); if (f) o[k] = f; }
+    return o;
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Chance in a count of n cells (binomial).
+  // ---------------------------------------------------------------------------------------------
+  function binomPmf(n, p, k) {
+    if (p <= 0) return k === 0 ? 1 : 0;
+    if (p >= 1) return k === n ? 1 : 0;
+    let logC = 0;
+    for (let i = 1; i <= k; i++) logC += Math.log((n - k + i) / i);
+    return Math.exp(logC + k * Math.log(p) + (n - k) * Math.log(1 - p));
+  }
+  // Probability of counting k or more.
+  function binomAtLeast(n, p, k) { let s = 0; for (let i = Math.max(0, k); i <= n; i++) s += binomPmf(n, p, i); return Math.min(1, s); }
+  // The range that holds the middle `level` of counts (0.95: all but 1 count in 20).
+  function binomRange(n, p, level) {
+    const tail = (1 - (level || 0.95)) / 2;
+    let lo = 0, hi = n, s = 0;
+    for (let k = 0; k <= n; k++) { s += binomPmf(n, p, k); if (s > tail) { lo = k; break; } }
+    s = 0;
+    for (let k = n; k >= 0; k--) { s += binomPmf(n, p, k); if (s > tail) { hi = k; break; } }
+    return [lo, hi];
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // The bench: one problem in a patch of tissue, and one kind of white cell called out of the blood.
+  // ---------------------------------------------------------------------------------------------
+  const ARRIVE = 0.255;                 // each hour, this fraction of the called cell's blood count (per µL) reaches the site
+  const GROW = Math.LN2 / 1.5;          // bacteria double every 90 minutes
+  const CRIT_NEUT = 2000;               // neutrophils at the site at which killing equals growth (as in ImmuneSim)
+  const PROBLEMS = {
+    bacteria: { hours: 24, winner: 'neut' },
+    debris: { hours: 72, winner: 'mono' },
+    worm: { hours: 72, winner: 'eos' },
+    pollen: { hours: 6, winner: 'baso' },
+    virus: { hours: 240, winner: 'lymph' },
+  };
+
+  class Bench {
+    constructor(o) {
+      o = o || {};
+      if (!PROBLEMS[o.problem]) throw new Error('unknown problem: ' + o.problem);
+      this.problem = o.problem;
+      this.blood = Object.assign({}, o.counts || Object.fromEntries(TYPES.map(k => [k, CELL[k].n0])));
+      this.reset();
+    }
+    reset() {
+      const p = this.problem;
+      this.t = 0; this.sent = null; this.events = []; this.done = {}; this.solvedAt = null;
+      this.site = { neut: 0, lymph: 0, mono: 0, eos: 0, baso: 0 };
+      this.macrophages = 0;
+      this.bacteria = p === 'bacteria' ? 1e5 : 0;
+      this.debris = p === 'debris' ? 20000 : 0;          // counted in dead neutrophils
+      this.worm = p === 'worm' ? 1 : 0;                  // how intact the larva is (1 = unharmed)
+      this.attached = 0; this.degranulating = false;
+      this.pollen = p === 'pollen' ? 1 : 0;
+      this.histamine = 0; this.leak = 0;
+      this.infected = p === 'virus' ? 20 : 0;            // of 1,000 lining cells
+      this.clone = 0;                                    // lymphocytes whose receptor fits the virus
+      return this;
+    }
+    get hours() { return PROBLEMS[this.problem].hours; }
+    send(type) { if (!NAMES[type]) throw new Error('unknown cell: ' + type); this.sent = type; return this; }
+    _event(type) { if (!this.done[type]) { this.done[type] = true; this.solvedAt = this.t; this.events.push({ type, t: this.t }); } }
+    takeEvents() { return this.events.splice(0); }
+    advance(dt) {
+      const H = 0.05;
+      let left = dt;
+      while (left > 1e-9) {
+        const h = Math.min(H, left); left -= h;
+        const s = this.site, k = this.sent;
+        // arrivals, in proportion to how many of that cell the blood carries
+        if (k && k !== 'lymph') s[k] += ARRIVE * this.blood[k] * h;
+        // unselected lymphocytes pass through and leave again (about two hours in the tissue)
+        if (k === 'lymph') s.lymph += (ARRIVE * this.blood.lymph - s.lymph / 2) * h;
+        // lifetimes at the site: a neutrophil lasts about a day and its remains are the pus
+        const dead = s.neut / 24 * h;
+        s.neut -= dead; this.debris += dead;
+        s.eos -= s.eos / 96 * h; s.baso -= s.baso / 72 * h;
+        // a monocyte grows into a macrophage over most of a day; macrophages last for weeks
+        const grown = s.mono / 16 * h;
+        s.mono -= grown; this.macrophages += grown;
+
+        if (this.problem === 'bacteria' && this.bacteria > 0) {
+          const kN = GROW / CRIT_NEUT;
+          const kill = kN * (s.neut + 2 * this.macrophages + 0.1 * s.eos);
+          this.bacteria += (GROW * (1 - this.bacteria / 1e9) - kill) * this.bacteria * h;
+          if (this.bacteria < 1) { this.bacteria = 0; this._event('cleared'); }
+        }
+        if (this.debris > 0) {
+          // macrophages swallow dead cells quickly; neutrophils hardly at all
+          const eaten = Math.min(this.debris, (0.5 * this.macrophages + 0.02 * s.neut) * this.debris / (this.debris + 500) * h);
+          this.debris -= eaten;
+          if (this.problem === 'debris' && this.debris < 200) this._event('cleared');
+        }
+        if (this.problem === 'worm' && this.worm > 0) {
+          // no cell can swallow it: cells can only spread over its surface (room for about 400)
+          const present = k === 'mono' ? this.macrophages + s.mono : k ? s[k] : 0;
+          this.attached = k === 'lymph' || k === 'baso' ? 0 : Math.min(400, present);
+          const perCell = k === 'eos' ? 1 / 40 : k === 'neut' ? 1 / 2000 : k === 'mono' ? 1 / 1500 : 0;
+          this.degranulating = k === 'eos' && this.attached > 1;
+          this.worm -= perCell * this.attached / 400 * h;
+          if (this.worm <= 0) { this.worm = 0; this.degranulating = false; this._event('cleared'); }
+        }
+        if (this.problem === 'pollen') {
+          // only a cell carrying antibody against pollen on its surface responds: the basophil
+          this.histamine += (0.15 * s.baso * this.pollen - this.histamine / 0.5) * h;
+          this.leak = this.histamine / (this.histamine + 1);
+          if (this.leak > 0.5) this._event('symptoms');
+        }
+        if (this.problem === 'virus' && this.infected > 0) {
+          // the one lymphocyte in the sample that fits is selected, then doubles every 10 hours
+          if (k === 'lymph') { if (this.clone === 0) this.clone = 1; if (this.t > 24) this.clone = Math.min(2e5, this.clone * Math.pow(2, h / 10)); }
+          const beta = 1 / 24;
+          this.infected += (beta * (1 - this.infected / 600) - beta / 3000 * this.clone) * this.infected * h;
+          if (this.infected < 1) { this.infected = 0; this._event('cleared'); }
+        }
+        this.t += h;
+      }
+      return this;
+    }
+    // Did the cell that was sent deal with the problem?
+    get solved() { return !!(this.done.cleared || this.done.symptoms); }
+    // The number that measures this problem, and its name.
+    get measure() {
+      switch (this.problem) {
+        case 'bacteria': return { label: 'Bacteria', value: this.bacteria };
+        case 'debris': return { label: 'Dead cells and debris', value: this.debris };
+        case 'worm': return { label: 'Parasite intact', value: this.worm };
+        case 'pollen': return { label: 'Swelling and sneezing', value: this.leak };
+        default: return { label: 'Infected cells (of 1,000)', value: this.infected };
+      }
+    }
+  }
+  // Run one problem with one cell from start to finish (used by the lesson's tables and the tests).
+  function trial(problem, type, counts) {
+    const b = new Bench({ problem, counts }).send(type);
+    b.advance(b.hours);
+    return b;
+  }
+
+  const api = { Blood, Bench, trial, tally, flags, flag, binomPmf, binomAtLeast, binomRange, rng, TYPES, NAMES, CELL, REF, CONDITION, PROBLEMS, RBC_PER_UL, DAY, ARRIVE, CRIT_NEUT };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  else root.BloodSim = api;
+})(typeof self !== 'undefined' ? self : this);
+
+</script>
+<script>
+/* BloodSim app core: shared state, the simulation clock, the canvas the views draw on, and the
+ * wiring to the lesson runner. The models live in engine.js, the pictures in views.js, the lesson
+ * in lesson.js. Everything drawn is read from the model. */
+(function () {
+  'use strict';
+
+  const { rng, TYPES, NAMES, DAY } = BloodSim;
+  const $ = (sel) => document.querySelector(sel);
+  const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+  const htmlEl = Lesson.htmlEl;
+  const fmt = (n) => (n == null || !isFinite(n) ? '—' : n < 0.5 ? '0' : n < 9999.5 ? Math.round(n).toLocaleString('en-US') : n < 999500 ? `${Math.round(n / 1e3)} thousand` : n < 999.5e6 ? `${(n / 1e6).toFixed(n < 9.95e6 ? 1 : 0)} million` : `${(n / 1e9).toFixed(1)} billion`);
+  const perUL = (n) => (Math.round(n / 10) * 10).toLocaleString('en-US');      // counts per microliter, to the nearest 10
+  const pct1 = (x) => (x < 9.95 ? x.toFixed(1) : String(Math.round(x)));
+  const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  const clockText = (h, days) => (days ? `day ${(h / DAY).toFixed(1)}` : `${h < 9.95 ? h.toFixed(1) : Math.round(h)} h`);
+
+  // =========================================================================
+  // Shared state
+  // =========================================================================
+  const urlSeed = parseInt((location.search.match(/[?&]seed=(\d+)/) || [])[1], 10);
+  const app = {
+    seed: urlSeed >= 1 ? urlSeed : 1 + Math.floor(Math.random() * 9000),   // which slide this group gets
+    sim: null,                  // what the clock advances: a Bench or a Blood
+    speed: 1, mult: 1, paused: false,
+    clock: 'idle',              // 'free': time runs; 'idle': time runs only during an experiment
+    run: null,                  // {until, onDone}
+    view: null, viewName: null, viewOpts: null, meters: null,
+    lastFrame: null,
+  };
+  const pendingEvents = [];
+  function setSim(sim) { app.sim = sim; app.run = null; }
+  function advanceSim(dt) {
+    const s = app.sim; if (!s) return;
+    const h = app.run ? Math.min(dt, app.run.until - s.t) : dt;
+    if (h > 1e-9) s.advance(h);
+    if (s.takeEvents) for (const e of s.takeEvents()) pendingEvents.push(e);
+    if (app.run && s.t >= app.run.until - 1e-6) finishRun();
+  }
+  // Run an experiment: the clock runs for `hours`, at `speed` simulated hours per second.
+  function startRun(o) {
+    app.run = { until: app.sim.t + o.hours, onDone: o.onDone };
+    if (o.speed) app.speed = o.speed;
+    setPaused(false);
+  }
+  function finishRun() { const r = app.run; app.run = null; narrClock = 1e9; if (r && r.onDone) r.onDone(); }
+  // Jump to the end of the current experiment at once (used by the automated walkthrough).
+  function fastFinish() { if (app.run) advanceSim(app.run.until - app.sim.t + 1e-3); }
+
+  // =========================================================================
+  // The stage: one canvas, a layer of invisible buttons over the things that can be clicked
+  // (so the keyboard reaches them), and an optional panel of HTML at the right
+  // =========================================================================
+  const stage = $('#stage'), canvas = $('#cv'), hot = $('#hot'), side = $('#side');
+  const views = {};
+  function mountView(name, opts) {
+    hot.innerHTML = ''; side.innerHTML = ''; side.className = '';
+    app.viewOpts = opts || {}; app.viewOptsGiven = opts || null;
+    app.view = views[name](opts || {});
+    app.viewName = name;
+    $('#stage-caption').textContent = (opts && opts.caption) || '';
+  }
+  // list: [{x, y, r, label, run}] in canvas coordinates
+  function hotspots(list) {
+    hot.innerHTML = '';
+    for (const h of list) {
+      const b = htmlEl('button', { type: 'button', 'aria-label': h.label, style: `left:${h.x - h.r}px;top:${h.y - h.r}px;width:${2 * h.r}px;height:${2 * h.r}px` });
+      b.addEventListener('click', (e) => { e.stopPropagation(); h.run(); });
+      hot.appendChild(b);
+    }
+  }
+  function setSide(html, cls) { side.className = html == null ? '' : 'on' + (cls ? ' ' + cls : ''); if (html != null && side.innerHTML !== html) side.innerHTML = html; }
+  canvas.addEventListener('click', (e) => {
+    const r = canvas.getBoundingClientRect();
+    if (app.view && app.view.click) app.view.click(e.clientX - r.left, e.clientY - r.top);
+  });
+
+  // A report as a hospital analyser prints it. o: {title, before (an earlier report), note, icons}
+  function reportHTML(rep, o) {
+    o = o || {};
+    const was = o.before, f = (x) => `<td class="f ${x}">${x}</td>`;
+    const rows = rep.rows.map((r, i) => `<tr><td>${o.icons ? BL.icon(r.type, 22) : ''}${cap(NAMES[r.type])}s</td>${was ? `<td class="was">${pct1(was.rows[i].pct)}</td>` : ''}<td class="v ${r.pctFlag}">${pct1(r.pct)}</td>${f(r.pctFlag)}${was ? `<td class="was">${perUL(was.rows[i].abs)}</td>` : ''}<td class="v ${r.absFlag}">${perUL(r.abs)}</td>${f(r.absFlag)}</tr>`).join('');
+    const head = was ? '<tr><th></th><th style="text-align:right">% before</th><th colspan="2" style="text-align:right">% now</th><th style="text-align:right">per µL before</th><th colspan="2" style="text-align:right">per µL now</th></tr>' : '<tr><th></th><th colspan="2" style="text-align:right">%</th><th colspan="2" style="text-align:right">per µL</th></tr>';
+    const total = `<tr><td><b>All white cells</b></td>${was ? '<td class="was"></td>' : ''}<td class="v">100</td><td class="f"></td>${was ? `<td class="was">${perUL(was.wbc.value)}</td>` : ''}<td class="v ${rep.wbc.flag}">${perUL(rep.wbc.value)}</td>${f(rep.wbc.flag)}</tr>`;
+    return `<div class="labrep${o.tight ? ' tight' : ''}"><div class="lh"><span>${o.title || 'White cell count'}</span><span>${o.when || ''}</span></div><table>${head}${rows}${total}</table>${o.note ? `<div class="foot">${o.note}</div>` : ''}</div>`;
+  }
+
+  // =========================================================================
+  // Lesson runner wiring
+  // =========================================================================
+  const panel = $('#panel');
+  function setPaused(p) {
+    app.paused = p;
+    $('#btn-pause').textContent = p ? 'Resume' : 'Pause';
+    $('#paused-badge').style.display = p ? 'block' : 'none';
+  }
+  const host = {
+    ctx: { app, view: () => app.view },
+    applyStep({ step, eff, sceneChanged }) {
+      app.run = null;
+      if (step.setup) step.setup();           // build the model state before the picture is drawn
+      if (eff.view && (eff.view !== app.viewName || step.remount || sceneChanged || (eff.viewOpts || null) !== app.viewOptsGiven)) mountView(eff.view, eff.viewOpts || {});
+      if (eff.speed) app.speed = eff.speed;
+      app.clock = eff.clock || 'idle';
+      app.meters = eff.meters || null;
+      renderMeters(true);
+      setPaused(false);
+    },
+  };
+  let meterClock = 0;
+  function renderMeters(force) {
+    const el = $('#meters');
+    if (!app.meters) { el.classList.remove('on'); el.innerHTML = ''; return; }
+    if (!force && meterClock < 200) return;
+    meterClock = 0;
+    el.classList.add('on');
+    const html = app.meters().map(([label, value, cls]) => `<div class="m${cls ? ' ' + cls : ''}">${label}<b>${value}</b></div>`).join('');
+    if (el.innerHTML !== html) el.innerHTML = html;
+  }
+
+  // =========================================================================
+  // Main loop
+  // =========================================================================
+  let srKey = null, narrClock = 1e9, runner = null;
+  function frame(ts) {
+    if (app.lastFrame == null) app.lastFrame = ts;
+    const dtReal = Math.min(50, ts - app.lastFrame); app.lastFrame = ts;
+    try {
+      if (app.sim && !app.paused && (app.run || app.clock === 'free')) advanceSim(dtReal / 1000 * app.speed * app.mult);
+      const dpr = window.devicePixelRatio || 1, w = stage.clientWidth, h = stage.clientHeight;
+      if (w && h && app.view && app.view.draw) {
+        if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); }
+        const c = canvas.getContext('2d');
+        c.setTransform(dpr, 0, 0, dpr, 0, 0);
+        c.clearRect(0, 0, w, h);
+        app.view.draw(c, w, h, app.paused ? 0 : dtReal);
+      }
+      if (runner) runner.tick(pendingEvents.splice(0), dtReal);
+      narrClock += dtReal;
+      if (narrClock > 300) {
+        narrClock = 0;
+        const n = app.view && app.view.narrate ? app.view.narrate() : null;
+        if (n) {
+          if ($('#narrator').innerHTML !== n.html) $('#narrator').innerHTML = n.html;
+          if (n.key !== srKey) { srKey = n.key; $('#sr-live').textContent = n.html.replace(/<[^>]*>/g, ''); }
+        } else $('#narrator').innerHTML = '';
+      }
+      meterClock += dtReal; renderMeters(false);
+    } catch (e) { if (!frame.failed) { frame.failed = true; console.error(e); } }
+    requestAnimationFrame(frame);
+  }
+  $('#speed').addEventListener('change', (e) => { app.mult = parseFloat(e.target.value); });
+  $('#btn-pause').addEventListener('click', () => setPaused(!app.paused));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'p' && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement) && !(e.target instanceof HTMLSelectElement)) setPaused(!app.paused);
+  });
+
+  function start(lesson, opts) {
+    runner = Lesson.createRunner(Object.assign({ lesson, panel, progress: $('#progress'), host, inheritKeys: ['view', 'viewOpts', 'speed', 'meters', 'clock'] }, opts || {}));
+    BL.runner = runner;
+    runner.goto(0, 0);
+    requestAnimationFrame(frame);
+    return runner;
+  }
+
+  const BL = window.BL = {
+    app, views, $, clamp, htmlEl, fmt, perUL, pct1, cap, clockText, rng, TYPES, NAMES,
+    setSim, startRun, finishRun, fastFinish, mountView, hotspots, setSide, reportHTML, setPaused, start,
+    runner: null,
+  };
+  window.__bloodsim = { app, BL, goto: (s, k) => runner.goto(s, k), runner: () => runner, finishRun: () => fastFinish() };
+})();
+
+</script>
+<script>
+/* BloodSim views. Each view draws on the shared canvas from the model's state:
+ *   field    a blood smear at low power: red cells, platelets and a few white cells to find
+ *   lineup   the five white cells side by side at high power
+ *   bench    a patch of tissue beside a small vessel, with one problem and the cells sent to it
+ *   flow     reserve → blood → tissues for the five cells, with the count as a lab report
+ *   scope    one white cell at a time under oil, for the count of 100
+ *   reports  lab reports to read
+ * Cells are painted as they look after Wright's stain, to scale with a red cell. */
+(function () {
+  'use strict';
+  const { app, clamp, fmt, perUL, pct1, cap, hotspots, setSide, reportHTML, clockText } = BL;
+  const { Blood, Bench, rng, TYPES, NAMES, CELL, RBC_PER_UL, DAY } = BloodSim;
+  const TAU = Math.PI * 2;
+
+  // =========================================================================
+  // Painting cells. R is the radius of a red cell in pixels; every cell is drawn to that scale.
+  // =========================================================================
+  const SIZE = { rbc: 1, neut: 1.7, eos: 1.75, baso: 1.5, lymph: 1.18, mono: 2.15, macro: 2.9 };
+  const NUC = '#4b2d85';
+  function blob(c, r, rand, wob) {
+    const p1 = rand() * TAU, p2 = rand() * TAU;
+    c.beginPath();
+    for (let i = 0; i <= 48; i++) {
+      const a = i / 48 * TAU, rr = r * (1 + wob * Math.sin(3 * a + p1) + 0.6 * wob * Math.sin(5 * a + p2));
+      if (i) c.lineTo(rr * Math.cos(a), rr * Math.sin(a)); else c.moveTo(rr * Math.cos(a), rr * Math.sin(a));
+    }
+    c.closePath();
+  }
+  function granules(c, n, r, size, colors, rand) {
+    for (let i = 0; i < n; i++) {
+      const a = rand() * TAU, d = Math.sqrt(rand()) * (r - size);
+      c.fillStyle = colors[Math.floor(rand() * colors.length)];
+      c.beginPath(); c.arc(d * Math.cos(a), d * Math.sin(a), size * (0.8 + 0.4 * rand()), 0, TAU); c.fill();
+    }
+  }
+  // Lobes of a nucleus strung along an arc, joined by thin strands.
+  function lobes(c, r, k, rand, fill) {
+    const ring = k === 2 ? 0.36 * r : 0.43 * r, step = k === 2 ? Math.PI : (1.05 + 0.25 * rand()), a0 = rand() * TAU, pts = [];
+    for (let i = 0; i < k; i++) pts.push([ring * Math.cos(a0 + i * step), ring * Math.sin(a0 + i * step)]);
+    c.strokeStyle = fill; c.lineWidth = Math.max(1, 0.075 * r); c.lineCap = 'round';
+    c.beginPath(); pts.forEach((p, i) => (i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1]))); c.stroke();
+    c.fillStyle = fill;
+    for (const p of pts) { c.beginPath(); c.ellipse(p[0], p[1], r * (k === 2 ? 0.36 : 0.27 + 0.06 * rand()), r * (k === 2 ? 0.3 : 0.23 + 0.05 * rand()), rand() * TAU, 0, TAU); c.fill(); }
+  }
+  function paintCell(c, type, R, seed) {
+    const rand = rng((seed * 2654435761 + type.length * 97 + type.charCodeAt(0)) >>> 0), r = SIZE[type] * R;
+    c.save();
+    c.rotate(rand() * TAU);
+    c.lineWidth = Math.max(0.6, R * 0.04);
+    if (type === 'rbc') {
+      const g = c.createRadialGradient(0, 0, 0, 0, 0, r);
+      g.addColorStop(0, '#f8e0d9'); g.addColorStop(0.36, '#f1c0b6'); g.addColorStop(0.74, '#e8978c'); g.addColorStop(1, '#df8479');
+      blob(c, r * 0.97, rand, 0.025); c.fillStyle = g; c.fill(); c.strokeStyle = 'rgba(186,98,92,.55)'; c.stroke();
+    } else if (type === 'neut') {
+      blob(c, r, rand, 0.03); c.fillStyle = '#f8e6e6'; c.fill(); c.strokeStyle = 'rgba(160,110,135,.6)'; c.stroke();
+      c.save(); c.clip(); granules(c, Math.round(70), r, r * 0.032, ['rgba(178,118,170,.55)', 'rgba(200,140,170,.5)'], rand); c.restore();
+      lobes(c, r, 3 + Math.floor(rand() * 3), rand, NUC);
+    } else if (type === 'eos') {
+      blob(c, r, rand, 0.03); c.fillStyle = '#f5c9ae'; c.fill(); c.strokeStyle = 'rgba(170,95,60,.6)'; c.stroke();
+      c.save(); c.clip(); granules(c, 95, r, r * 0.085, ['#e2552b', '#d9481f', '#ec6a3a'], rand); c.restore();
+      lobes(c, r, 2, rand, NUC);
+      granules(c, 7, r * 0.8, r * 0.08, ['#e2552b', '#ec6a3a'], rand);
+    } else if (type === 'baso') {
+      blob(c, r, rand, 0.03); c.fillStyle = '#eadcf1'; c.fill(); c.strokeStyle = 'rgba(90,60,130,.6)'; c.stroke();
+      lobes(c, r, 2, rand, '#8367b3');
+      c.save(); blob(c, r, rand, 0.03); c.clip(); granules(c, 46, r, r * 0.125, ['#2a1a63', '#3a2380', '#241456'], rand); c.restore();
+    } else if (type === 'lymph') {
+      blob(c, r, rand, 0.025); c.fillStyle = '#9ec0ec'; c.fill(); c.strokeStyle = 'rgba(70,100,160,.6)'; c.stroke();
+      c.fillStyle = '#3f2672'; c.beginPath(); c.arc(r * 0.09, 0, r * 0.83, 0, TAU); c.fill();
+      c.save(); c.beginPath(); c.arc(r * 0.09, 0, r * 0.83, 0, TAU); c.clip(); granules(c, 14, r * 0.8, r * 0.1, ['rgba(40,20,80,.5)', 'rgba(95,70,150,.35)'], rand); c.restore();
+    } else {          // monocyte, and the macrophage it grows into
+      const macro = type === 'macro';
+      blob(c, r, rand, macro ? 0.09 : 0.045); c.fillStyle = macro ? '#c3cbdc' : '#b6c1d8'; c.fill(); c.strokeStyle = 'rgba(85,100,135,.65)'; c.stroke();
+      c.save(); c.clip();
+      granules(c, 40, r, r * 0.02, ['rgba(110,120,160,.35)'], rand);
+      granules(c, macro ? 9 : 4, r, r * (macro ? 0.1 : 0.075), ['rgba(250,250,255,.85)'], rand);
+      c.restore();
+      const a0 = rand() * TAU;
+      c.strokeStyle = '#7a5fb0'; c.lineCap = 'round'; c.lineWidth = r * (macro ? 0.42 : 0.6);
+      c.beginPath(); c.arc(r * 0.06, 0, r * (macro ? 0.3 : 0.34), a0, a0 + 3.75); c.stroke();
+      c.strokeStyle = 'rgba(60,40,110,.35)'; c.lineWidth = r * 0.08;
+      c.beginPath(); c.arc(r * 0.06, 0, r * 0.34, a0 + 0.3, a0 + 3.4); c.stroke();
+    }
+    c.restore();
+  }
+  // Cells are painted once into small off-screen pictures and stamped from there.
+  const sprites = new Map();
+  function sprite(type, R, seed) {
+    const dpr = window.devicePixelRatio || 1, key = `${type}|${R}|${seed}|${dpr}`;
+    let s = sprites.get(key);
+    if (!s) {
+      if (sprites.size > 900) sprites.clear();
+      const half = Math.ceil(SIZE[type] * R * 1.12 + 2), cv = document.createElement('canvas');
+      cv.width = cv.height = Math.ceil(2 * half * dpr);
+      const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, half * dpr, half * dpr);
+      paintCell(c, type, R, seed);
+      s = { cv, half }; sprites.set(key, s);
+    }
+    return s;
+  }
+  function stamp(c, type, x, y, R, seed, alpha) {
+    const s = sprite(type, R, seed);
+    if (alpha != null && alpha < 1) { c.globalAlpha = Math.max(0, alpha); c.drawImage(s.cv, x - s.half, y - s.half, 2 * s.half, 2 * s.half); c.globalAlpha = 1; }
+    else c.drawImage(s.cv, x - s.half, y - s.half, 2 * s.half, 2 * s.half);
+  }
+  // A small picture of a cell for buttons and tables.
+  const icons = {};
+  BL.icon = (type, px) => {
+    px = px || 26;
+    const key = type + px;
+    if (!icons[key]) {
+      const cv = document.createElement('canvas'); cv.width = cv.height = px * 2;
+      const c = cv.getContext('2d'); c.setTransform(2, 0, 0, 2, px, px);
+      paintCell(c, type, (px / 2 - 1) / SIZE[type], 3);
+      icons[key] = cv.toDataURL();
+    }
+    return `<img src="${icons[key]}" width="${px}" height="${px}" alt="">`;
+  };
+  const label = (c, text, x, y, o) => { o = o || {}; c.font = `${o.weight || 400} ${o.size || 12}px system-ui, sans-serif`; c.textAlign = o.align || 'center'; c.textBaseline = o.base || 'middle'; if (o.halo) { c.lineWidth = 3; c.strokeStyle = o.halo; c.strokeText(text, x, y); } c.fillStyle = o.color || '#5f6675'; c.fillText(text, x, y); };
+  const poisson = (mean, rand) => { const L = Math.exp(-mean); let k = 0, p = 1; do { k++; p *= rand(); } while (p > L); return k - 1; };
+
+  // =========================================================================
+  // field: a smear at low power. Find the cells that have a nucleus.
+  // =========================================================================
+  BL.views.field = function () {
+    const R = 6, found = new Set();
+    let built = null, picture = null, msg = null, types = null;
+    const self = { cells: [], found, misses: 0, rbcCount: 0 };
+    function build(W, H) {
+      const rand = rng(app.seed * 7919 + 13), rbcs = [], sx = 2.16 * R, sy = sx * 0.87;
+      for (let j = 0, y = R + 2; y < H - R; j++, y += sy) for (let x = R + 2 + (j % 2) * sx / 2; x < W - R; x += sx) {
+        if (rand() < 0.1) { rand(); rand(); continue; }
+        rbcs.push({ x: x + (rand() - 0.5) * 0.3 * R, y: y + (rand() - 0.5) * 0.3 * R, v: Math.floor(rand() * 4) });
+      }
+      // how many white cells: what the blood gives for this many red cells (a field that holds 3 to 5)
+      const blood = new Blood(), mean = rbcs.length * blood.total / RBC_PER_UL;
+      if (!types) { let n; do { n = poisson(mean, rand); } while (n < 3 || n > 5); types = blood.cells(n, rand); }
+      const cells = [];
+      for (const type of types) {
+        let x, y, tries = 0;
+        do { x = 60 + rand() * (W - 120); y = 50 + rand() * (H - 100); } while (tries++ < 200 && cells.some(k => Math.hypot(k.x - x, k.y - y) < 110));
+        cells.push({ type, x, y, seed: Math.floor(rand() * 1e6), r: SIZE[type] * R });
+      }
+      const keep = rbcs.filter(b => !cells.some(k => Math.hypot(k.x - b.x, k.y - b.y) < k.r + R * 0.75));
+      const platelets = [];
+      for (let i = 0; i < keep.length / 20; i++) platelets.push({ x: rand() * W, y: rand() * H, n: 1 + Math.floor(rand() * 3) });
+      const dpr = window.devicePixelRatio || 1;
+      picture = document.createElement('canvas'); picture.width = W * dpr; picture.height = H * dpr;
+      const c = picture.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
+      c.fillStyle = '#fbf7f1'; c.fillRect(0, 0, W, H);
+      for (const b of keep) stamp(c, 'rbc', b.x, b.y, R, b.v);
+      c.fillStyle = 'rgba(120,80,170,.8)';
+      for (const p of platelets) for (let i = 0; i < p.n; i++) { c.beginPath(); c.arc(p.x + i * 2.4, p.y + (i % 2) * 2, 1.5, 0, TAU); c.fill(); }
+      for (const k of cells) stamp(c, k.type, k.x, k.y, R, k.seed);
+      self.cells = cells; self.rbcs = keep; self.rbcCount = keep.length; self.platelets = platelets;
+      built = `${W}x${H}`;
+      hotspots(cells.map((k, i) => ({ x: k.x, y: k.y, r: k.r + 7, label: 'A cell with a nucleus', run: () => self.onCell(i) }))
+        .concat(keep.filter((b, i) => i % 577 === 5).map(b => ({ x: b.x, y: b.y, r: R + 2, label: 'A cell with no nucleus', run: () => self.onOther('rbc') }))));
+    }
+    self.onCell = (i) => { found.add(i); msg = null; };
+    self.onOther = (what) => { self.misses++; msg = what === 'platelet' ? 'Those purple specks are <b>platelets</b>: fragments of a cell, with no nucleus. Look for something larger than a red cell.' : 'That is a <b>red blood cell</b>: a pink disc with a pale center and no nucleus. Look for a cell with something purple inside.'; };
+    self.click = (x, y) => {
+      const i = self.cells.findIndex(k => Math.hypot(k.x - x, k.y - y) < k.r + 7);
+      if (i >= 0) return self.onCell(i);
+      if (self.platelets.some(p => Math.hypot(p.x - x, p.y - y) < 6) && !self.rbcs.some(b => Math.hypot(b.x - x, b.y - y) < R * 0.8)) return self.onOther('platelet');
+      if (self.rbcs.some(b => Math.hypot(b.x - x, b.y - y) < R * 1.1)) self.onOther('rbc');
+    };
+    self.draw = (c, W, H) => {
+      if (built !== `${W}x${H}`) build(W, H);
+      c.drawImage(picture, 0, 0, W, H);
+      for (const i of found) { const k = self.cells[i]; c.strokeStyle = '#1e7a45'; c.lineWidth = 2.5; c.beginPath(); c.arc(k.x, k.y, k.r + 7, 0, TAU); c.stroke(); }
+    };
+    self.narrate = () => {
+      const n = self.cells.length;
+      if (msg) return { key: 'miss' + self.misses, html: msg };
+      if (found.size === n) return { key: 'all', html: `All ${n} found, among about ${fmt(Math.round(self.rbcCount / 100) * 100)} red cells. Blood holds roughly <b>700 red cells for every white cell</b>.` };
+      return { key: 'f' + found.size, html: `Cells with a nucleus found: <b>${found.size} of ${n}</b>.` };
+    };
+    return self;
+  };
+
+  // =========================================================================
+  // lineup: the five white cells at high power, lettered, each beside a red cell for scale
+  // =========================================================================
+  BL.views.lineup = function (o) {
+    const rand = rng(app.seed * 31 + 7), order = TYPES.slice();
+    for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
+    const self = { order, named: (o && o.named) || {} };
+    self.draw = (c, W, H) => {
+      c.fillStyle = '#fbf7f1'; c.fillRect(0, 0, W, H);
+      const R = clamp(Math.floor(W / 30), 16, 30), gap = W / 5, y = H * 0.44;
+      order.forEach((t, i) => {
+        const x = gap * (i + 0.5) - R * 0.6;
+        stamp(c, 'rbc', x + SIZE[t] * R + R * 0.9, y + R * 1.5, R, i);
+        stamp(c, t, x - R * 0.3, y, R, 11 + i);
+        const L = 'ABCDE'[i];
+        label(c, L, x - R * 0.3, y + R * 3.1, { size: 20, weight: 700, color: '#1f2430' });
+        if (self.named[t]) label(c, cap(NAMES[t]), x - R * 0.3, y + R * 3.1 + 24, { size: 14, weight: 600, color: '#1e7a45' });
+      });
+      label(c, 'The pink disc beside each one is a red blood cell, for scale (about 7.5 µm across).', W / 2, H - 22, { size: 13 });
+    };
+    self.letter = (t) => 'ABCDE'[order.indexOf(t)];
+    return self;
+  };
+
+  // =========================================================================
+  // bench: tissue beside a vessel; one problem; the cells the student sends
+  // =========================================================================
+  const DRAWN_PER = { neut: 300, mono: 150, macro: 200, eos: 100, baso: 6, lymph: 400 };
+  BL.views.bench = function (o) {
+    const problem = o.problem, R = 5.5, rand = rng(app.seed + 101);
+    const stream = [], agents = [], props = [], specks = [], puffs = [];
+    let W = 0, H = 0, vh = 64, lining = null, wormPhase = 0, lastSim = null;
+    const self = { problem, agents, props };
+    const vTop = 22;
+    const wbcType = () => { let u = rand() * 7000; for (const k of TYPES) { if (u < CELL[k].n0) return k; u -= CELL[k].n0; } return 'neut'; };
+    const centre = () => ({ x: W / 2, y: vTop + vh + (H - vTop - vh) * (problem === 'virus' ? 0.4 : 0.52) });
+    const gauss = () => (rand() + rand() + rand() - 1.5) / 1.5;
+    function wormPoint(u) { const cx = centre(); return { x: cx.x + (u - 0.5) * Math.min(460, W - 120), y: cx.y + 22 * Math.sin(u * 7 + wormPhase) }; }
+    function target(a) {
+      const cx = centre(), b = app.sim;
+      if (problem === 'worm' && a.slot != null) { const p = wormPoint(a.slot); return { x: p.x, y: p.y + (a.below ? 15 : -15) }; }
+      if (problem === 'virus' && a.type === 'lymph' && a.clone && lining) { const inf = lining.filter(k => k.infected); if (inf.length) { const k = inf[Math.floor(rand() * inf.length)]; return { x: k.x, y: k.y - 4 }; } }
+      if ((problem === 'bacteria' || problem === 'debris') && props.length && (a.type === 'neut' || a.type === 'macro' || a.type === 'mono')) { const p = props[Math.floor(rand() * props.length)]; return { x: p.x + gauss() * 12, y: p.y + gauss() * 12 }; }
+      if (problem === 'pollen') { const g = self.grains[Math.floor(rand() * self.grains.length)]; return { x: g.x + gauss() * 26, y: g.y + gauss() * 22 }; }
+      void b;
+      return { x: cx.x + gauss() * Math.min(190, W * 0.24), y: cx.y + gauss() * 46 };
+    }
+    function reconcile(type, want) {
+      const mine = agents.filter(a => a.type === type && !a.dying && !a.clone);
+      want = Math.min(55, want);
+      for (let i = mine.length; i < want; i++) {
+        const a = { type, seed: Math.floor(rand() * 5), x: 0, y: vTop + vh - 6, age: 0, fade: 0, think: 0 };
+        if (problem === 'worm' && type !== 'lymph' && type !== 'baso') { a.slot = rand(); a.below = rand() < 0.5; }
+        const t = target(a); a.tx = t.x; a.ty = t.y; a.x = clamp(t.x + gauss() * 70, 20, W - 20);
+        agents.push(a);
+      }
+      for (let i = want; i < mine.length; i++) mine[i - want].dying = true;
+    }
+    function ensureProps(want, spread) {
+      const cx = centre();
+      while (props.length < want) props.push({ x: cx.x + gauss() * spread, y: cx.y + gauss() * 52, a: rand() * TAU, s: rand() });
+      while (props.length > want) {
+        // the one that goes is the one nearest a phagocyte
+        const eaters = agents.filter(a => !a.dying && (a.type === 'neut' || a.type === 'macro'));
+        let best = Math.floor(rand() * props.length);
+        if (eaters.length) { const e = eaters[Math.floor(rand() * eaters.length)]; let d = 1e9; props.forEach((p, i) => { const q = Math.hypot(p.x - e.x, p.y - e.y); if (q < d) { d = q; best = i; } }); }
+        props.splice(best, 1);
+      }
+    }
+    self.draw = (c, w, h, dt) => {
+      const b = app.sim instanceof Bench ? app.sim : null;
+      W = w; H = h;
+      const s = dt / 1000;
+      vh = 64 + 34 * (b ? b.leak : 0);
+      if (!self.grains || (b && lastSim !== b)) {            // a new run: start the picture again
+        agents.length = 0; props.length = 0; specks.length = 0; puffs.length = 0; lining = null; lastSim = b;
+        const cx = centre();
+        self.grains = Array.from({ length: 9 }, (_, i) => ({ x: cx.x + (i - 4) * Math.min(56, W / 14) + gauss() * 10, y: cx.y + gauss() * 34, a: rand() * TAU }));
+      }
+      // tissue
+      c.fillStyle = '#fbf1e4'; c.fillRect(0, 0, W, H);
+      c.fillStyle = 'rgba(201,169,131,.11)';
+      const tr = rng(4);       // the tissue's own cells, faint, in the same places every frame
+      for (let i = 0; i < 34; i++) { const x = tr() * W, y = vTop + 98 + 30 + tr() * Math.max(40, H - vTop - 98 - 50); c.beginPath(); c.ellipse(x, y, 30 + tr() * 14, 17 + tr() * 8, tr() * 3, 0, TAU); c.fill(); }
+      if (b && b.leak > 0.01) { c.fillStyle = `rgba(120,170,225,${0.3 * b.leak})`; c.fillRect(0, vTop + vh, W, H); }
+      // the vessel, with blood moving through it
+      c.fillStyle = '#f6dcd8'; c.fillRect(0, vTop, W, vh);
+      if (!stream.length) { for (let i = 0; i < 70; i++) stream.push({ type: 'rbc', x: rand() * 1400, lane: rand(), v: 55 + rand() * 30, seed: i % 4 }); for (let i = 0; i < 10; i++) stream.push({ type: wbcType(), x: rand() * 1400, lane: rand() < 0.5 ? 0.12 : 0.88, v: 20 + rand() * 12, seed: i % 5 }); }
+      for (const p of stream) {
+        p.x += p.v * s;
+        if (p.x > W + 30) { p.x = -30; if (p.type !== 'rbc') p.type = wbcType(); }
+        stamp(c, p.type, p.x, vTop + 9 + p.lane * (vh - 18), R, p.seed);
+      }
+      c.strokeStyle = '#d08d86'; c.lineWidth = 4; c.setLineDash(b && b.leak > 0.25 ? [26, 9] : []);
+      c.beginPath(); c.moveTo(0, vTop); c.lineTo(W, vTop); c.moveTo(0, vTop + vh); c.lineTo(W, vTop + vh); c.stroke(); c.setLineDash([]);
+      label(c, 'a small blood vessel', 12, vTop - 10, { align: 'left', size: 12 });
+      label(c, 'tissue', 12, vTop + vh + 16, { align: 'left', size: 12 });
+      const cx = centre();
+      // ----- the problem
+      if (problem === 'bacteria' || problem === 'debris') {
+        if (b) ensureProps(problem === 'bacteria' ? (b.bacteria >= 1 ? Math.round(14 * Math.log10(b.bacteria + 1)) : 0) : 0, Math.min(170, W * 0.22));
+        for (const p of props) { c.save(); c.translate(p.x + Math.sin(p.a + performance.now() / 600) * 1.2, p.y); c.rotate(p.a); c.fillStyle = '#b8322a'; c.beginPath(); c.roundRect(-4, -1.6, 8, 3.2, 1.6); c.fill(); c.restore(); }
+      }
+      // dead cells: wherever the model has debris
+      if (b) {
+        const want = Math.min(150, Math.round(b.debris / 380));
+        while (specks.length < want) specks.push({ x: cx.x + gauss() * Math.min(190, W * 0.24), y: cx.y + gauss() * 55, r: 3 + rand() * 3, a: rand() * TAU });
+        while (specks.length > want) {
+          const eaters = agents.filter(a => a.type === 'macro' && !a.dying); let best = Math.floor(rand() * specks.length);
+          if (eaters.length) { const e = eaters[Math.floor(rand() * eaters.length)]; let d = 1e9; specks.forEach((p, i) => { const q = Math.hypot(p.x - e.x, p.y - e.y); if (q < d) { d = q; best = i; } }); }
+          specks.splice(best, 1);
+        }
+        for (const p of specks) { c.fillStyle = 'rgba(150,138,122,.85)'; c.beginPath(); c.ellipse(p.x, p.y, p.r * 1.3, p.r * 0.8, p.a, 0, TAU); c.fill(); c.fillStyle = 'rgba(95,70,140,.55)'; c.beginPath(); c.arc(p.x, p.y, p.r * 0.4, 0, TAU); c.fill(); }
+      }
+      if (problem === 'worm') {
+        const alive = !b || b.worm > 0;
+        if (alive) wormPhase += s * 1.4;
+        const health = b ? b.worm : 1;
+        c.lineCap = 'round'; c.lineJoin = 'round';
+        for (const [wd, col] of [[19, alive ? '#a9794f' : '#8d8a84'], [15, alive ? `rgb(${226 - 40 * (1 - health)},${180 - 30 * (1 - health)},${138 - 10 * (1 - health)})` : '#bdb9b1']]) {
+          c.strokeStyle = col; c.lineWidth = wd; c.beginPath();
+          for (let i = 0; i <= 60; i++) { const p = wormPoint(i / 60); if (i) c.lineTo(p.x, p.y); else c.moveTo(p.x, p.y); }
+          c.stroke();
+        }
+        c.strokeStyle = 'rgba(120,80,40,.35)'; c.lineWidth = 1;
+        for (let i = 2; i < 60; i += 2) { const p = wormPoint(i / 60); c.beginPath(); c.moveTo(p.x, p.y - 7); c.lineTo(p.x, p.y + 7); c.stroke(); }
+        // damage to its surface, as the model's "intact" falls
+        const holes = Math.round((1 - health) * 46), hr = rng(77);
+        c.fillStyle = '#5b2a16';
+        for (let i = 0; i < holes; i++) { const p = wormPoint(0.03 + 0.94 * hr()); c.beginPath(); c.arc(p.x + (hr() - 0.5) * 6, p.y + (hr() - 0.5) * 12, 2 + hr() * 2.4, 0, TAU); c.fill(); }
+        label(c, alive ? 'the larva of a parasitic worm, about 1 mm long (a white cell is about 0.015 mm)' : 'the larva is dead', cx.x, cx.y + 62, { size: 12, halo: '#fbf1e4' });
+        if (b && b.degranulating && rand() < 0.5) { const at = agents.filter(a => a.type === 'eos' && a.slot != null && Math.hypot(a.x - a.tx, a.y - a.ty) < 6); if (at.length) { const a = at[Math.floor(rand() * at.length)]; puffs.push({ x: a.x, y: a.y, vx: gauss() * 8, vy: (a.below ? -1 : 1) * (8 + rand() * 8), life: 1, col: '#e2552b' }); } }
+      }
+      if (problem === 'pollen') {
+        for (const g of self.grains) {
+          c.save(); c.translate(g.x, g.y); c.rotate(g.a);
+          c.fillStyle = '#e5b92e'; c.strokeStyle = '#a57d0d'; c.lineWidth = 1;
+          c.beginPath(); for (let i = 0; i < 24; i++) { const a = i / 24 * TAU, rr = i % 2 ? 11 : 7.5; if (i) c.lineTo(rr * Math.cos(a), rr * Math.sin(a)); else c.moveTo(rr * Math.cos(a), rr * Math.sin(a)); } c.closePath(); c.fill(); c.stroke();
+          c.restore();
+        }
+        label(c, 'grass pollen on the lining of the nose', cx.x, cx.y + 70, { size: 12, halo: '#fbf1e4' });
+        if (b && b.histamine > 0.02) { const src = agents.filter(a => a.type === 'baso'); if (src.length && rand() < Math.min(1, b.histamine)) { const a = src[Math.floor(rand() * src.length)]; puffs.push({ x: a.x, y: a.y, vx: gauss() * 26, vy: -14 - rand() * 26, life: 1, col: '#d63c8a' }); } }
+      }
+      if (problem === 'virus') {
+        const cols = Math.max(8, Math.min(16, Math.floor((W - 80) / 46))), rows = 3, cw = (W - 80) / cols, ch = 30, y0 = H - 22 - rows * ch;
+        if (!lining || lining.length !== cols * rows) {
+          lining = [];
+          for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) lining.push({ x: 40 + (i + 0.5) * cw, y: y0 + (j + 0.5) * ch, i, j, rank: 0 });
+          const start = lining[Math.floor(cols / 2) + cols];
+          lining.forEach(k => { k.rank = Math.hypot(k.i - start.i, (k.j - start.j) * 1.4) + rand() * 1.6; });
+          lining.slice().sort((a, b2) => a.rank - b2.rank).forEach((k, n) => { k.order = n; });
+        }
+        const nInf = b ? Math.round(b.infected / 1000 * lining.length) + (b.infected >= 1 && b.infected < 1000 / lining.length / 2 ? 1 : 0) : 1;
+        for (const k of lining) {
+          k.infected = k.order < nInf;
+          c.fillStyle = k.infected ? '#f3c58a' : '#f6e2c8'; c.strokeStyle = k.infected ? '#c56a12' : '#c9a983'; c.lineWidth = 1.2;
+          c.beginPath(); c.roundRect(k.x - cw / 2 + 2, k.y - ch / 2 + 2, cw - 4, ch - 4, 6); c.fill(); c.stroke();
+          c.fillStyle = 'rgba(120,90,150,.5)'; c.beginPath(); c.ellipse(k.x, k.y, 6, 4.5, 0, 0, TAU); c.fill();
+          if (k.infected) { c.fillStyle = '#b8322a'; for (let n = 0; n < 5; n++) { c.beginPath(); c.arc(k.x - 12 + n * 6, k.y + (n % 2 ? 7 : -7), 1.7, 0, TAU); c.fill(); } }
+        }
+        label(c, 'cells lining the airway (each drawn cell stands for about ' + Math.round(1000 / lining.length) + '); red dots: virus being made inside', W / 2, y0 - 10, { size: 12, halo: '#fbf1e4' });
+      }
+      // ----- the cells that were sent
+      if (b) {
+        for (const t of ['neut', 'mono', 'eos', 'baso']) reconcile(t, Math.round(b.site[t] / DRAWN_PER[t] + (b.site[t] > 0.5 ? 0.5 : 0)));
+        reconcile('macro', Math.round(b.macrophages / DRAWN_PER.macro + (b.macrophages > 20 ? 0.5 : 0)));
+        reconcile('lymph', Math.round(b.site.lymph / DRAWN_PER.lymph));
+        if (problem === 'virus') { const want = b.clone >= 1 ? Math.round(1 + 4.5 * Math.log10(b.clone)) : 0; const have = agents.filter(a => a.clone && !a.dying); for (let i = have.length; i < want; i++) { const a = { type: 'lymph', clone: true, seed: i % 5, x: cx.x + gauss() * 150, y: vTop + vh - 6, age: 0, fade: 0, think: 0 }; const t = target(a); a.tx = t.x; a.ty = t.y; agents.push(a); } }
+      }
+      for (let i = agents.length - 1; i >= 0; i--) {
+        const a = agents[i];
+        a.age += s; a.think -= s;
+        if (a.dying) { a.fade -= s * 1.5; if (a.fade <= 0) { agents.splice(i, 1); continue; } } else a.fade = Math.min(1, a.fade + s * 2.5);
+        if (a.think <= 0 && !(a.slot != null)) { a.think = 1.5 + rand() * 2.5; if (a.type === 'lymph' && !a.clone) { a.tx = a.x + 60 + rand() * 60; a.ty = cx.y + gauss() * 50; } else { const t = target(a); a.tx = t.x; a.ty = t.y; } }
+        if (a.slot != null) { const t = target(a); a.tx = t.x; a.ty = t.y; }
+        const dx = a.tx - a.x, dy = a.ty - a.y, d = Math.hypot(dx, dy), sp = 70 * s;
+        if (d > 1) { a.x += dx / d * Math.min(sp, d); a.y += dy / d * Math.min(sp, d); }
+        if (a.type === 'lymph' && !a.clone && a.x > W + 20) a.dying = true;
+        stamp(c, a.type, a.x, a.y, R, a.seed, a.fade);
+      }
+      for (let i = puffs.length - 1; i >= 0; i--) { const p = puffs[i]; p.life -= s * 0.8; if (p.life <= 0) { puffs.splice(i, 1); continue; } p.x += p.vx * s; p.y += p.vy * s; c.globalAlpha = p.life; c.fillStyle = p.col; c.beginPath(); c.arc(p.x, p.y, 2.2, 0, TAU); c.fill(); c.globalAlpha = 1; }
+      if (b && b.leak > 0.3) label(c, 'the vessel has widened and is leaking fluid into the tissue: swelling', W - 14, vTop + vh + 16, { align: 'right', size: 12, color: '#23497f', halo: '#fbf1e4' });
+    };
+    self.narrate = () => {
+      const b = app.sim instanceof Bench ? app.sim : null;
+      if (!b || !b.sent) return { key: 'idle', html: 'Blood is moving through the vessel. No white cell has been called out yet.' };
+      const t = b.sent, name = NAMES[t] + 's', when = clockText(b.t, b.hours > 100);
+      const there = t === 'mono' ? `<b>${fmt(b.site.mono)}</b> monocytes and <b>${fmt(b.macrophages)}</b> macrophages grown from them` : t === 'lymph' && problem === 'virus' ? `<b>${fmt(b.clone)}</b> lymphocytes that can act against this virus` : `<b>${fmt(b.site[t])}</b> ${name}`;
+      const m = b.measure, what = problem === 'worm' ? `the larva is <b>${Math.round(100 * m.value)} %</b> intact` : problem === 'pollen' ? `swelling <b>${Math.round(100 * m.value)} %</b> of the worst` : `${m.label.toLowerCase().replace(' (of 1,000)', '')}: <b>${fmt(m.value)}</b>`;
+      return { key: `${problem}${t}${Math.floor(b.t / (b.hours / 6))}`, html: `${cap(when)}. At the site: ${there}; ${what}.` };
+    };
+    return self;
+  };
+
+  // =========================================================================
+  // flow: where the cells in the blood come from and go to, and the count as a lab report
+  // =========================================================================
+  BL.views.flow = function () {
+    const R = 4.6, rand = rng(app.seed + 55), agents = [], leaving = [];
+    let lastT = null, lastSim = null, sideClock = 1e9, slots = null, slotKey = '';
+    const self = { agents };
+    const SIDE = 396;
+    self.draw = (c, W, H, dt) => {
+      const b = app.sim instanceof Blood ? app.sim : null;
+      c.fillStyle = '#f6f5f0'; c.fillRect(0, 0, W, H);
+      if (!b) return;
+      const fresh = lastSim !== b;
+      if (fresh) { agents.length = 0; leaving.length = 0; lastSim = b; lastT = b.t; }
+      const simDt = Math.max(0, b.t - lastT); lastT = b.t;
+      const x0 = 12, x3 = W - SIDE - 20, wide = x3 - x0, y0 = 34, y1 = H - 12;
+      const A = { x: x0, w: wide * 0.25 }, B = { x: x0 + wide * 0.32, w: wide * 0.44 }, T = { x: x0 + wide * 0.83, w: wide * 0.17 };
+      const box = (r, top, bot, fill, line) => { c.fillStyle = fill; c.strokeStyle = line; c.lineWidth = 1.5; c.beginPath(); c.roundRect(r.x, top, r.w, bot - top, 10); c.fill(); c.stroke(); };
+      const split = y0 + (y1 - y0) * 0.72;
+      box(A, y0, split - 8, '#fbf3e6', '#c9a983'); box(A, split, y1, '#eef3e2', '#9db579');
+      box(B, y0, y1, '#f6dcd8', '#d08d86'); box(T, y0, y1, '#fbf1e4', '#c9a983');
+      label(c, 'Bone marrow', A.x + A.w / 2, y0 - 12, { size: 12, weight: 600, color: '#1f2430' });
+      label(c, 'Blood', B.x + B.w / 2, y0 - 12, { size: 12, weight: 600, color: '#1f2430' });
+      label(c, 'Tissues', T.x + T.w / 2, y0 - 12, { size: 12, weight: 600, color: '#1f2430' });
+      label(c, 'Lymph nodes', A.x + A.w / 2, split + 16, { size: 12, weight: 600, color: '#1f2430' });
+      label(c, 'and spleen', A.x + A.w / 2, split + 31, { size: 12, weight: 600, color: '#1f2430' });
+      if (y1 - split > 76) { label(c, 'where most', A.x + A.w / 2, split + 52, { size: 11.5 }); label(c, 'lymphocytes are', A.x + A.w / 2, split + 66, { size: 11.5 }); }
+      // the marrow's reserve, drawn at a scale that leaves room for it to grow
+      const cols = Math.max(4, Math.floor((A.w - 12) / 10.5)), rowsN = Math.max(4, Math.floor((split - 8 - y0 - 46) / 10.5));
+      const per = Math.max(100, Math.ceil(CELL.neut.reserve * CELL.neut.n0 * 1.6 / (cols * rowsN) / 50) * 50);
+      if (slotKey !== `${cols}x${rowsN}`) { slotKey = `${cols}x${rowsN}`; const r2 = rng(9); slots = []; for (let j = 0; j < rowsN; j++) for (let i = 0; i < cols; i++) slots.push({ i, j, k: r2() }); slots.sort((p, q) => p.k - q.k); }
+      let n = 0;
+      for (const t of ['neut', 'mono', 'eos', 'baso']) {
+        const want = Math.round(b.reserve[t] / per);
+        for (let i = 0; i < want && n < slots.length; i++, n++) { const sl = slots[n]; stamp(c, t, A.x + 11 + sl.i * 10.5, y0 + 12 + sl.j * 10.5, 2.9, sl.i % 3); }
+      }
+      label(c, 'finished cells, waiting', A.x + A.w / 2, split - 34, { size: 11, halo: '#fbf3e6' });
+      label(c, `1 drawn = ${fmt(per)} per µL`, A.x + A.w / 2, split - 20, { size: 11, halo: '#fbf3e6' });
+      // the blood: each cell drawn is 100 per microliter; a cell crosses in the time it spends in the blood
+      for (const t of TYPES) {
+        const want = Math.round(b.n[t] / 100), mine = agents.filter(a => a.type === t);
+        // on a fresh picture the cells are already spread along the road; after that, new ones enter at the left
+        for (let i = mine.length; i < want; i++) agents.push({ type: t, age: fresh ? rand() * CELL[t].tau : 0, lane: rand(), seed: Math.floor(rand() * 5) });
+        for (let i = want; i < mine.length; i++) mine[mine.length - 1 - (i - want)].age = 1e9;
+      }
+      for (let i = agents.length - 1; i >= 0; i--) {
+        const a = agents[i], tau = CELL[a.type].tau / (1 + CELL[a.type].gExit * b.call(a.type));
+        a.age += simDt;
+        if (a.age >= tau) { agents.splice(i, 1); if (a.age < 1e8) leaving.push({ type: a.type, x: T.x + 10 + rand() * (T.w - 20), y: y0 + 100 + a.lane * (y1 - y0 - 124), life: 1, seed: a.seed, back: a.type === 'lymph' }); continue; }
+        stamp(c, a.type, B.x + 10 + (a.age / tau) * (B.w - 20), y0 + 16 + a.lane * (y1 - y0 - 32), R, a.seed);
+      }
+      for (let i = leaving.length - 1; i >= 0; i--) { const p = leaving[i]; p.life -= dt / 1600; if (p.life <= 0) { leaving.splice(i, 1); continue; } stamp(c, p.type, p.x, p.y, R, p.seed, p.life); }
+      label(c, 'each cell drawn = 100 per µL', B.x + B.w / 2, y1 - 12, { size: 11, halo: '#f6dcd8' });
+      // arrows, as wide as the flow is large
+      const base = TYPES.filter(t => t !== 'lymph').reduce((s2, t) => s2 + CELL[t].n0 / CELL[t].tau, 0), rel = TYPES.filter(t => t !== 'lymph').reduce((s2, t) => s2 + b.flow.release[t], 0);
+      const arrow = (xa, xb, y, wd, col) => { c.strokeStyle = col; c.fillStyle = col; c.lineWidth = wd; c.lineCap = 'butt'; c.beginPath(); c.moveTo(xa, y); c.lineTo(xb - 8, y); c.stroke(); c.beginPath(); c.moveTo(xb, y); c.lineTo(xb - 10, y - wd / 2 - 4); c.lineTo(xb - 10, y + wd / 2 + 4); c.closePath(); c.fill(); };
+      arrow(A.x + A.w + 3, B.x - 3, y0 + (split - y0) * 0.45, clamp(5 * rel / base, 3, 26), '#b9895a');
+      arrow(A.x + A.w + 3, B.x - 3, (split + y1) / 2, clamp(5 * b.flow.release.lymph / (CELL.lymph.n0 / CELL.lymph.tau), 3, 22), '#7fa257');
+      const out = TYPES.reduce((s2, t) => s2 + b.flow.exit[t], 0), out0 = TYPES.reduce((s2, t) => s2 + CELL[t].n0 / CELL[t].tau, 0);
+      arrow(B.x + B.w + 3, T.x - 3, (y0 + y1) / 2, clamp(5 * out / out0, 3, 26), '#b9895a');
+      // who the tissues are calling for
+      const calling = TYPES.filter(t => b.call(t) > 0.08 && t !== 'baso' && t !== 'mono').concat(b.expansion() > 0.15 ? ['lymph'] : []);
+      if (calling.length) {
+        const ph = (performance.now() / 900) % 1;
+        c.strokeStyle = `rgba(224,164,0,${1 - ph})`; c.lineWidth = 2.5; c.beginPath(); c.arc(T.x + T.w / 2, y0 + 30, 6 + 20 * ph, 0, TAU); c.stroke();
+        label(c, calling[0] === 'lymph' ? 'a virus' : 'calling for', T.x + T.w / 2, y0 + 66, { size: 11.5, weight: 600, color: '#8a5a00' });
+        if (calling[0] !== 'lymph') label(c, NAMES[calling[0]] + 's', T.x + T.w / 2, y0 + 81, { size: 11.5, weight: 600, color: '#8a5a00' });
+      }
+      sideClock += dt;
+      if (sideClock > 250) {
+        sideClock = 0;
+        const days = b.t >= 72;
+        setSide(reportHTML(b.report(), { title: 'White cell count', when: app.reportClock === false ? '' : clockText(b.t - (app.zero || 0), days), before: app.before, icons: !app.before, tight: true, note: 'Flags: <b style="color:#b0352b">H</b> above and <b style="color:#2457a6">L</b> below the reference range. Reference, %: neutrophils 40–60, lymphocytes 20–40, monocytes 2–8, eosinophils 0–4, basophils 0–1.' }) + (app.flowNote ? `<div class="name" style="margin:0">${app.flowNote}</div>` : ''), 'wide');
+      }
+    };
+    return self;
+  };
+
+  // =========================================================================
+  // scope: one white cell in view at a time, as under the oil-immersion lens
+  // =========================================================================
+  BL.views.scope = function () {
+    let cur = null, around = [], shown = 0;
+    const self = {};
+    self.show = (type, seed) => {
+      const rand = rng(seed * 131 + 9);
+      cur = { type, seed }; around = []; shown = 0;
+      for (let i = 0; i < 26; i++) { const a = rand() * TAU, d = 3.4 + rand() * 9; const p = { x: d * Math.cos(a), y: d * Math.sin(a), v: Math.floor(rand() * 4) }; if (!around.some(q => Math.hypot(q.x - p.x, q.y - p.y) < 2.05)) around.push(p); }
+    };
+    self.current = () => cur;
+    self.draw = (c, W, H, dt) => {
+      const SIDE = 330, cx = (W - SIDE) / 2, cy = H / 2, rad = Math.min((W - SIDE) / 2, H / 2) - 8, R = rad / 9.5;
+      c.fillStyle = '#16181d'; c.fillRect(0, 0, W, H);
+      c.save(); c.beginPath(); c.arc(cx, cy, rad, 0, TAU); c.clip();
+      c.fillStyle = '#fbf7f1'; c.fillRect(0, 0, W, H);
+      if (cur) {
+        shown = Math.min(1, shown + dt / 220);
+        for (const p of around) stamp(c, 'rbc', cx + p.x * R, cy + p.y * R, R, p.v, shown);
+        stamp(c, cur.type, cx, cy, R, 1000 + cur.seed, shown);
+      }
+      c.restore();
+      c.strokeStyle = '#000'; c.lineWidth = 3; c.beginPath(); c.arc(cx, cy, rad, 0, TAU); c.stroke();
+    };
+    return self;
+  };
+
+  // reports: nothing to draw; the lesson fills the stage with lab reports
+  BL.views.reports = function () {
+    return { draw(c, W, H) { c.fillStyle = '#f6f5f0'; c.fillRect(0, 0, W, H); } };
+  };
+
+  Object.assign(BL, { paintCell, stamp, SIZE });
+})();
+
+</script>
+<script>
+/* BloodSim lesson: the white blood cell differential, in five short scenes (about 20 minutes),
+ * done before students make and count their own smear. See docs/BLOOD_MODULE.md. It stands on
+ * its own: it comes before ImmuneSim in the course and does not assume it. */
+(function () {
+  'use strict';
+  const { app, $, htmlEl, fmt, perUL, pct1, cap, setSim, startRun, setSide, reportHTML, icon, clockText } = BL;
+  const { Blood, Bench, tally, flags, binomAtLeast, binomRange, rng, TYPES, NAMES, CELL, REF, PROBLEMS, DAY } = BloodSim;
+
+  // ---------------------------------------------------------------- small helpers
+  const data = (c) => c.stepState().data;
+  const rec = () => BL.runner.runner.record;
+  const tables = () => (rec().tables = rec().tables || {});
+  const plural = (k) => NAMES[k] + 's';
+  const Plural = (k) => cap(NAMES[k]) + 's';
+  const nameBox = (html) => `<div class="name">${html}</div>`;
+  const bar = (x) => `<span class="bar"><i style="width:${Math.round(100 * Math.max(0, Math.min(1, x)))}%"></i></span>`;
+  // A prediction must be made before the experiment can be run.
+  const predict = (q) => Object.assign(q, { onCorrect: (c) => c.refresh() });
+  const unanswered = (c) => !c.stepState().answered;
+  // An opening guess: every option is accepted and recorded, and none is called right.
+  const guess = (prompt, options, fb) => ({ prompt, options: options.map(t => ({ t, ok: true, neutral: true, fb })), fixedOrder: true });
+  const oneIn = (p) => (p >= 0.4 ? 'about 1 count in 2' : `about 1 count in ${Math.round(1 / p)}`);
+
+  // A table in which each row is matched to one choice. o: {head, rows: [{key, html}], options: [[value, label]], answer(key),
+  // store (object kept with the record), onChange(key, right), hint(key, value)}
+  function matchTable(el, c, o) {
+    const t = htmlEl('table', { class: 'ptable' });
+    t.appendChild(htmlEl('tr', {}, `<th>${o.head[0]}</th><th style="width:${o.width || 34}%">${o.head[1]}</th>`));
+    const note = htmlEl('div', { class: 'status', role: 'status' });
+    for (const row of o.rows) {
+      const tr = htmlEl('tr', {}, `<td>${row.html}</td>`), td = htmlEl('td'), sel = htmlEl('select', { 'aria-label': row.label || row.key });
+      sel.appendChild(htmlEl('option', { value: '' }, 'Choose…'));
+      for (const [v, text] of o.options) sel.appendChild(htmlEl('option', { value: v }, text));
+      const mark = () => { const v = o.store[row.key]; sel.value = v || ''; td.className = !v ? '' : v === o.answer(row.key) ? 'right' : 'wrong'; };
+      sel.addEventListener('change', () => {
+        o.store[row.key] = sel.value; o.tries = (o.store._tries = (o.store._tries || 0) + 1);
+        mark();
+        const right = sel.value === o.answer(row.key);
+        note.innerHTML = right || !sel.value ? '' : (o.hint ? o.hint(row.key, sel.value) : 'Not that one. Look again.');
+        if (o.onChange) o.onChange(row.key, right);
+        if (o.rows.every(r => o.store[r.key] === o.answer(r.key))) c.complete();
+      });
+      mark();
+      td.appendChild(sel); tr.appendChild(td); t.appendChild(tr);
+    }
+    el.appendChild(t); el.appendChild(note);
+  }
+  const matched = (o, rows, answer) => rows.every(k => o[k] === answer(k));
+
+  // =========================================================================
+  // Scene 1 · A drop of blood
+  // =========================================================================
+  const FIELD = { caption: 'A blood smear after Wright\'s stain, at low power.' };
+  const LINEUP = { caption: 'The five kinds of white blood cell, at high power.', named: {} };
+  const DESCRIBE = {
+    neut: 'Nucleus in <b>3 to 5 lobes</b> joined by thin threads; pale pink cytoplasm with very fine granules',
+    lymph: '<b>Small</b>, about the size of a red cell. A round, dark nucleus fills almost all of it, inside a thin rim of pale blue',
+    mono: '<b>The largest.</b> Nucleus curved or folded, like a kidney bean; plenty of grey-blue cytoplasm',
+    eos: 'Nucleus in <b>two lobes</b>; cytoplasm packed with large <b>orange-red</b> granules',
+    baso: 'Large, <b>dark purple</b> granules that all but hide the nucleus',
+  };
+  const scene1 = {
+    id: 'smear', title: 'A drop of blood',
+    steps: [
+      {
+        title: 'What the stain shows', view: 'field', viewOpts: FIELD,
+        text: '<p>You are about to make a blood smear and count the white cells in it. First, see what you will be looking at.</p><p>This is a smear after <b>Wright\'s stain</b>, at low power. The stain colors the nucleus of a cell purple. Almost everything here is a <b>red blood cell</b>: a pink disc with a pale center and no nucleus.</p><p><b>Click every cell that has a nucleus.</b></p>',
+        status: (c) => { const v = c.view(); return v.cells && v.cells.length && v.found.size === v.cells.length ? `<b>All ${v.cells.length} found.</b> These are the white blood cells.` : 'They are larger than a red cell, with something purple inside. There are only a few.'; },
+        waitFor: (c) => { const v = c.view(); return !!(v.cells && v.cells.length && v.found.size === v.cells.length); },
+        onDone: (c) => { const v = c.view(); c.recordValue('field', { white: v.cells.length, red: Math.round(v.rbcCount / 100) * 100, misses: v.misses }); c.refresh(); },
+        waitHint: 'Find every cell with a nucleus to continue',
+      },
+      {
+        title: 'Few, and not at home',
+        text: (c) => { const f = c.record.values.field || { white: 4, red: 2600 }; return `<p>You found <b>${f.white}</b> white cells among about <b>${fmt(f.red)}</b> red cells. That is typical: blood carries roughly 700 red cells for each white cell.</p><p>Red cells do their work, carrying oxygen, without ever leaving the blood.</p>`; },
+        question: guess('Before you find out: where do you think <b>white</b> cells do most of their work?', ['In the blood, like red cells', 'In the tissues, outside the blood vessels', 'In the bone marrow, where they are made'], 'Keep your answer in mind. The next scene puts it to the test.'),
+      },
+      {
+        title: 'Five kinds', view: 'lineup', viewOpts: LINEUP,
+        text: '<p>At high power the white cells are not all alike. There are <b>five kinds</b>, and two things tell them apart: the <b>shape of the nucleus</b> and the <b>granules</b> (small packets) in the cytoplasm around it.</p><p>These are the descriptions from your lab handout. Find the cell each one describes.</p>',
+        extra(el, c) {
+          const store = (tables().lineup = tables().lineup || {}), v = c.view();
+          const sync = () => { for (const t of TYPES) LINEUP.named[t] = store[t] === v.letter(t); };
+          sync();
+          matchTable(el, c, {
+            head: ['Description', 'Cell'], width: 24, store, rows: TYPES.map(t => ({ key: t, label: Plural(t), html: `<b>${cap(NAMES[t])}.</b> ${DESCRIBE[t]}` })),
+            options: ['A', 'B', 'C', 'D', 'E'].map(L => [L, L]), answer: (t) => v.letter(t), onChange: sync,
+            hint: (t) => `Not that one. For the ${NAMES[t]}, look at ${t === 'lymph' || t === 'mono' ? 'the size of the cell and the shape of its nucleus' : t === 'neut' ? 'how many lobes the nucleus has' : 'the color and size of the granules'}.`,
+          });
+        },
+        waitFor: (c) => { const s = tables().lineup, v = c.view(); return !!(s && v.letter && matched(s, TYPES, (t) => v.letter(t))); },
+        waitHint: 'Match all five to continue',
+      },
+    ],
+  };
+
+  // =========================================================================
+  // Scene 2 · Five cells, five jobs: the student decides which cell leaves the blood
+  // =========================================================================
+  const benchMeters = () => {
+    const b = app.sim; if (!(b instanceof Bench)) return [];
+    const m = b.measure, p = b.problem;
+    const value = p === 'worm' ? `${Math.round(100 * m.value)} %` : p === 'pollen' ? bar(m.value) : fmt(m.value);
+    const rows = [[m.label, value, b.solved && p !== 'pollen' ? 'good' : '']];
+    if (b.sent) rows.push(b.sent === 'mono' ? ['Monocytes → macrophages', `${fmt(b.site.mono)} → ${fmt(b.macrophages)}`] : b.sent === 'lymph' && p === 'virus' ? ['Lymphocytes that can act against it', fmt(b.clone)] : [`${Plural(b.sent)} at the site`, fmt(b.site[b.sent])]);
+    if (p === 'pollen') rows.push(['Histamine', bar(b.histamine / 4)]);
+    rows.push(['Clock', clockText(b.t, b.hours > 100)]);
+    return rows;
+  };
+  // What the model did, in a sentence, for each cell sent to each problem.
+  const WHY = {
+    bacteria: {
+      neut: (r) => `<b>Neutrophils won.</b> They poured out of the vessel by the thousand and swallowed bacteria faster than the bacteria could divide. The last bacterium was gone at ${r.t} h.`,
+      mono: (r) => `<b>Monocytes lost.</b> They do swallow bacteria, but the blood carries only about one monocyte for every nine neutrophils, and each takes most of a day to grow into a working macrophage. After 24 h: ${fmt(r.value)} bacteria.`,
+      lymph: (r) => `<b>Lymphocytes did nothing here today.</b> They passed through the tissue and left again. After 24 h: ${fmt(r.value)} bacteria.`,
+      eos: (r) => `<b>Eosinophils lost.</b> They swallow very little, and there are few of them. After 24 h: ${fmt(r.value)} bacteria.`,
+      baso: (r) => `<b>Basophils lost.</b> They do not swallow anything. After 24 h: ${fmt(r.value)} bacteria.`,
+    },
+    debris: {
+      mono: (r) => `<b>Monocytes did it.</b> They left the blood, grew into macrophages, and the macrophages swallowed the dead cells. Clear at ${r.t} h, and the macrophages are still there.`,
+      neut: (r) => `<b>That made it worse.</b> More neutrophils arrived, lived about a day and died too: now there are ${fmt(r.value)} dead cells, up from 20,000.`,
+      lymph: () => '<b>Nothing changed.</b> Lymphocytes do not swallow dead cells.',
+      eos: () => '<b>Nothing changed.</b> Eosinophils do not clear dead cells.',
+      baso: () => '<b>Nothing changed.</b> Basophils do not swallow anything.',
+    },
+    worm: {
+      eos: (r) => `<b>Eosinophils did it.</b> They spread over the larva and emptied their granules onto its surface, which broke down. The larva was dead at ${r.t} h.`,
+      neut: (r) => `<b>Neutrophils failed.</b> They covered the larva and tried to swallow it, but it is about 70 times their length. After three days it is still ${Math.round(100 * r.value)} % intact.`,
+      mono: (r) => `<b>Macrophages failed.</b> Even a "big eater" cannot swallow something 50 times its own length. After three days the larva is ${Math.round(100 * r.value)} % intact.`,
+      lymph: () => '<b>Nothing happened.</b> Lymphocytes passed through; the larva is unharmed.',
+      baso: () => '<b>The larva is unharmed.</b> Basophils do not attack anything directly.',
+    },
+    pollen: {
+      baso: (r) => `<b>That is the cell.</b> Within ${r.t} h, basophils that met pollen emptied their granules. The granules hold <b>histamine</b>, which widened the vessel and made it leak: swelling, a runny nose, sneezing.`,
+      neut: () => '<b>Nothing happened.</b> Neutrophils arrived and found nothing to do: pollen does not multiply and does no damage. No swelling, no sneezing.',
+      mono: () => '<b>Nothing happened.</b> No swelling, no sneezing. The pollen just sits there, harmless.',
+      lymph: () => '<b>Nothing happened</b> in these six hours. No swelling, no sneezing.',
+      eos: () => '<b>Nothing happened</b> in these six hours: eosinophils on their own did not set anything off.',
+    },
+    virus: {
+      lymph: (r) => `<b>Lymphocytes did it, slowly.</b> For days there were far too few lymphocytes able to act against this virus. Their number doubled about every 10 hours, and on day ${(r.t / DAY).toFixed(0)} there were enough to destroy every infected cell.`,
+      neut: (r) => `<b>Neutrophils failed.</b> They cannot tell an infected cell from a healthy one: the virus is inside. After 10 days, ${fmt(r.value)} of 1,000 cells are infected.`,
+      mono: (r) => `<b>Macrophages failed.</b> They cannot pick out a living cell with virus inside it. After 10 days, ${fmt(r.value)} of 1,000 cells are infected.`,
+      eos: (r) => `<b>Eosinophils failed.</b> After 10 days, ${fmt(r.value)} of 1,000 cells are infected.`,
+      baso: (r) => `<b>Basophils failed.</b> After 10 days, ${fmt(r.value)} of 1,000 cells are infected.`,
+    },
+  };
+  const JOBS = {
+    bacteria: {
+      title: 'Bacteria in a cut', speed: 2.4, needOther: true,
+      caption: 'A cut in the skin with bacteria in it, beside a small blood vessel. White cells are drawn far more common in the vessel than they really are.',
+      text: '<p><b>How to read this picture.</b> Across the top, blood flows through a small vessel. Below it is the tissue around a cut, where bacteria (red rods) are doubling every 90 minutes. The numbers above the picture come from the model.</p><p><b>You decide which white cell leaves the blood.</b> Choose one and watch 24 hours. Then try at least one other, to compare.</p>',
+      won: nameBox('<b>Neutrophils</b> swallow bacteria (<i>phagocytosis</i>). They are the most numerous white cell and the first to arrive. A neutrophil lasts about a day in the tissue and dies there: <b>pus</b> is mostly dead neutrophils.'),
+    },
+    debris: {
+      title: 'The next day: clearing up', speed: 7.2,
+      caption: 'The same cut a day later. The bacteria are gone; grey specks are dead neutrophils.',
+      text: '<p>The bacteria are gone. What is left is pus: about 20,000 dead neutrophils and scraps of damaged tissue. The cut cannot heal until that is cleared.</p><p><b>Which cell do you send?</b> Each run is three days.</p>',
+      won: nameBox('<b>Monocytes</b> leave the blood and grow into <b>macrophages</b> ("big eaters"), which swallow dead cells and debris as well as microbes, and stay in the tissue for weeks. That is what the monocyte\'s large size and roomy cytoplasm are for.'),
+    },
+    worm: {
+      title: 'Too big to swallow', speed: 7.2,
+      caption: 'The larva of a parasitic worm in the tissue.',
+      text: '<p>A different invader: the larva of a parasitic worm, about a millimeter long. That is some 70 times the width of a white cell, so <b>no cell can swallow it</b>.</p><p>Which cell can damage something it cannot swallow? Each run is three days.</p>',
+      won: nameBox('<b>Eosinophils</b> press against a parasite and empty their granules onto it. The large orange granules you saw are packets of proteins that damage the parasite\'s surface.'),
+    },
+    pollen: {
+      title: 'Hay fever', speed: 0.75,
+      caption: 'The lining of the nose of a person who is allergic to grass pollen, in May.',
+      text: '<p>The yellow grains are grass pollen. Pollen does not multiply in the body and does it no harm. But this person is <b>allergic</b>: some of their white cells carry, on their surface, antibody that sticks to pollen.</p><p><b>Find the cell that makes this person sneeze.</b> Each run is six hours.</p>',
+      won: nameBox('<b>Basophils</b> release <b>histamine</b> from their granules. Histamine widens small vessels and makes them leak. (Mast cells, which live in the tissues, do the same job.) The chemicals they release also call <b>eosinophils</b> to the site, which is why eosinophils rise in the blood of someone with allergies.'),
+    },
+    virus: {
+      title: 'Hidden inside cells', speed: 20,
+      caption: 'The lining of the airway, with a virus multiplying inside some of its cells.',
+      text: '<p>A virus is multiplying <b>inside</b> the cells that line the airway. From the outside, an infected cell looks almost like its neighbors.</p><p>Which white cell can single out the infected cells? Each run is ten days.</p>',
+      won: nameBox('<b>Lymphocytes</b> are the only white cells that recognize one particular invader and no other. That exactness has a cost: the first time, it takes them about a week to build up their numbers. How they manage it is the subject of the immune lab.'),
+    },
+  };
+  function jobStep(problem) {
+    const J = JOBS[problem];
+    const store = () => { const j = (tables().jobs = tables().jobs || {}); return (j[problem] = j[problem] || { tried: [], res: {} }); };
+    const finished = () => { const s = store(), w = PROBLEMS[problem].winner; return !!s.res[w] && (!J.needOther || s.tried.length >= 2); };
+    function send(c, type) {
+      const d = data(c), b = new Bench({ problem }).send(type);
+      setSim(b);
+      d.running = type; d.last = null;
+      c.refresh();
+      startRun({
+        hours: b.hours, speed: J.speed,
+        onDone: () => {
+          const s = store(); if (!s.tried.includes(type)) s.tried.push(type);
+          const when = b.solvedAt;
+          s.res[type] = { solved: b.solved, value: b.measure.value, t: when == null ? null : (when < 10 ? Math.round(when * 10) / 10 : Math.round(when)) };
+          d.running = null; d.last = type;
+          if (finished()) c.complete();
+          c.refresh();
+        },
+      });
+    }
+    return {
+      title: J.title, view: 'bench', viewOpts: { problem, caption: J.caption }, meters: benchMeters, speed: J.speed, remount: true,
+      setup() { setSim(new Bench({ problem })); },
+      text: () => J.text + (store().res[PROBLEMS[problem].winner] ? J.won : ''),
+      get actions() {
+        return TYPES.map(k => ({
+          label: `${icon(k, 26)} ${Plural(k)}`, type: k,
+          get cls() { const r = BL.runner ? store().res[k] : null; return 'cellbtn' + (r ? (r.solved ? ' won' : ' lost') : ''); },
+          run: (c) => send(c, k), disabled: (c) => !!data(c).running,
+        }));
+      },
+      status: (c) => {
+        const d = data(c), s = store(), w = PROBLEMS[problem].winner;
+        if (d.running) return `Sending ${plural(d.running)}…`;
+        const last = d.last || s.tried[s.tried.length - 1];
+        if (!last) return 'Choose a cell to send.';
+        let html = WHY[problem][last](s.res[last]);
+        if (s.res[w] && J.needOther && s.tried.length < 2) html += ' <b>Now send one other cell</b>, to see what it does instead.';
+        else if (!s.res[w]) html += ' <b>Try another cell.</b>';
+        return html;
+      },
+      waitFor: () => finished(),
+      waitHint: 'Find the cell that works to continue',
+    };
+  }
+  const JOB_TEXT = {
+    neut: 'Swallows bacteria; first to arrive, in huge numbers; dies there (pus)',
+    mono: 'Grows into a macrophage that swallows dead cells and debris, and stays',
+    eos: 'Empties its granules onto a parasite too large to swallow',
+    baso: 'Releases histamine, so vessels widen and leak (allergy)',
+    lymph: 'Recognizes one particular invader; takes about a week the first time',
+  };
+  const scene2 = {
+    id: 'jobs', title: 'Five cells, five jobs',
+    steps: [
+      jobStep('bacteria'),
+      {
+        title: 'Why neutrophils?',
+        text: '<p>Monocytes swallow bacteria too, and each macrophage swallows more than a neutrophil does. Yet in your run the neutrophils held the infection and the monocytes did not.</p>',
+        question: {
+          prompt: 'What gave the neutrophils the advantage?',
+          options: [
+            { t: 'Numbers: the blood carries far more of them, so far more arrive in the first hours', ok: true, fb: 'About nine neutrophils for each monocyte. Bacteria double every 90 minutes, so what counts is how many cells arrive early. Notice what this means for a blood count: <b>the commonest white cell in a healthy smear is the one the body needs first, in bulk.</b>' },
+            { t: 'Neutrophils recognize exactly which bacterium this is', fb: 'They do not. A neutrophil detects features that many bacteria share, and attacks any of them. Recognizing one particular invader is the lymphocyte\'s job.' },
+            { t: 'Neutrophils live longer at the site than monocytes do', fb: 'The opposite: a neutrophil lasts about a day and dies there, while a macrophage stays for weeks. Look at how many of each arrived.' },
+          ],
+        },
+      },
+      jobStep('debris'),
+      jobStep('worm'),
+      jobStep('pollen'),
+      {
+        title: 'Harmless pollen, real symptoms',
+        text: '<p>With every other cell, the pollen sat in the nose and nothing happened. With basophils, the vessel widened and leaked within a couple of hours.</p>',
+        question: {
+          prompt: 'So what causes the swelling, runny nose and sneezing of hay fever?',
+          options: [
+            { t: 'The person\'s own cells, releasing histamine in response to something harmless', ok: true, fb: 'Yes. That is also why an <b>antihistamine</b> helps: it blocks the signal, though the pollen is still there. The same response is useful against parasites; in allergy it is aimed at the wrong target.' },
+            { t: 'The pollen, damaging the lining of the nose', fb: 'The pollen was there in every run, and with four of the five cells nothing happened at all. Something the basophils did made the difference.' },
+            { t: 'Bacteria carried in on the pollen', fb: 'There are no bacteria in this model, and neutrophils found nothing to attack. Look at what the basophils released.' },
+          ],
+        },
+      },
+      jobStep('virus'),
+      {
+        title: 'Five cells, five jobs',
+        view: 'lineup', viewOpts: { caption: 'The five white blood cells.', named: Object.fromEntries(TYPES.map(t => [t, true])) },
+        text: '<p>You have now seen each cell at work, and each time it was <b>in the tissue</b>, not in the blood. Match each cell to what you saw it do.</p>',
+        extra(el, c) {
+          const store = (tables().summary = tables().summary || {});
+          const order = ['eos', 'lymph', 'neut', 'baso', 'mono'];
+          matchTable(el, c, {
+            head: ['Cell', 'What it does'], width: 68, store, rows: TYPES.map(t => ({ key: t, label: Plural(t), html: `${icon(t, 26)}<b>${cap(NAMES[t])}</b>` })),
+            options: order.map(t => [t, JOB_TEXT[t]]), answer: (t) => t,
+            hint: (t) => `Not that one. Think back to the run in which ${plural(t)} were the cell that worked.`,
+          });
+        },
+        waitFor: () => { const s = tables().summary; return !!(s && matched(s, TYPES, (t) => t)); },
+        waitHint: 'Match all five to continue',
+      },
+    ],
+  };
+
+  // =========================================================================
+  // Scene 3 · Why the count changes
+  // =========================================================================
+  const half = Math.round(Math.LN2 * CELL.neut.tau);          // hours for half the neutrophils to leave the blood
+  const healthy = () => { const b = new Blood(); app.before = null; app.zero = 0; app.reportClock = false; app.flowNote = null; return b; };
+  const infected48 = () => { const b = new Blood(); app.before = b.report(); app.zero = 0; app.reportClock = true; b.start('bacterial'); b.advance(48); return b; };
+  const FLOW = { caption: 'Where the white cells in the blood come from, and where they go.' };
+  const row = (rep, t) => rep.rows.find(r => r.type === t);
+  // The first day on which a cell's percentage is outside the reference range.
+  function firstFlagDay(cond, type) {
+    const b = new Blood().start(cond);
+    for (let d = 1; d <= 30; d++) { b.advance(DAY); if (row(b.report(), type).pctFlag) return d; }
+    return null;
+  }
+  const CONDS = {
+    allergy: { label: 'Three weeks of hay fever', days: 21, speed: 50, top: 'eos' },
+    viral: { label: 'Two weeks into a virus such as mononucleosis', days: 14, speed: 36, top: 'lymph' },
+  };
+  const scene3 = {
+    id: 'count', title: 'Why the count changes',
+    steps: [
+      {
+        title: 'Blood is the road', view: 'flow', viewOpts: FLOW, clock: 'free', speed: 2, remount: true,
+        setup() { setSim(healthy()); },
+        text: `<p><b>How to read this picture.</b> On the left, finished white cells wait in the bone marrow. In the middle is the blood: each cell drawn stands for 100 in a microliter (µL), a drop the size of a pinhead. On the right are the tissues, where the work is done. The report beside it is what a lab would print for this blood.</p><p>Watch one neutrophil cross. It is in the blood for only about <b>${half} hours</b>, and it does not come back.</p>`,
+        question: {
+          prompt: `This healthy person has about ${perUL(CELL.neut.n0)} neutrophils in every microliter of blood, all day. If each one leaves within hours, how can the number stay the same?`,
+          options: [
+            { t: 'The marrow releases new ones as fast as the old ones leave', ok: true, fb: 'Yes. The count is a <b>balance</b> between supply from the marrow and exit to the tissues, like the level of water in a sink with the tap running and the drain open. Change either one and the count changes.' },
+            { t: 'The same neutrophils go round and round in the blood for weeks', fb: 'Follow one across the picture: it reaches the tissues and is gone. Red cells circulate for months; a neutrophil is in the blood for hours.' },
+            { t: 'Neutrophils divide in the blood to replace the ones that leave', fb: 'Finished neutrophils do not divide. Look at where the new ones enter the blood from.' },
+          ],
+        },
+      },
+      {
+        title: 'A bacterial infection', clock: 'free', speed: 2, remount: true,
+        setup() { setSim(healthy()); },
+        text: '<p>This person develops an infected tooth: bacteria, multiplying. You saw which cell deals with bacteria.</p>',
+        question: predict({
+          prompt: 'Over the next two days, what will happen to the white cell count?',
+          options: [
+            { t: 'Neutrophils rise steeply; the others hardly change', ok: true, fb: 'Now run it, and watch where the extra neutrophils come from.' },
+            { t: 'All five kinds rise together', fb: 'Each kind answers a different call. Which cell did the bacteria in the cut need?' },
+            { t: 'Neutrophils fall, because they leave the blood to fight', fb: 'They do leave faster. But think about the reserve waiting in the marrow.' },
+            { t: 'Lymphocytes rise steeply', fb: 'Lymphocytes took a week against the virus, and did nothing against bacteria in a day. Which cell did the bacteria need?' },
+          ],
+        }),
+        actions: [{
+          label: 'Start the infection and watch two days', cls: 'blood',
+          disabled: (c) => unanswered(c) || !!data(c).running || !!data(c).ran,
+          run: (c) => {
+            const d = data(c), b = new Blood(), before = b.report(), res0 = b.reserve.neut;
+            setSim(b); app.before = before; app.zero = 0; app.reportClock = true; app.flowNote = null;
+            b.start('bacterial');
+            d.running = true; c.refresh();
+            startRun({ hours: 48, speed: 6, onDone: () => {
+              app.clock = 'idle'; d.running = false; d.ran = true;
+              const now = b.report();
+              c.recordValue('bacterial', { neut0: row(before, 'neut').abs, neut: row(now, 'neut').abs, pctN0: row(before, 'neut').pct, pctN: row(now, 'neut').pct, lymph0: row(before, 'lymph').abs, lymph: row(now, 'lymph').abs, pctL0: row(before, 'lymph').pct, pctL: row(now, 'lymph').pct, wbc0: before.wbc.value, wbc: now.wbc.value, reserve0: res0, reserve: b.reserve.neut });
+              c.complete(); c.refresh();
+            } });
+          },
+        }],
+        status: (c) => {
+          const v = c.record.values.bacterial, d = data(c);
+          if (d.running) return 'The tissues are calling for neutrophils. Watch the marrow and the report.';
+          if (!v || !d.ran && !c.stepState().done) return unanswered(c) ? 'Predict first, then run it.' : '';
+          return `<b>Day 2.</b> Neutrophils: ${perUL(v.neut0)} → <b>${perUL(v.neut)}</b> per µL. The marrow's reserve fell by ${Math.round(100 * (1 - v.reserve / v.reserve0))} %: the extra cells were already made and waiting.`;
+        },
+        waitFor: (c) => !!data(c).ran,
+        waitHint: 'Run the infection to continue',
+      },
+      {
+        title: 'A share is not a number', clock: 'idle',
+        setup() { if (!(app.sim instanceof Blood) || !app.sim.active('bacterial') || Math.abs(app.sim.t - 48) > 0.5) setSim(infected48()); app.clock = 'idle'; },
+        text: (c) => { const v = c.record.values.bacterial || {}; return `<p>The picture is stopped at day 2. Look at the <b>lymphocytes</b> on the report: before the infection they were ${pct1(v.pctL0 || 36)} % of the white cells, and now they are <b>${pct1(v.pctL || 16)} %</b>, flagged <b style="color:#2457a6">L</b> for low.</p><p>Now read the next column: lymphocytes <b>per µL</b>, before and now.</p>`; },
+        question: {
+          prompt: 'What happened to this person\'s lymphocytes?',
+          options: [
+            { t: 'Nothing: there are as many as before. They are a smaller share because the neutrophils tripled', ok: true, fb: 'Yes. A percentage is a share of the total, so when one cell rises, every other percentage falls. <b>Your own count in this lab gives percentages only.</b> Before you call one cell "low", ask whether another one is high.' },
+            { t: 'They were used up fighting the bacteria', fb: 'Compare the two per-µL numbers for lymphocytes: the count has not moved. Something else changed the percentage.' },
+            { t: 'The marrow stopped making them while it made neutrophils', fb: 'The number of lymphocytes per µL is the same as before. What happened to the total?' },
+          ],
+        },
+      },
+      {
+        title: 'Two more calls', clock: 'idle', remount: true,
+        setup() { setSim(healthy()); app.reportClock = true; },
+        text: '<p>Now two conditions that call a different cell. For each one, <b>predict</b> which cell will rise most, then run it.</p>',
+        extra(el, c) {
+          const store = (tables().conds = tables().conds || {}), d = data(c);
+          const t = htmlEl('table', { class: 'ptable' });
+          t.appendChild(htmlEl('tr', {}, '<th>Condition</th><th style="width:31%">I predict this cell rises most</th><th style="width:22%"></th>'));
+          for (const key of Object.keys(CONDS)) {
+            const C = CONDS[key], s = (store[key] = store[key] || {});
+            const tr = htmlEl('tr', {}, `<td><b>${C.label}</b>${s.done ? `<br>${Plural(C.top)}: ${perUL(s.from)} → <b>${perUL(s.to)}</b> per µL (${pct1(s.pct0)} % → ${pct1(s.pct)} %). Outside the reference range from day ${s.flagDay}.` : ''}</td>`);
+            const td = htmlEl('td', { class: s.done ? (s.pred === C.top ? 'right' : 'wrong') : '' }), sel = htmlEl('select', { 'aria-label': 'Prediction for ' + C.label });
+            sel.appendChild(htmlEl('option', { value: '' }, 'Choose…'));
+            for (const k of TYPES) sel.appendChild(htmlEl('option', { value: k }, Plural(k)));
+            sel.value = s.pred || ''; sel.disabled = !!s.done || !!d.running;
+            sel.addEventListener('change', () => { s.pred = sel.value; c.refresh(); });
+            td.appendChild(sel); tr.appendChild(td);
+            const td2 = htmlEl('td'), btn = htmlEl('button', { type: 'button', 'data-cond': key }, s.done ? 'Run again' : 'Run');
+            btn.disabled = !s.pred || !!d.running;
+            btn.addEventListener('click', () => {
+              const b = new Blood(), before = b.report();
+              setSim(b); app.before = before; app.zero = 0; app.reportClock = true; app.flowNote = null;
+              b.start(key); d.running = key; c.refresh();
+              startRun({ hours: C.days * DAY, speed: C.speed, onDone: () => {
+                const now = b.report();
+                Object.assign(s, { done: true, from: row(before, C.top).abs, to: row(now, C.top).abs, pct0: row(before, C.top).pct, pct: row(now, C.top).pct, flagDay: firstFlagDay(key, C.top) });
+                d.running = null;
+                if (Object.keys(CONDS).every(k => store[k].done)) c.complete();
+                c.refresh();
+              } });
+            });
+            td2.appendChild(btn); tr.appendChild(td2); t.appendChild(tr);
+          }
+          el.appendChild(t);
+        },
+        status: (c) => { const d = data(c), s = tables().conds || {}; return d.running ? `Running: ${CONDS[d.running].label.toLowerCase()}…` : Object.keys(CONDS).every(k => s[k] && s[k].done) ? 'Both run. Each condition raised the cell whose job it calls for.' : 'Choose a prediction, then press Run.'; },
+        waitFor: () => { const s = tables().conds; return !!(s && Object.keys(CONDS).every(k => s[k] && s[k].done)); },
+        waitHint: 'Run both conditions to continue',
+      },
+      {
+        title: 'Hours, or weeks',
+        text: (c) => { const s = (tables().conds || {}), a = s.allergy || {}, v = s.viral || {}; return `<p>In the bacterial infection, neutrophils tripled within <b>a day</b>. In hay fever the eosinophils took until about <b>day ${a.flagDay || 2}</b> just to leave the reference range, and in the viral infection the lymphocytes took until about <b>day ${v.flagDay || 3}</b>.</p>`; },
+        question: {
+          prompt: 'Why can the neutrophil count rise so much faster than the others?',
+          options: [
+            { t: `The marrow holds a reserve of finished neutrophils, about ${CELL.neut.reserve} times the number in the blood, ready to release`, ok: true, fb: 'Yes. The other cells have little or no reserve: more must be made, or (for lymphocytes) the right ones must multiply, and that takes days. So <b>timing matters</b> when you read a count: an infection three days ago and an allergy three weeks ago leave different traces.' },
+            { t: 'Neutrophils divide in the blood once an infection starts', fb: 'Finished neutrophils do not divide. Look at what happened to the marrow in your run.' },
+            { t: 'Neutrophils travel faster than the other cells', fb: 'All the cells are carried at the speed of the blood. The difference is in how many were ready before the infection began.' },
+          ],
+        },
+      },
+    ],
+  };
+
+  // =========================================================================
+  // Scene 4 · Counting 100 cells
+  // =========================================================================
+  const HAND = 20;
+  // The slide: 100 white cells from a healthy person, in the order they are met. (One whose first
+  // 20 cells include at least four of the five kinds, so that naming them is real practice.)
+  let slideCache = null;
+  function slide() {
+    if (slideCache && slideCache.seed === app.seed) return slideCache.cells;
+    const b = new Blood();
+    for (let i = 0; i < 400; i++) {
+      const cells = b.cells(100, rng(app.seed * 17 + 3 + i * 1009));
+      if (new Set(cells.slice(0, HAND)).size >= 4 || i === 399) { slideCache = { seed: app.seed, cells }; break; }
+    }
+    return slideCache.cells;
+  }
+  const LOOK = {
+    neut: 'Look again: the nucleus is in three or more lobes, and the granules are too fine to see one by one.',
+    lymph: 'Look again: this cell is hardly bigger than a red cell, and a round, dark nucleus fills nearly all of it.',
+    mono: 'Look again: this is a big cell, and its nucleus is one curved piece, like a kidney bean, in grey-blue cytoplasm.',
+    eos: 'Look again: the granules are large and orange-red, and the nucleus has two lobes.',
+    baso: 'Look again: the granules are large and so dark that they hide the nucleus.',
+  };
+  const ORDER_HANDOUT = ['baso', 'eos', 'lymph', 'mono', 'neut'];      // the order on the lab handout's table
+  function tallyHTML(count, n, o) {
+    o = o || {};
+    const done = n >= 100, fl = done ? flags(count, n) : {};
+    const rows = ORDER_HANDOUT.map(t => `<tr><td>${icon(t, 22)}${Plural(t)}</td><td class="v">${count[t]}</td><td class="v ${fl[t] || ''}">${done ? count[t] : ''}</td><td class="f ${fl[t] || ''}">${fl[t] || ''}</td><td class="r">${REF.pct[t][0]}–${REF.pct[t][1]}</td></tr>`).join('');
+    return `<div class="labrep"><div class="lh"><span>${o.title || 'Your count'}</span><span>${n} of 100 cells</span></div><table><tr><th>Type of leukocyte</th><th style="text-align:right">Number</th><th style="text-align:right" colspan="2">%</th><th>Reference %</th></tr>${rows}<tr><td><b>Total</b></td><td class="v">${n}</td><td class="v">${done ? 100 : ''}</td><td></td><td></td></tr></table>${o.note ? `<div class="foot">${o.note}</div>` : ''}</div>`;
+  }
+  const AXIS = { neut: [30, 80], lymph: [10, 60], mono: [0, 20], eos: [0, 12], baso: [0, 6] };
+  function dotsHTML(counts) {
+    const rows = ORDER_HANDOUT.map(t => {
+      const [lo, hi] = AXIS[t], pos = (v) => 3 + 94 * (Math.max(lo, Math.min(hi, v)) - lo) / (hi - lo), seen = {};
+      const dots = counts.map((cnt, i) => { const v = cnt[t], k = (seen[v] = (seen[v] || 0) + 1) - 1; const out = v < REF.pct[t][0] || v > REF.pct[t][1]; return `<i class="${i === 0 ? 'mine' : out ? 'out' : ''}" style="left:calc(${pos(v)}% + ${Math.floor(k / 4) * 3}px);top:${2 + (k % 4) * 8}px"></i>`; }).join('');
+      const vals = counts.map(cnt => cnt[t]);
+      return `<div class="row"><span>${Plural(t)}</span><div class="axis"><span class="ref" style="left:${pos(REF.pct[t][0])}%;width:${pos(REF.pct[t][1]) - pos(REF.pct[t][0])}%"></span>${dots}</div><span class="rng">${Math.min(...vals)}–${Math.max(...vals)}</span></div>`;
+    }).join('');
+    const flagged = counts.filter(cnt => Object.keys(flags(cnt, 100)).length).length;
+    return `<div class="dots"><b>${counts.length} count${counts.length > 1 ? 's' : ''} of 100 cells, same slide</b>${rows}<div class="key">One dot per count; the blue dot is yours. Green band: the reference range. Red: outside it. At the right: lowest and highest count.</div><div class="key" style="color:var(--ink)"><b>${flagged} of ${counts.length}</b> count${counts.length > 1 ? 's have' : ' has'} at least one value outside the reference range.</div></div>`;
+  }
+  const SCOPE = { caption: 'One white cell at a time, at high power under oil, as you will see them when you count.' };
+  const scene4 = {
+    id: 'hundred', title: 'Counting 100 cells',
+    steps: [
+      {
+        title: 'Name the cells', view: 'scope', viewOpts: SCOPE, remount: true,
+        text: `<p>This slide is from a <b>healthy</b> 20-year-old. You move across it and name each white cell you meet, exactly as you will with your own slide.</p><p>Name the first <b>${HAND}</b> cells. Use the nucleus first, then the granules.</p>`,
+        enter(c) {
+          const d = data(c), t = tables();
+          d.i = t.count ? HAND : 0; d.tally = tally(slide().slice(0, d.i)); d.firstTry = true;
+          if (!t.count) c.view().show(slide()[0], 0);
+          else c.view().show(slide()[99], 99);
+          setSide(tallyHTML(t.count || d.tally, t.count ? 100 : d.i), null);
+        },
+        get actions() {
+          const naming = TYPES.map(k => ({
+            label: `${icon(k, 26)} ${cap(NAMES[k])}`, cls: 'cellbtn', type: k,
+            disabled: (c) => data(c).i >= HAND,
+            run: (c) => {
+              const d = data(c), actual = slide()[d.i];
+              if (k !== actual) { if (d.firstTry) { d.misses = (d.misses || 0) + 1; d.firstTry = false; } d.msg = `<b>Not a ${NAMES[k]}.</b> ${LOOK[actual]}`; c.refresh(); return; }
+              d.tally[actual]++; d.i++; d.firstTry = true; d.msg = `<b>${cap(NAMES[actual])}.</b>`;
+              if (d.i < HAND) c.view().show(slide()[d.i], d.i);
+              setSide(tallyHTML(d.tally, d.i), null);
+              c.refresh();
+            },
+          }));
+          return naming.concat([{
+            label: 'Count the other 80 cells', cls: 'primary',
+            disabled: (c) => data(c).i < HAND || !!tables().count,
+            run: (c) => {
+              const d = data(c), count = tally(slide());
+              tables().count = count; c.recordValue('hand', { misses: d.misses || 0 });
+              c.view().show(slide()[99], 99);
+              setSide(tallyHTML(count, 100, { note: 'Since you counted 100 cells, the percentage is the same as the number.' }), null);
+              c.complete(); c.refresh();
+            },
+          }]);
+        },
+        status: (c) => {
+          const d = data(c), t = tables();
+          if (t.count) { const fl = flags(t.count, 100), out = Object.keys(fl); return `<b>100 cells counted.</b> ${out.length ? `Outside the reference range: ${out.map(k => `${plural(k)} (${t.count[k]} %, ${fl[k] === 'H' ? 'high' : 'low'})`).join(', ')}. Remember that this person is healthy.` : 'Every value is inside the reference range.'}`; }
+          if (d.i >= HAND) return `<b>${HAND} named</b>${d.misses ? `, ${d.misses} of them not at the first try` : ', all at the first try'}. Naming 100 takes a while, so let the simulation name the rest of this slide.`;
+          return (d.msg ? d.msg + ' ' : '') + `Cell ${d.i + 1} of ${HAND}: which is it?`;
+        },
+        waitFor: () => !!tables().count,
+        waitHint: 'Count 100 cells to continue',
+      },
+      {
+        title: 'Count it again',
+        enter(c) { const t = tables(); if (t.count && !t.counts) t.counts = [t.count]; if (t.counts) setSide(dotsHTML(t.counts), 'wide'); c.view().show(slide()[99], 99); },
+        text: '<p>Suppose you slide over to a fresh part of the <b>same smear</b> and count another 100 white cells. Same person, same blood, same day.</p>',
+        question: predict({
+          prompt: 'Will the second count match the first?',
+          options: [
+            { t: 'Roughly, for the common cells; the rare cells could easily double or vanish', ok: true, fb: 'Now try it: count again, then let twenty classmates count the same slide.' },
+            { t: 'Yes, exactly, as long as every cell is named correctly', fb: 'Even with perfect naming, the next hundred cells are a different hundred cells. Think of drawing 100 marbles from a large bag, twice.' },
+            { t: 'No: every number will be completely different', fb: 'Not completely. Over half the cells are neutrophils, so a hundred of them will always be mostly neutrophils. Which cells will be less steady?' },
+          ],
+        }),
+        get actions() {
+          const add = (c, n) => { const t = tables(); t.counts = t.counts || [t.count]; const b = new Blood(); for (let i = 0; i < n; i++) t.counts.push(b.differential(100, rng(app.seed * 29 + t.counts.length * 7919))); setSide(dotsHTML(t.counts), 'wide'); if (t.counts.length >= 21) c.complete(); c.refresh(); };
+          return [
+            { label: 'Count another 100 cells', disabled: (c) => unanswered(c) || (tables().counts || []).length >= 200, run: (c) => add(c, 1) },
+            { label: 'Twenty classmates count this slide', disabled: (c) => unanswered(c) || (tables().counts || []).length >= 200, run: (c) => add(c, 20) },
+          ];
+        },
+        status: (c) => {
+          const t = tables(), n = (t.counts || []).length;
+          if (unanswered(c)) return 'Predict first.';
+          if (n < 21) return n > 1 ? `${n} counts so far. Now let twenty classmates count it.` : 'Count again.';
+          const e = t.counts.map(x => x.eos), nn = t.counts.map(x => x.neut), flagged = t.counts.filter(x => Object.keys(flags(x, 100)).length).length;
+          return `<b>${n} counts of one healthy slide.</b> Neutrophils ranged from ${Math.min(...nn)} to ${Math.max(...nn)}; eosinophils from ${Math.min(...e)} to ${Math.max(...e)}. <b>${flagged} of the ${n}</b> counts would be reported with at least one value out of range. Nobody misnamed a cell: this is chance alone.`;
+        },
+        waitFor: () => (tables().counts || []).length >= 21,
+        waitHint: 'Let the twenty classmates count to continue',
+      },
+      {
+        title: 'One count, one flag',
+        enter() { const t = tables(); if (t.counts) setSide(dotsHTML(t.counts), 'wide'); },
+        text: () => { const p = new Blood().percent.eos / 100; return `<p>The true share of eosinophils on this slide is ${pct1(100 * p)} %, well inside the reference range of 0–4 %. From the model: a count of 100 cells from it will show <b>5 or more</b> eosinophils ${oneIn(binomAtLeast(100, p, 5))}, and most single counts will land anywhere from ${binomRange(100, p)[0]} to ${binomRange(100, p)[1]}.</p>`; },
+        question: {
+          prompt: 'A classmate counts 100 cells on their own slide and finds 5 eosinophils (reference 0–4 %). They feel fine and have no allergies. What is the best conclusion?',
+          options: [
+            { t: 'It may well be chance. Count more cells, or count again, before concluding anything', ok: true, fb: 'Yes. A hospital analyzer counts thousands of cells for exactly this reason. With 100 cells, a value just outside the range is weak evidence on its own; a value far outside it (20 % eosinophils, say) is not chance. <b>Counting 200 cells, or pooling counts with lab mates, narrows the spread.</b>' },
+            { t: 'They have an allergy or a parasite they do not know about', fb: 'Possible, but look at your dots: how many counts of a perfectly healthy slide had 5 or more eosinophils?' },
+            { t: 'They must have misnamed some neutrophils as eosinophils', fb: 'Misnaming does happen, and it is worth checking. But in the simulation nobody misnamed anything, and counts like this still turned up.' },
+          ],
+        },
+      },
+    ],
+  };
+
+  // =========================================================================
+  // Scene 5 · Whose slide is it?
+  // =========================================================================
+  const PEOPLE = {
+    healthy: { who: 'Person 1', says: 'Allergy symptoms today: 0. In the last week: 0. Viral infection in the last 2 weeks: no. Bacterial infection in the last 2 weeks: no.', make: () => new Blood() },
+    allergy: { who: 'Person 2', says: 'Allergy symptoms today: <b>5</b>. In the last week: <b>5</b> (hay fever, for about two weeks now). Viral infection: no. Bacterial infection: no.', make: () => new Blood().start('allergy').advance(14 * DAY) },
+    viral: { who: 'Person 3', says: 'Allergy symptoms: 0. Viral infection in the last 2 weeks: <b>yes</b> (sore throat, swollen glands and very tired for ten days; the clinic said mononucleosis). Bacterial infection: no.', make: () => new Blood().start('viral').advance(10 * DAY) },
+    bacterial: { who: 'Person 4', says: 'Allergy symptoms: 0. Viral infection: no. Bacterial infection in the last week: <b>yes</b> (an infected tooth, with a fever, for three days).', make: () => new Blood().start('bacterial').advance(3 * DAY) },
+  };
+  const KEYS = Object.keys(PEOPLE);
+  function caseLetters() {
+    const rand = rng(app.seed * 53 + 1), order = KEYS.slice();
+    for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
+    return Object.fromEntries(order.map((k, i) => [k, 'WXYZ'[i]]));
+  }
+  const WHY_CASE = {
+    healthy: 'Nothing on this questionnaire calls for any cell. Which report has no flags?',
+    allergy: 'Which cell did the allergy call for in scene 3? Find the report where that cell is high.',
+    viral: 'Which cell deals with a virus? Find the report where that cell has become the commonest.',
+    bacterial: 'Which cell deals with bacteria, and rises within a day? Find the report where it is high.',
+  };
+  const scene5 = {
+    id: 'cases', title: 'Whose slide is it?',
+    steps: [
+      {
+        title: 'Four reports, four people', view: 'reports', viewOpts: { caption: 'Four white cell counts from a hospital analyzer, which counts thousands of cells.' },
+        enter() {
+          const L = caseLetters();
+          setSide(KEYS.slice().sort((a, b) => (L[a] < L[b] ? -1 : 1)).map(k => reportHTML(PEOPLE[k].make().report(), { title: 'Report ' + L[k], icons: true })).join(''), 'full');
+        },
+        text: '<p>Before your smear you fill in a questionnaire about allergies and recent infections. Here are four people\'s answers and, on the left, four reports. An analyzer made these counts, so chance is not the issue.</p><p><b>Whose report is whose?</b></p>',
+        extra(el, c) {
+          const store = (tables().cases = tables().cases || {}), L = caseLetters();
+          matchTable(el, c, {
+            head: ['Questionnaire', 'Report'], width: 22, store,
+            rows: KEYS.map(k => ({ key: k, label: PEOPLE[k].who, html: `<b>${PEOPLE[k].who}.</b> ${PEOPLE[k].says}` })),
+            options: ['W', 'X', 'Y', 'Z'].map(x => [x, x]), answer: (k) => L[k], hint: (k) => WHY_CASE[k],
+          });
+        },
+        waitFor: () => { const s = tables().cases, L = caseLetters(); return !!(s && matched(s, KEYS, (k) => L[k])); },
+        waitHint: 'Match all four to continue',
+      },
+      {
+        title: 'Now count your own', view: 'lineup', viewOpts: { caption: 'The five white blood cells.', named: Object.fromEntries(TYPES.map(t => [t, true])) },
+        text: '<p>When you have your own count, ask of it the three questions you used here:</p><p><b>1. Which cell is high, and what calls for that cell?</b> Check your questionnaire.<br><b>2. Is it a number or only a share?</b> One cell rising pushes every other percentage down.<br><b>3. Could it be chance?</b> A count of 100 cells strays, most of all for the rare cells.</p><p>Copy your results, then type your name to get your completion code.</p>',
+        extra: (el, c) => renderCompletion(el, c),
+        waitFor: (c) => !!c.record.name,
+      },
+    ],
+  };
+
+  const LESSON = [scene1, scene2, scene3, scene4, scene5];
+
+  // Where the right answer falls in each question: equally often in each position, and never in
+  // the same position twice running (as in ImmuneSim).
+  (function placeAnswers() {
+    const rand = rng(20261118), bags = {}, last = {};
+    for (const sc of LESSON) for (const st of sc.steps) {
+      const q = st.question;
+      if (!q || !q.options || q.options.some(o => o.neutral)) continue;
+      const n = q.options.length, right = q.options.find(o => o.ok), wrong = q.options.filter(o => !o.ok);
+      if (!bags[n] || !bags[n].length) {
+        const bag = Array.from({ length: n }, (_, i) => i);
+        for (let i = n - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [bag[i], bag[j]] = [bag[j], bag[i]]; }
+        if (bag[bag.length - 1] === last[n]) bag.unshift(bag.pop());
+        bags[n] = bag;
+      }
+      const pos = bags[n].pop(); last[n] = pos;
+      if (rand() < 0.5) wrong.reverse();
+      q.options = wrong.slice(0, pos).concat([right], wrong.slice(pos));
+      q.fixedOrder = true;
+    }
+  })();
+
+  // =========================================================================
+  // Completion: results to paste into the lab handout, and a completion code
+  // =========================================================================
+  // The code comes from the names typed (in any order) and is shown only once every question has
+  // been answered. It shows the simulation was finished; it deters casual sharing but is not security.
+  const CODE_SALT = 'bloodsim-complete-v1';
+  const normNames = (n) => String(n || '').toLowerCase().split(/,|;|&|\n|\band\b/).map(s => s.trim().replace(/\s+/g, ' ')).filter(Boolean).sort().join(', ');
+  const completionCode = (names) => 'BL-' + Lesson.checkCode(normNames(names), CODE_SALT);
+  function questionsLeft() {
+    const r = rec(), left = [];
+    LESSON.forEach((sc, si) => sc.steps.forEach((st, ki) => {
+      const a = r.answers[`${sc.id}.${ki}`], last = si === LESSON.length - 1 && ki === sc.steps.length - 1;
+      if ((st.question && !(a && a.done)) || (st.waitFor && !last && !r.completed.has(`${sc.id}.${ki}`))) left.push(si + 1);
+    }));
+    return [...new Set(left)];
+  }
+  const countLine = (cnt) => ORDER_HANDOUT.map(t => `${plural(t)} ${cnt[t]}`).join(', ');
+  function resultsLines() {
+    const r = rec(), v = r.values, t = r.tables || {}, L = [];
+    L.push(`BloodSim: our results (slide ${app.seed})`);
+    if (v.field) L.push(`Scene 1 · White cells found among about ${fmt(v.field.red)} red cells: ${v.field.white}`);
+    if (t.jobs) {
+      L.push('Scene 2 · Five cells, five jobs (cells we sent, in order)');
+      for (const p of Object.keys(PROBLEMS)) { const j = t.jobs[p]; if (j && j.tried.length) L.push(`  ${JOBS[p].title}: ${j.tried.map(k => plural(k) + (j.res[k].solved ? ' ✓' : '')).join(', ')}`); }
+    }
+    if (v.bacterial) {
+      const b = v.bacterial;
+      L.push('Scene 3 · Why the count changes');
+      L.push(`  Bacterial infection, day 2: neutrophils ${perUL(b.neut0)} → ${perUL(b.neut)} per µL (${pct1(b.pctN0)} % → ${pct1(b.pctN)} %)`);
+      L.push(`    lymphocytes ${perUL(b.lymph0)} → ${perUL(b.lymph)} per µL (${pct1(b.pctL0)} % → ${pct1(b.pctL)} %); marrow reserve down ${Math.round(100 * (1 - b.reserve / b.reserve0))} %`);
+    }
+    if (t.conds) for (const k of Object.keys(CONDS)) { const s = t.conds[k]; if (s && s.done) L.push(`  ${CONDS[k].label}: ${plural(CONDS[k].top)} ${perUL(s.from)} → ${perUL(s.to)} per µL (${pct1(s.pct0)} % → ${pct1(s.pct)} %), out of range from day ${s.flagDay}; we predicted ${plural(s.pred)}`); }
+    if (t.count) {
+      L.push('Scene 4 · Counting 100 cells (a healthy person)');
+      L.push(`  Our count: ${countLine(t.count)}${v.hand ? `; of the ${HAND} we named, ${v.hand.misses} not at the first try` : ''}`);
+      if (t.counts && t.counts.length > 1) {
+        const rng2 = (k) => { const a = t.counts.map(x => x[k]); return `${Math.min(...a)}–${Math.max(...a)}`; };
+        L.push(`  ${t.counts.length} counts of the same slide, lowest–highest: ${ORDER_HANDOUT.map(k => `${plural(k)} ${rng2(k)}`).join(', ')}`);
+        L.push(`  Counts with a value outside the reference range: ${t.counts.filter(x => Object.keys(flags(x, 100)).length).length} of ${t.counts.length}`);
+      }
+    }
+    if (t.cases && t.cases._tries) L.push(`Scene 5 · Four reports matched to four people in ${t.cases._tries} choices`);
+    return L;
+  }
+  function renderCompletion(el, c) {
+    el.className = 'extra record';
+    el.innerHTML = '';
+    const ta = htmlEl('textarea', { readonly: 'readonly', 'aria-label': 'Your results' });
+    ta.value = resultsLines().join('\n');
+    const rowEl = htmlEl('div', { class: 'row' });
+    const copy = htmlEl('button', { type: 'button' }, 'Copy our results');
+    copy.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(ta.value); c.status('<b>Copied.</b> Paste them into your lab handout.', true); }
+      catch (e) { ta.focus(); ta.select(); c.status('Selected: press Ctrl+C (⌘C on a Mac) to copy.', false); }
+    });
+    rowEl.appendChild(copy);
+    el.appendChild(ta); el.appendChild(rowEl);
+    const left = questionsLeft();
+    if (left.length) {
+      el.appendChild(htmlEl('p', { class: 'warn' }, `<b>Not finished yet:</b> scene${left.length > 1 ? 's' : ''} ${left.join(', ')} still ${left.length > 1 ? 'have' : 'has'} a question or an activity to finish before the completion code appears. (Use the numbered circles at the top.)`));
+      return;
+    }
+    el.appendChild(htmlEl('label', { for: 'rec-name' }, 'Your name. In a group: everyone\'s names, separated by commas'));
+    const name = htmlEl('input', { type: 'text', id: 'rec-name', autocomplete: 'off' });
+    name.value = c.record.name || '';
+    const code = htmlEl('div', { class: 'code', 'aria-live': 'polite' });
+    const update = () => { c.record.name = name.value.trim(); code.innerHTML = c.record.name ? `Completion code: <b>${completionCode(c.record.name)}</b>` : 'Type your name(s) to see your completion code.'; if (c.record.name) c.complete(); };
+    name.addEventListener('input', update);
+    el.appendChild(name); el.appendChild(code);
+    update();
+  }
+
+  // ---------------------------------------------------------------- dialogs
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') document.querySelectorAll('.dialog.on:not(#resume)').forEach(d => d.classList.remove('on')); });
+  function openVerify() { $('#verify').classList.add('on'); $('#verify-name').focus(); }
+  $('#verify-check').addEventListener('click', () => {
+    const ok = completionCode($('#verify-name').value) === $('#verify-code').value.trim().toUpperCase();
+    $('#verify-result').textContent = ok ? '✓ This code matches these names.' : '✗ This code does not match these names (check the spelling).';
+    $('#verify-result').style.color = ok ? 'var(--good)' : 'var(--bad)';
+  });
+  $('#verify-close').addEventListener('click', () => $('#verify').classList.remove('on'));
+
+  // =========================================================================
+  // Start (and saved progress)
+  // =========================================================================
+  // Progress is kept in this browser, so a closed tab does not cost the group its work. On a
+  // shared computer the next group is asked whether to continue or start again.
+  const SAVE_KEY = 'bloodsim-progress-v1';
+  let runner = null;
+  function readSaved() {
+    try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); return s && s.answers && (Object.keys(s.answers).length || (s.completed || []).length) ? s : null; } catch (e) { return null; }
+  }
+  function save() {
+    if (!runner) return;
+    try {
+      const r = runner.runner.record;
+      localStorage.setItem(SAVE_KEY, JSON.stringify({ seed: app.seed, when: Date.now(), scene: runner.runner.scene, answers: r.answers, values: r.values, tables: r.tables || {}, completed: [...r.completed], visited: [...r.visited], name: r.name || '' }));
+    } catch (e) { /* private browsing or storage full: carry on without saving */ }
+  }
+  function begin(saved) {
+    if (saved) app.seed = saved.seed;
+    runner = BL.start(LESSON, {});
+    if (saved) {
+      const r = runner.runner.record;
+      Object.assign(r.answers, saved.answers); Object.assign(r.values, saved.values); r.tables = saved.tables || {}; r.name = saved.name || '';
+      for (const k of saved.completed || []) r.completed.add(k);
+      for (const k of saved.visited || []) r.visited.add(k);
+      runner.goto(Math.min(saved.scene || 0, LESSON.length - 1), 0);
+    }
+    setInterval(save, 3000);
+    window.addEventListener('pagehide', save);
+  }
+  const saved = /[?&]seed=/.test(location.search) ? null : readSaved();
+  if (saved) {
+    $('#resume-info').textContent = `Saved ${new Date(saved.when).toLocaleString([], { weekday: 'long', hour: 'numeric', minute: '2-digit' })}${saved.name ? ' by ' + saved.name : ''}: reached scene ${(saved.scene || 0) + 1} of ${LESSON.length}.`;
+    $('#resume').classList.add('on');
+    $('#resume-continue').addEventListener('click', () => { $('#resume').classList.remove('on'); begin(saved); });
+    $('#resume-restart').addEventListener('click', () => { try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* ignore */ } $('#resume').classList.remove('on'); begin(null); });
+    $('#resume-continue').focus();
+  } else begin(null);
+  if (location.hash === '#verify') openVerify();
+  window.addEventListener('hashchange', () => { if (location.hash === '#verify') openVerify(); });
+  Object.assign(window.__bloodsim, { lesson: () => LESSON, completionCode, results: () => resultsLines().join('\n'), slide, caseLetters, PROBLEMS, CONDS });
+})();
+
+</script>
+</body>
+</html>

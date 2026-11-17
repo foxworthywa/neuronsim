@@ -171,9 +171,9 @@
   const FIND = (part, slide, prompt, explain, wrong) => ({
     view: 'body', findPart: part,
     enter: (c) => {
-      const v = c.view(); v.show(slide); v.names(true); v.highlight(c.stepState().done ? part : null);
+      const v = c.view(); v.show(slide); v.names(true); v.highlight(c.stepState().done ? [].concat(part)[0] : null);
       v.onPart = (p) => {
-        if (p === part) { v.highlight(part); c.status(`<b>Yes.</b> ${explain}`, true); c.complete(); }
+        if ([].concat(part).includes(p)) { v.highlight(p); c.status(`<b>Yes.</b> ${explain}`, true); c.complete(); }
         else c.status((wrong && wrong[p]) || 'Not that one. Read the description again.', false);
       };
     },
@@ -207,7 +207,7 @@
       id: 'where', title: 'Where is the immune system?', speed: 6,
       steps: [
         {
-          view: 'body', viewOpts: { slide: 0, caption: 'Priya, with a scraped right knee.' }, remount: true,
+          view: 'body', viewOpts: { slide: 0, caption: 'Left: the lymphatic system as an anatomy text draws it. Right: Priya, with a scraped right knee, as this lab draws her.' }, remount: true,
           timeline: { window: 2, traces: [], note: 'The infection timeline will be drawn here from scene 2 on.' },
           title: 'Why this matters: a patient',
           setup: () => setSim(person(), { kind: 'bacterium' }),
@@ -216,6 +216,18 @@
                  <p>By the end of Part A you will be able to answer three questions about Priya (they are on your handout):</p>${PRIYA_Q}
                  <p style="margin-top:8px">You can reopen the cases at any time with <b>The patients</b> button at the top, and jump to any scene with the numbered circles.</p>`,
           question: guess('Before you start, make a guess: what makes a scraped knee go red, warm and swollen a day later?', ['Chemicals made by the bacteria', 'Something the body does on purpose', 'Dirt left in the wound'], 'Keep your guess in mind. You will test it in scene 3.'),
+        },
+        Object.assign(FIND(['armpit-right', 'armpit-left'], 0, 'Start with the anatomy, on the left (click it for a larger view). The green lines are <b>lymph vessels</b>, which run through nearly every tissue. The beads along them are <b>lymph nodes</b>, clustered where the head and the limbs join the trunk: in the neck (<b>cervical</b> nodes), the armpits (<b>axillary</b> nodes) and the groin (<b>inguinal</b> nodes). The figure also labels the <b>tonsils</b>, the <b>thymus</b>, the <b>spleen</b> and the <b>bone marrow</b>.</p><p>The lab\'s own diagram, on the right, keeps only what this lab needs. <b>On the lab\'s diagram, click an axillary lymph node.</b>', 'An <b>axillary</b> lymph node, in the armpit. The lab\'s diagram shows one node for each cluster in the anatomical figure. It leaves out the thymus (where T-lymphocytes mature, which matters in scene 5), the spleen (which filters blood much as lymph nodes filter lymph) and the tonsils: find those in the figure and in your textbook.', { 'groin-right': 'That is an inguinal node, in the groin. Find the armpit on the anatomical figure, then the matching place on the diagram.', 'groin-left': 'That is an inguinal node, in the groin. Find the armpit on the anatomical figure, then the matching place on the diagram.', 'neck-right': 'That is a cervical node, in the neck. Find the armpit on the anatomical figure, then the matching place on the diagram.', 'neck-left': 'That is a cervical node, in the neck. Find the armpit on the anatomical figure, then the matching place on the diagram.' }),
+          { title: 'Find your way around' }),
+        {
+          view: 'body', title: 'From anatomy to diagram',
+          enter: (c) => { const v = c.view(); v.show(0); v.names(true); v.highlight(null); v.onPart = null; },
+          text: `<p>Look at the two close-ups on the right of the anatomical figure. The round one shows the smallest lymph vessels (<b>lymphatic capillaries</b>) lying among the cells of a tissue, next to the blood capillaries. Fluid that has leaked out of the blood (<b>interstitial fluid</b>) enters them, and is then called <b>lymph</b>. The lower one shows a lymph node cut open.</p>`,
+          question: { prompt: 'According to the figure, what is packed inside a lymph node?', options: [
+            { t: 'Masses of lymphocytes and macrophages', ok: true, fb: 'A lymph node is a meeting place: lymph from the tissues flows slowly past enormous numbers of white blood cells. Whatever is in the fluid around Priya\'s scrape will be carried to one. From scene 5 on, you will work inside it.' },
+            { t: 'Stored lymph, like a reservoir', fb: 'Read the label on the lymph node close-up at the bottom right of the figure (click the figure for a larger view).' },
+            { t: 'Red bone marrow', fb: 'Bone marrow is labelled inside a bone, at the bottom left of the figure. Read the label on the lymph node close-up at the bottom right.' },
+          ] },
         },
         Object.assign(FIND('skin', 1, 'Two pieces of skin, cut through and seen from the side. Bacteria live on everyone\'s skin all the time. On the left they are sitting on the surface and getting nowhere. <b>Click the structure that is keeping them out.</b>', 'The <b>epidermis</b>: layers of tightly joined cells, the outer ones dead, dry and full of keratin. Skin and mucous membranes are the body\'s first line of defense, and most microbes never get past them.', { gap: 'That is where the barrier has been scraped away. Click the barrier itself, on the left.' }),
           { viewOpts: { slide: 1, caption: 'Skin in section: intact on the left, scraped on the right.' }, title: 'The barrier' }),
@@ -229,8 +241,8 @@
             { t: 'The bacteria on the right are a more dangerous kind', fb: 'They are the same bacteria in both pictures. Look at where they are.' },
           ] },
         },
-        Object.assign(FIND('groin-right', 0, 'Back to the whole body. Fluid is always leaking out of blood vessels into the tissues. <b>Lymph vessels</b> (green) collect it and return it to the blood, and on the way it passes through <b>lymph nodes</b>. <b>Click the lymph node that fluid from Priya\'s scraped right knee reaches first.</b>', 'The <b>inguinal lymph nodes</b> in the right groin drain the right leg. Whatever is in the fluid around the wound will arrive here. Remember this node: it is where Priya\'s lump appears on day 3.', { 'groin-left': 'That node drains the left leg. Follow the green vessel up from the scraped knee.', 'armpit-right': 'Those nodes drain the arm and chest wall. Follow the green vessel up from the knee.', 'armpit-left': 'Those nodes drain the arm and chest wall. Follow the green vessel up from the knee.', 'neck-right': 'Those nodes drain the head and neck. Follow the green vessel up from the knee.', 'neck-left': 'Those nodes drain the head and neck. Follow the green vessel up from the knee.' }),
-          { viewOpts: { slide: 0, caption: 'Lymph vessels and lymph nodes.' }, title: 'Where the fluid goes' }),
+        Object.assign(FIND('groin-right', 0, 'Back to the whole body. Lymph vessels collect the fluid that leaks out of blood vessels into the tissues and return it to the blood, and on the way it passes through lymph nodes. Use the anatomical figure to trace the vessels up from the knee. Then, <b>on the lab\'s diagram, click the lymph node that fluid from Priya\'s scraped right knee reaches first.</b> (Priya is facing you, so her right is on your left.)', 'The <b>inguinal lymph nodes</b> in the right groin drain the right leg. Whatever is in the fluid around the wound will arrive here. Remember this node: it is where Priya\'s lump appears on day 3.', { 'groin-left': 'That node drains the left leg. Follow the green vessel up from the scraped knee.', 'armpit-right': 'Those nodes drain the arm and chest wall. Follow the green vessel up from the knee.', 'armpit-left': 'Those nodes drain the arm and chest wall. Follow the green vessel up from the knee.', 'neck-right': 'Those nodes drain the head and neck. Follow the green vessel up from the knee.', 'neck-left': 'Those nodes drain the head and neck. Follow the green vessel up from the knee.' }),
+          { viewOpts: { slide: 0, caption: 'Left: the anatomy. Right: the lab\'s diagram of Priya.' }, title: 'Where the fluid goes' }),
         {
           view: 'body', viewOpts: { slide: 2, caption: 'The three places this lab follows.' }, title: 'Three places to watch',
           enter: (c) => { c.view().show(2); c.view().onPart = null; },

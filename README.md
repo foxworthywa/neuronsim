@@ -53,8 +53,8 @@ step in Chromium).
 A separate page in `immune/` with its own engine (`immune/engine.js`: bacteria against macrophages
 and neutrophils at a wound, influenza in the lining of the airway, three libraries of lymphocyte
 clones in a lymph node, antibody in the blood) and the shared lesson runner. Thirteen scenes in
-about 90 minutes, with a break after scene 9. Part A, outside the cells: the skin as a barrier and
-the lymph node that drains a scraped knee; bacteria doubling unopposed; macrophages, then the
+about 90 minutes, with a break after scene 9. Part A, outside the cells: an anatomical figure of the lymphatic system (OpenStax) beside the
+lab's own diagram of the body; the skin as a barrier and the lymph node that drains a scraped knee; bacteria doubling unopposed; macrophages, then the
 student sounds the alarm by hand to widen the vessel and bring neutrophils; the innate response
 the same every time; the library of lymphocytes, where the student hunts for a receptor that fits
 and then lets the antigen find it; a clone growing for a week; helper T-lymphocytes; antibody in a
@@ -67,7 +67,9 @@ neutrophils) and Ms. Adeyemi (HIV, few helper T-lymphocytes). Built for groups o
 working alone: the completion code comes from the names typed (instructors check it at
 `immune.html#verify`), progress is saved in the browser, and the graded work is a handout
 (`docs/worksheet/ImmuneSim-handout.pdf`, built by `node docs/worksheet/make-immune-worksheet.js`;
-Canvas page `assignments/immune.md`). Design and model: `docs/IMMUNE_MODULE.md`. Tests:
+Canvas page `assignments/immune.md`). The anatomical figure in scene 1 is "Anatomy of the Lymphatic
+System" by OpenStax College, CC BY 3.0, which is not covered by this repository's own licence
+(`immune/img/CREDITS.md`). Design and model: `docs/IMMUNE_MODULE.md`. Tests:
 `tests/immune.test.js` (physiology) and `npm run test:immune` (performs every step in Chromium).
 
 No build step. Open `index.html` in a browser (or serve the folder with any static server).

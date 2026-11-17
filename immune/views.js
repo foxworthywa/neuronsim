@@ -126,23 +126,40 @@
     const slides = [];
     const part = (g, name, el) => { clickable(el, name, () => view.onPart && view.onPart(name)); el.dataset.part = name; return el; };
 
-    // ---- slide 0: the whole person
+    // ---- slide 0: the anatomy (a textbook figure) beside the lab's own diagram of the body
     {
       const g = svgEl('g', {}, svg); slides.push(g);
-      const P = svgEl('g', { transform: 'translate(250,14)' }, g);
+      // left: the lymphatic system as an anatomy text draws it (OpenStax; see immune/img/CREDITS.md)
+      const A = window.IM_ANATOMY;
+      if (A) {
+        const h = 486, w = h * A.width / A.height, x0 = 14, y0 = 36;
+        label(g, x0 + w / 2, 24, 'The lymphatic system: the anatomy', { 'text-anchor': 'middle', 'font-weight': 650, 'font-size': 16 });
+        svgEl('rect', { x: x0 - 1, y: y0 - 1, width: w + 2, height: h + 2, fill: '#fff', stroke: '#d9d6cc' }, g);
+        const img = svgEl('image', { x: x0, y: y0, width: w, height: h, href: A.src, preserveAspectRatio: 'xMidYMid meet' }, g);
+        svgEl('title', { text: 'Anatomical figure of the lymphatic system: lymph vessels and lymph nodes throughout the body, the tonsils, thymus, spleen and bone marrow, with close-ups of a lymph node and of lymphatic capillaries among tissue cells' }, img);
+        clickable(img, 'Open a larger view of the anatomical figure', () => view.onFigure && view.onFigure());
+        small(g, x0 + w / 2, y0 + h + 15, 'Figure: OpenStax College, Anatomy & Physiology (CC BY 3.0).', { 'text-anchor': 'middle', 'font-size': 11.5 });
+        const zoom = svgEl('g', { transform: `translate(${x0 + w - 104},${y0 + 8})`, 'pointer-events': 'none' }, g);
+        svgEl('rect', { width: 96, height: 24, rx: 12, fill: '#fff', stroke: '#b8b4a6', opacity: 0.95 }, zoom);
+        label(zoom, 48, 17, 'larger view', { 'text-anchor': 'middle', 'font-size': 12.5, fill: COL.muted });
+      }
+      // right: the same body as this lab draws it
+      const PX = 742, PY = 22;
+      label(g, PX, 24, "The same body, as this lab draws it", { 'text-anchor': 'middle', 'font-weight': 650, 'font-size': 16 });
+      const P = svgEl('g', { transform: `translate(${PX},${PY + 14})` }, g);
       const skin = '#e6c3a5', line = '#b98d66';
       svgEl('ellipse', { cx: 0, cy: 50, rx: 34, ry: 42, fill: skin, stroke: line }, P);
       svgEl('rect', { x: -12, y: 88, width: 24, height: 22, fill: skin, stroke: line }, P);
       svgEl('path', { d: 'M-62,108 C-30,96 30,96 62,108 L52,300 L-52,300 Z', fill: skin, stroke: line }, P);
       svgEl('path', { d: 'M-62,110 L-96,290 L-78,294 L-48,150 Z M62,110 L96,290 L78,294 L48,150 Z', fill: skin, stroke: line }, P);
-      svgEl('path', { d: 'M-52,296 L-46,520 L-8,520 L-2,300 Z M52,296 L46,520 L8,520 L2,300 Z', fill: skin, stroke: line }, P);
+      svgEl('path', { d: 'M-52,296 L-46,500 L-8,500 L-2,300 Z M52,296 L46,500 L8,500 L2,300 Z', fill: skin, stroke: line }, P);
       // lymph vessels (green) from the knee to the groin node, then up to a vein near the heart
       svgEl('path', { d: 'M-26,408 C-30,380 -28,350 -24,320', fill: 'none', stroke: COL.lymphLine, 'stroke-width': 4, 'stroke-linecap': 'round' }, P);
       svgEl('path', { d: 'M-24,316 C-10,280 2,220 10,150 C12,140 18,134 26,132', fill: 'none', stroke: COL.lymphLine, 'stroke-width': 3, 'stroke-dasharray': '2 5', 'stroke-linecap': 'round' }, P);
       // bone marrow in the thigh bone
       svgEl('rect', { x: 18, y: 320, width: 10, height: 78, rx: 5, fill: '#fff', stroke: '#9c8f7a' }, P);
       svgEl('rect', { x: 21, y: 326, width: 4, height: 66, rx: 2, fill: '#c2463c' }, P);
-      // heart and a few vessels, lightly
+      // heart
       svgEl('path', { d: 'M8,150 C-4,138 -18,156 8,180 C34,156 20,138 8,150 Z', fill: '#d9a19a', stroke: '#b0352b' }, P);
       // the scrape
       svgEl('ellipse', { cx: -26, cy: 412, rx: 11, ry: 8, fill: '#b0352b', stroke: '#7d1f19' }, P);
@@ -154,17 +171,14 @@
         view.nodeEls[name] = e;
       }
       const names = svgEl('g', {}, g); view.names0 = names;
-      const lead = (x1, y1, x2, y2, text, sub) => { svgEl('path', { d: `M${x1},${y1} L${x2},${y2}`, stroke: '#9aa0ad', 'stroke-width': 1 }, names); label(names, x2 + (x2 > x1 ? 6 : -6), y2 + 4, text, { 'text-anchor': x2 > x1 ? 'start' : 'end', 'font-weight': 600 }); if (sub) small(names, x2 + (x2 > x1 ? 6 : -6), y2 + 20, sub, { 'text-anchor': x2 > x1 ? 'start' : 'end' }); };
-      lead(224, 426, 150, 440, 'The scrape', 'broken skin');
-      lead(274, 372, 410, 396, 'Red bone marrow', 'makes the white blood cells');
-      lead(258, 164, 410, 130, 'Heart and blood', 'carry cells everywhere');
-      lead(240, 262, 150, 250, 'Lymph vessels', 'drain the tissues');
-      lead(304, 164, 410, 214, 'Lymph nodes', 'filters along the lymph vessels');
-      svgEl('rect', { x: 640, y: 60, width: 345, height: 262, rx: 12, fill: '#fff', stroke: '#d9d6cc' }, g);
-      label(g, 656, 92, 'The immune system is not one organ.', { 'font-weight': 650, 'font-size': 17.5 });
-      const lines = ['Its cells are made in the bone marrow,', 'travel in the blood, patrol the tissues,', 'and gather in lymph nodes.', '', 'In this lab you will watch three places:', '1  the site of infection (the wound)', '2  the lymph node that drains it', '3  the blood'];
-      lines.forEach((t, i) => label(g, 656, 122 + i * 24, t, { 'font-size': 16, fill: i > 4 ? COL.ink : COL.muted, 'font-weight': i > 4 ? 600 : 400 }));
-      view.ring = svgEl('ellipse', { cx: 250 - 24, cy: 14 + 316, rx: 18, ry: 14, fill: 'none', stroke: '#f0b429', 'stroke-width': 4, opacity: 0 }, g);
+      const oy = PY + 14;
+      const lead = (x1, y1, x2, y2, text, sub) => { svgEl('path', { d: `M${PX + x1},${oy + y1} L${PX + x2},${oy + y2}`, stroke: '#9aa0ad', 'stroke-width': 1 }, names); const right = x2 > x1; label(names, PX + x2 + (right ? 6 : -6), oy + y2 + 4, text, { 'text-anchor': right ? 'start' : 'end', 'font-weight': 600, 'font-size': 15.5 }); if (sub) small(names, PX + x2 + (right ? 6 : -6), oy + y2 + 21, sub, { 'text-anchor': right ? 'start' : 'end', 'font-size': 13.5 }); };
+      lead(-26, 412, -112, 430, 'The scrape', 'broken skin');
+      lead(-10, 250, -112, 240, 'Lymph vessels', 'drain the tissues');
+      lead(-16, 100, -112, 88, 'Lymph nodes', 'filter the lymph');
+      lead(8, 162, 108, 112, 'Heart and blood', 'carry the cells');
+      lead(24, 360, 108, 380, 'Red bone marrow', 'makes blood cells');
+      view.ring = svgEl('ellipse', { cx: PX - 24, cy: oy + 316, rx: 18, ry: 14, fill: 'none', stroke: '#f0b429', 'stroke-width': 4, opacity: 0 }, g);
     }
     // ---- slide 1: the skin as a barrier
     {
@@ -211,6 +225,7 @@
       label(g, 500, 96, 'Three places to watch', { 'text-anchor': 'middle', 'font-size': 21, 'font-weight': 650 });
     }
     view.show = (i) => slides.forEach((g, j) => g.setAttribute('display', i === j ? 'inline' : 'none'));
+    view.onFigure = () => IM.openFigure && IM.openFigure();
     view.names = (on) => view.names0.setAttribute('opacity', on ? 1 : 0.25);
     view.highlight = (name) => {
       for (const k in view.nodeEls) setAttrs(view.nodeEls[k], { fill: k === name ? '#f7d774' : COL.node });

@@ -502,7 +502,7 @@
   // =========================================================================
   // Progress is kept in this browser, so a closed tab or a break does not cost the group its work.
   // On a shared computer the next group is asked whether to continue or start again.
-  const SAVE_KEY = 'immunesim-progress-v1';
+  const SAVE_KEY = 'immunesim-progress-v2';
   let runner = null;
   function readSaved() {
     try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); return s && s.answers && Object.keys(s.answers).length ? s : null; } catch (e) { return null; }

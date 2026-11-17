@@ -85,7 +85,8 @@ const student = [
 
   part('B · Working through the sim', 'keyed to the scene numbers (16 points, plus 2 for your results and completion code)'),
 
-  scene(1, 'Where is the immune system?', 'The barrier · Where the fluid goes', 1),
+  scene(1, 'Where is the immune system?', 'Find your way around · The barrier · Where the fluid goes', 1),
+  q('In the anatomical figure, lymph nodes are clustered in the neck (cervical nodes), the ______________ (axillary nodes) and the ______________ (inguinal nodes). A lymph node is packed with ______________________________.'),
   q('The body’s first line of defense is ______________. Fluid from the right knee drains first to lymph nodes in the ______________. The three places the sim follows: ______________, ______________ and ______________.'),
 
   scene(2, 'A race', 'Predict', 1),

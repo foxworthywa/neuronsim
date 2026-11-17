@@ -327,6 +327,16 @@
     if (e.key === 'p' && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement) && !(e.target instanceof HTMLSelectElement)) setPaused(!app.paused);
   });
 
+  // The anatomical figure in a larger window (scene 1), with its full credit.
+  function openFigure() {
+    const A = window.IM_ANATOMY; if (!A) return;
+    $('#figure-img').src = A.src;
+    $('#figure-credit').innerHTML = `<i>${A.title}</i>. <a href="${A.source}" target="_blank" rel="noopener">${A.credit.replace(' CC BY 3.0.', '')}</a> Licensed <a href="${A.license}" target="_blank" rel="noopener">CC BY 3.0</a>. Recompressed; otherwise unaltered.`;
+    $('#figure').classList.add('on'); $('#figure-close').focus();
+  }
+  $('#figure-close').addEventListener('click', () => $('#figure').classList.remove('on'));
+  $('#figure').addEventListener('click', (e) => { if (e.target.id === 'figure') $('#figure').classList.remove('on'); });
+
   function start(lesson, opts) {
     runner = Lesson.createRunner(Object.assign({ lesson, panel, progress: $('#progress'), host, inheritKeys: ['view', 'viewOpts', 'speed', 'timeline', 'meters', 'clock'] }, opts || {}));
     IM.runner = runner;
@@ -337,7 +347,7 @@
 
   const IM = window.IM = {
     app, views, COL, $, clamp, htmlEl, svgEl, setAttrs, fmt, fmtAb, pct, person,
-    setSim, sampleOf, snapshot, restore, clearHistory, startRun, finishRun, fastFinish, skip, mark, keepGhost, dayNow, mountView, setPaused, setSpeed, start,
+    openFigure, setSim, sampleOf, snapshot, restore, clearHistory, startRun, finishRun, fastFinish, skip, mark, keepGhost, dayNow, mountView, setPaused, setSpeed, start,
     runner: null,
   };
   window.__immunesim = { app, IM, goto: (s, k) => runner.goto(s, k), runner: () => runner, finishRun: () => fastFinish() };

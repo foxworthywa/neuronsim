@@ -50,7 +50,7 @@ const URL = (arg ? (arg.includes('://') ? arg : 'file://' + path.resolve(arg)) :
       // multiple-choice questions first (a prediction unlocks the experiment)
       if (st.q && !st.num) await answer(ki);
       // find-the-structure steps: a wrong part, then the right one
-      await page.evaluate(() => { const st = window.__immunesim.runner().currentStep(), v = window.__immunesim.app.view; if (st.findPart && v.onPart) { v.onPart('neck-left'); v.onPart(st.findPart); } });
+      await page.evaluate(() => { const st = window.__immunesim.runner().currentStep(), v = window.__immunesim.app.view; if (st.findPart && v.onPart) { v.onPart('neck-left'); v.onPart([].concat(st.findPart)[0]); } });
       if (st.title === 'You are the alarm') {
         // hold the alarm: here, by setting it and letting the clock run
         await page.evaluate(() => { const a = window.__immunesim.app; a.sim.set('manualAlarm', 1); a.clock = 'free'; a.speed = 12; });

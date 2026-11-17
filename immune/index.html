@@ -145,6 +145,14 @@
     <div style="display:flex;justify-content:flex-end"><button type="button" class="primary" id="case-close">Close</button></div>
   </div>
 </div>
+<div id="figure" class="dialog" role="dialog" aria-modal="true" aria-labelledby="figure-title">
+  <div class="box" style="width:min(900px,96vw)">
+    <h2 id="figure-title" style="margin:0;font-size:16px">The lymphatic system</h2>
+    <img id="figure-img" alt="Anatomical figure of the lymphatic system. Lymph vessels run through the whole body, with lymph nodes along them, clustered in the neck, the armpits and the groin. Also labelled: adenoid, tonsil, right lymphatic duct entering a vein, thymus, spleen, bone marrow. Close-ups show the thymus, a lymph node holding masses of lymphocytes and macrophages, and lymphatic capillaries among tissue cells and blood capillaries, taking up interstitial fluid." style="max-width:100%;max-height:72vh;object-fit:contain;align-self:center">
+    <p id="figure-credit" style="margin:0;font-size:13px;color:var(--muted)"></p>
+    <div style="display:flex;justify-content:flex-end"><button type="button" class="primary" id="figure-close">Close</button></div>
+  </div>
+</div>
 <div id="resume" class="dialog" role="dialog" aria-modal="true" aria-labelledby="resume-title">
   <div class="box">
     <h2 id="resume-title" style="margin:0;font-size:16px">Continue where you left off?</h2>
@@ -156,6 +164,7 @@
 </div>
 <script src="../lib/lesson.js"></script>
 <script src="engine.js"></script>
+<script src="anatomy.js"></script>
 <script src="app.js"></script>
 <script src="views.js"></script>
 <script src="lesson-a.js"></script>

@@ -513,6 +513,11 @@ Each milestone is usable in a course on its own.
 - **Unjudged guesses.** The shared lesson runner (`lib/lesson.js`) gained one option flag,
   `neutral`, for opening guesses: the choice is recorded and acknowledged ("Noted") without being
   called right. Other modules are unaffected.
+- **Answer order.** Options are written with the right answer first, and `placeAnswers` in
+  `immune/lesson-b.js` then sets each question's order: across the lab the right answer falls
+  equally often in each position and never in the same position twice running. (The runner's own
+  shuffle, seeded by the prompt, had left it first in 22 of 50 questions, and in 10 of the first
+  14.)
 - **Saved progress.** Answers, results and tables are kept in the browser's local storage. On
   return the student chooses Continue or Start again (the latter for shared computers).
 - **Measured with the default model (person 7):** 1,000 bacteria unopposed for 24 h: 62 million.

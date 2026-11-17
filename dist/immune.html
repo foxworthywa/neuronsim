@@ -3844,6 +3844,29 @@ window.IM_ANATOMY = {
   ];
 
   const LESSON = IM.PART_A.concat(PART_B);
+  // Where the right answer sits. The options are written with the right answer first, so each
+  // question's order is set here: across the lab the right answer falls equally often in each
+  // position, and never in the same position twice running. (Opening guesses, which have no
+  // right answer, keep the runner's own shuffle.)
+  (function placeAnswers() {
+    const rand = ImmuneSim.rng(20261117), bags = {}, last = {};
+    for (const sc of LESSON) for (const st of sc.steps) {
+      const q = st.question;
+      if (!q || !q.options || q.options.some(o => o.neutral)) continue;
+      const n = q.options.length, right = q.options.find(o => o.ok), wrong = q.options.filter(o => !o.ok);
+      if (!right || n < 2) continue;
+      if (!bags[n] || !bags[n].length) {
+        const bag = Array.from({ length: n }, (_, i) => i);
+        for (let i = n - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [bag[i], bag[j]] = [bag[j], bag[i]]; }
+        if (bag[bag.length - 1] === last[n]) bag.unshift(bag.pop());    // the next one drawn is the last element
+        bags[n] = bag;
+      }
+      const pos = bags[n].pop(); last[n] = pos;
+      if (rand() < 0.5) wrong.reverse();
+      q.options = wrong.slice(0, pos).concat([right], wrong.slice(pos));
+      q.fixedOrder = true;
+    }
+  })();
   const FIRST_B = IM.PART_A.length;
 
   // =========================================================================

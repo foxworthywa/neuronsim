@@ -180,3 +180,26 @@ Targets and model details: `HEART_MODULE.md`.
 - Healthy adult: TSH 0.4–4.0 mIU/L, free T4 0.8–1.8 ng/dL; 8 am cortisol 5–25 µg/dL, much lower
   at midnight; 8 am ACTH 10–60 pg/mL; dexamethasone 1 mg overnight → 8 am cortisol < 1.8 µg/dL;
   cosyntropin → cortisol ≥ ≈ 18 µg/dL at 60 min.
+
+## The immune response (ImmuneSim; targets in `IMMUNE_MODULE.md`)
+
+- Bacteria double about every 90 minutes unopposed; they fall only when the phagocytes at the site
+  exceed a critical number, whatever the number of bacteria (Li et al., 2002, 2004).
+- Resident macrophages clear a small dose with no inflammation. A larger dose raises the alarm:
+  the vessel widens and leaks, neutrophils arrive within hours and peak in one to three days.
+- The innate response alone holds the standard infection level without clearing it, and is the
+  same on a second exposure and for a different strain.
+- Every library is built before any pathogen is chosen; any antigen is fitted by one to a few
+  clones; no released clone fits the body's own shapes.
+- The clone that expands most is the one that fits best. First antibody on day 4 to 7; first
+  bacterial infection cleared by about day 9 to 11.
+- B-lymphocytes and cytotoxic T-lymphocytes do not expand without helper T-lymphocytes.
+- Antibody kills nothing by itself; with phagocytes it multiplies their killing.
+- After clearance about 90 to 95 % of the clone dies; memory is stable for months; antibody has a
+  half-life of three weeks.
+- A second exposure to the same strain is cleared in one to two days with little inflammation; a
+  different strain gives a first response again.
+- Antibody neutralizes free virus but cannot clear infected cells; cytotoxic T-lymphocytes can.
+- A vaccine raises antibody and memory with no virus and no infected cells; protection takes about
+  two weeks. Borrowed antibody protects at once and leaves no memory.
+

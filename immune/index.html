@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ImmuneSim — The immune response</title>
+<link rel="stylesheet" href="../lib/base.css">
+<style>
+  :root { --pathogen: #b8322a; --phago: #2f6fb6; --lymph: #12877f; --ab: #9a6a00; --th: #7b3f99; }
+  #trace { height: 205px; }
+  @media (max-height: 780px) { #trace { height: 165px; } #narrator { min-height: 0; margin-bottom: 6px; } #stage-wrap { min-height: 0; } }
+  /* current values and the patient's signs sit in the bar above the picture, never on top of it */
+  #stage-top { flex-wrap: wrap; row-gap: 4px; }
+  #stage-caption { min-width: 180px; }
+  #meters { display: none; gap: 6px; flex-wrap: wrap; align-items: center; }
+  #meters.on { display: flex; }
+  #meters .m { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 2px 8px; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  #meters .m b { font-size: 14px; color: var(--ink); font-variant-numeric: tabular-nums; }
+  #meters .m.good { border-color: var(--good); background: #f1faf4; }
+  #meters .m .bar { display: inline-block; height: 8px; width: 56px; background: #eceae3; border-radius: 4px; overflow: hidden; }
+  #meters .m .bar i { display: block; height: 100%; background: #c0584f; }
+  #vm-badge { display: none; }   /* the clock is shown at the right of the timeline's header */
+  #sim-clock { font-weight: 650; color: var(--ink); font-size: 14px; }
+  .record textarea { width: 100%; height: 210px; font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; border: 1px solid var(--line); border-radius: 8px; padding: 8px; resize: vertical; }
+  .record input[type=text] { font: inherit; width: 100%; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; }
+  .record label { font-size: 13px; color: var(--muted); display: block; margin: 4px 0 2px; }
+  .record .row { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+  .record .code { margin-top: 6px; font-size: 15px; }
+  .record .warn, .warn { color: #8a4b0f; background: #fff3d6; border-radius: 8px; padding: 6px 10px; margin: 8px 0 0; font-size: 14px; }
+  .dialog { position: fixed; inset: 0; background: rgba(31, 36, 48, .45); display: none; align-items: center; justify-content: center; z-index: 10; }
+  .dialog.on { display: flex; }
+  .dialog .box { background: #fff; border-radius: 12px; padding: 16px 18px; width: min(640px, 92vw); max-height: 90vh; overflow: auto; display: flex; flex-direction: column; gap: 8px; }
+  .dialog input { font: inherit; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; }
+  .dialog .result { font-weight: 600; }
+  .dialog p { margin: 0 0 6px; }
+  .case { border-left: 4px solid var(--lymph); background: #f0f8f7; border-radius: 8px; padding: 8px 12px; margin: 6px 0; font-size: 14px; }
+  .case p { margin: 0 0 6px; }
+  .case p:last-child { margin-bottom: 0; }
+  .case-h { font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: #0b5f59; font-weight: 700; margin-bottom: 4px; }
+  .question .options button.noted, .question .options button.noted:disabled { border-color: var(--accent); background: #eaf1fd; color: var(--ink); }
+  .feedback.note { background: #eaf1fd; border: 1px solid #c3d5f3; }
+  .name { border-left: 4px solid #f0b429; background: #fff8e6; border-radius: 8px; padding: 6px 12px; margin: 6px 0; font-size: 14px; }
+  /* lab report */
+  .labrep { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; font-size: 13px; margin: 6px 0; }
+  .labrep .lh { background: #f1efe8; padding: 4px 8px; font-weight: 650; display: flex; justify-content: space-between; gap: 8px; }
+  .labrep table { width: 100%; border-collapse: collapse; }
+  .labrep td, .labrep th { padding: 3px 8px; border-top: 1px solid #eceae3; text-align: left; font-variant-numeric: tabular-nums; }
+  .labrep th { font-weight: 600; color: var(--muted); font-size: 12px; }
+  .labrep td.v { text-align: right; font-weight: 650; }
+  .labrep td.f { width: 26px; font-weight: 700; }
+  .labrep tr.H td.f, .labrep tr.H td.v { color: #b0352b; }
+  .labrep tr.L td.f, .labrep tr.L td.v { color: #2457a6; }
+  .labrep td.r { color: var(--muted); font-size: 12px; }
+  /* tables the student fills in */
+  .ptable { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .ptable th, .ptable td { border: 1px solid var(--line); padding: 4px 6px; text-align: left; vertical-align: top; }
+  .ptable th { background: #f1efe8; font-weight: 600; }
+  .ptable td.c { text-align: center; }
+  .ptable select { font: inherit; font-size: 13px; max-width: 100%; padding: 2px 4px; border-radius: 6px; border: 1px solid var(--line); background: #fff; }
+  .ptable.knock { font-size: 12.5px; table-layout: fixed; }
+  .ptable.knock th:first-child { width: 27%; } .ptable.knock th:last-child { width: 50px; }
+  .ptable.knock select { width: 100%; font-size: 12.5px; }
+  .ptable.knock button { font-size: 12.5px; padding: 3px 7px; }
+  .ptable .ok { color: #1e7a45; font-weight: 650; } .ptable .no { color: #b0352b; font-weight: 650; }
+  .ptable td.right select { border-color: var(--good); background: #eaf7ee; }
+  .ptable td.wrong select { border-color: var(--bad); background: #fdeeec; }
+  .order { display: flex; flex-direction: column; gap: 5px; }
+  .order .slot { border: 1px dashed var(--line); border-radius: 8px; padding: 4px 8px; font-size: 13px; min-height: 28px; background: #fafaf7; }
+  .order .slot.filled { border-style: solid; border-color: var(--good); background: #eaf7ee; }
+  .extra .options { display: flex; flex-direction: column; gap: 5px; margin-top: 6px; }
+  .extra .options button { text-align: left; font-size: 13px; }
+  .extra .options button.wrong { border-color: var(--bad); background: #fdeeec; }
+  .actions button.germ { border-color: var(--pathogen); color: #7d1f19; }
+  .actions button.cell { border-color: var(--phago); color: #1d4a80; }
+  .actions button.lym { border-color: var(--lymph); color: #0b5f59; }
+  .actions button.drug { border-color: #6b7385; color: #3c4353; }
+  .actions button.held { background: #fff1c9; }
+  #stage [tabindex]:focus { outline: none; }
+  #stage [tabindex]:focus-visible { outline: 3px solid #f0b429; outline-offset: 2px; }
+  #trace-head { flex-wrap: wrap; row-gap: 2px; }
+  #trace-head .legend { flex-wrap: wrap; font-size: 12px; gap: 8px; }
+  .part-break { border: 2px solid #b9cdf0; background: #f3f7fe; border-radius: 10px; padding: 8px 12px; font-size: 14px; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>ImmuneSim</h1>
+    <div class="sub">The immune response · <span id="part-label">Part A</span></div>
+  </div>
+  <nav id="progress" aria-label="Scenes"></nav>
+  <div class="spacer"></div>
+  <button id="btn-case" type="button" title="Reopen the patient cases">The patients</button>
+  <label class="sub">Speed
+    <select id="speed" title="How much simulated time passes per second of real time">
+      <option value="0.5">30 minutes per second</option>
+      <option value="1">1 hour per second</option>
+      <option value="3">3 hours per second</option>
+      <option value="6" selected>6 hours per second</option>
+      <option value="12">½ day per second</option>
+      <option value="24">1 day per second</option>
+      <option value="48">2 days per second</option>
+      <option value="168">1 week per second</option>
+    </select>
+  </label>
+  <button id="btn-pause" type="button" title="Pause / resume the simulation clock (P)">Pause</button>
+</header>
+<main>
+  <div id="stage-wrap">
+    <div id="stage-top">
+      <div id="stage-caption"></div>
+      <div id="meters" aria-live="off"></div>
+      <div id="vm-badge" aria-live="off"><span id="badge-label">Clock</span> <b id="badge-value">—</b></div>
+    </div>
+    <div id="stage"></div>
+    <div id="paused-badge">Paused</div>
+    <div id="narrator" aria-live="off"></div>
+    <div id="sr-live" class="sr-only" aria-live="polite"></div>
+  </div>
+  <aside id="panel" aria-label="Lesson"></aside>
+  <div id="trace-wrap">
+    <div id="trace-head">
+      <span id="trace-title"><b style="color:var(--ink);font-weight:650">The infection timeline</b></span>
+      <span class="legend" id="trace-legend"></span>
+      <span style="flex:1"></span>
+      <span id="sim-clock" style="font-variant-numeric: tabular-nums">day 0</span>
+    </div>
+    <canvas id="trace" role="img" aria-label="The infection timeline: numbers of pathogens, neutrophils, lymphocytes and antibody against time, on a scale where each line is 100 times the one below"></canvas>
+  </div>
+</main>
+<div id="verify" class="dialog" role="dialog" aria-modal="true" aria-labelledby="verify-title">
+  <div class="box">
+    <h2 id="verify-title" style="margin:0;font-size:16px">Check a completion code (instructor)</h2>
+    <p style="margin:0;font-size:14px;color:var(--muted)">Type the names as the student or group entered them, and the code from their handout. The order of the names, capitals and extra spaces do not matter.</p>
+    <label class="sub" for="verify-name">Names</label><input type="text" id="verify-name">
+    <label class="sub" for="verify-code">Completion code</label><input type="text" id="verify-code" placeholder="IM-XXXXX-XXXXX">
+    <div class="result" id="verify-result" role="status"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" id="verify-close">Close</button><button type="button" class="primary" id="verify-check">Check</button></div>
+  </div>
+</div>
+<div id="case" class="dialog" role="dialog" aria-modal="true" aria-labelledby="case-title">
+  <div class="box">
+    <h2 id="case-title" style="margin:0;font-size:16px">The patients</h2>
+    <div id="case-body" style="font-size:15px"></div>
+    <div style="display:flex;justify-content:flex-end"><button type="button" class="primary" id="case-close">Close</button></div>
+  </div>
+</div>
+<div id="figure" class="dialog" role="dialog" aria-modal="true" aria-labelledby="figure-title">
+  <div class="box" style="width:min(900px,96vw)">
+    <h2 id="figure-title" style="margin:0;font-size:16px">The lymphatic system</h2>
+    <img id="figure-img" alt="Anatomical figure of the lymphatic system. Lymph vessels run through the whole body, with lymph nodes along them, clustered in the neck, the armpits and the groin. Also labelled: adenoid, tonsil, right lymphatic duct entering a vein, thymus, spleen, bone marrow. Close-ups show the thymus, a lymph node holding masses of lymphocytes and macrophages, and lymphatic capillaries among tissue cells and blood capillaries, taking up interstitial fluid." style="max-width:100%;max-height:72vh;object-fit:contain;align-self:center">
+    <p id="figure-credit" style="margin:0;font-size:13px;color:var(--muted)"></p>
+    <div style="display:flex;justify-content:flex-end"><button type="button" class="primary" id="figure-close">Close</button></div>
+  </div>
+</div>
+<div id="resume" class="dialog" role="dialog" aria-modal="true" aria-labelledby="resume-title">
+  <div class="box">
+    <h2 id="resume-title" style="margin:0;font-size:16px">Continue where you left off?</h2>
+    <p style="margin:0;font-size:15px">This browser has saved progress in ImmuneSim.</p>
+    <p id="resume-info" style="margin:0;font-size:14px;color:var(--muted)"></p>
+    <p style="margin:0;font-size:14px;color:var(--muted)">If that was not you (on a shared computer, for example), start again.</p>
+    <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" id="resume-restart">Start again</button><button type="button" class="primary" id="resume-continue">Continue</button></div>
+  </div>
+</div>
+<script src="../lib/lesson.js"></script>
+<script src="engine.js"></script>
+<script src="anatomy.js"></script>
+<script src="app.js"></script>
+<script src="views.js"></script>
+<script src="lesson-a.js"></script>
+<script src="lesson-b.js"></script>
+</body>
+</html>

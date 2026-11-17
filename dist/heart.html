@@ -454,9 +454,10 @@ header a.home:hover { text-decoration: underline; }
           noteAnswer(q, stripHtml(o.t), !!o.ok);
           Array.from(opts.children).forEach(c => c.classList.remove('wrong'));
           if (o.ok) {
-            b.classList.add('correct');
+            // o.neutral: an opening guess with no right answer yet; it is recorded, not judged
+            b.classList.add(o.neutral ? 'noted' : 'correct');
             Array.from(opts.children).forEach(c => { c.disabled = true; });
-            fb.className = 'feedback good'; fb.innerHTML = '<b>Right.</b> ' + (o.fb || q.explain || '');
+            fb.className = o.neutral ? 'feedback note' : 'feedback good'; fb.innerHTML = (o.neutral ? '<b>Noted.</b> ' : '<b>Right.</b> ') + (o.fb || q.explain || '');
             st.answered = true;
             if (q.onCorrect) q.onCorrect(ctx);
             refreshNav();
@@ -471,9 +472,9 @@ header a.home:hover { text-decoration: underline; }
       box.appendChild(opts); box.appendChild(fb);
       if (prior && prior.done) {
         st.answered = true;
-        Array.from(opts.children).forEach(c => { c.disabled = true; if (stripHtml(c.innerHTML) === prior.final) c.classList.add('correct'); });
-        const right = q.options.find(o => o.ok);
-        fb.className = 'feedback good'; fb.innerHTML = '<b>Right.</b> ' + ((right && right.fb) || q.explain || ''); fb.style.display = 'block';
+        const right = q.options.find(o => o.ok), neutral = !!(right && right.neutral);
+        Array.from(opts.children).forEach(c => { c.disabled = true; if (stripHtml(c.innerHTML) === prior.final) c.classList.add(neutral ? 'noted' : 'correct'); });
+        fb.className = neutral ? 'feedback note' : 'feedback good'; fb.innerHTML = (neutral ? '<b>Noted.</b> ' : '<b>Right.</b> ') + ((right && right.fb) || q.explain || ''); fb.style.display = 'block';
       }
       return box;
     }

@@ -93,7 +93,7 @@ const student = [
   q('1,000 bacteria, doubling every 90 minutes, nothing to stop them. Our prediction for 24 hours: ____________   The model: ____________   Each line on the timeline is ______ times the line below.'),
 
   scene(3, 'The guards already there', 'A small breach · You are the alarm · Turn the alarm down', 1),
-  q('300 bacteria: cleared?  yes / no    Did the wound go red or swell?  yes / no'),
+  q('A macrophage’s pattern recognition receptors (such as the __________-like receptors) fit molecules shared by many microbes, called ______________________________ (PAMPs), for example ______________.     300 bacteria: cleared?  yes / no    red or swollen?  yes / no'),
   q('By hand: the bacteria began to fall when the neutrophils at the site passed about ____________.'),
   table(W3, [
     ['At 48 hours', 'Bacteria', 'Neutrophils at the site', 'Swelling (%)'],
@@ -181,8 +181,8 @@ const student = [
   q('7. Transfer: two things people say. “I had my flu shot yesterday, so I’m covered for the party tonight.” “The flu shot gave me the flu.” Respond to each, using your scene 13 results. Then explain why a newborn is protected for a few months without ever having been vaccinated, and why that protection does not last.', true, 3),
   ...lines(6),
   q('Now redraw your Part A picture as a timeline. Sketch four curves for a FIRST infection (bacteria, neutrophils at the site, lymphocytes that fit, antibody), from day 0 to day 12. Then add, in another colour or as dashed lines, the bacteria and antibody for a SECOND infection with the same strain. Label three events. Under it, write one thing in your Part A drawing that you would now change.', false, 2),
-  box(3600, 'your timeline: how many (up the page) against time in days (across)'),
-  ...lines(2),
+  box(3100, 'your timeline: how many (up the page) against time in days (across)'),
+  ...lines(1),
 ];
 
 const doc = new Document({

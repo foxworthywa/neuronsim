@@ -140,14 +140,17 @@ Every wrong option gets its own feedback (`PEDAGOGY.md` §5).
 The sim names a term only after the student has seen what the thing does. It names these and no
 more:
 
-phagocyte (macrophage, neutrophil) · inflammation · dendritic cell · antigen · lymph node ·
+phagocyte (macrophage, neutrophil) · PAMPs, pattern recognition receptors and toll-like receptors
+(added at instructor review; named once, in scene 3, after the student has said what such receptors
+allow) · inflammation · dendritic cell · antigen · lymph node ·
 lymphocyte · receptor · B cell · plasma cell · antibody · helper T cell (CD4) · cytotoxic T cell
 (CD8) · MHC I and MHC II · clone and clonal selection · memory cell · primary and secondary
 response · innate and adaptive · vaccine · active and passive immunity · IgM and IgG (scene 13
 only, because they are on the titre report).
 
 Left to the textbook and lecture: complement, IgA/IgD/IgE, named cytokines and interleukins,
-natural killer cells, pattern-receptor families, helper T subsets and regulatory T cells, the
+natural killer cells, the individual toll-like receptors and other pattern-receptor families,
+helper T subsets and regulatory T cells, the
 spleen, tonsils and MALT, lymph node histology, affinity maturation, antibody structure, the four
 hypersensitivity types, blood groups.
 

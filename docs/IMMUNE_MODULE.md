@@ -427,7 +427,7 @@ Each milestone is usable in a course on its own.
 
 ## As built (differences from the plan above)
 
-- **Thirteen scenes, 65 steps.** The scene list is as planned. Changes inside scenes:
+- **Thirteen scenes, 66 steps.** The scene list is as planned. Changes inside scenes:
   - *Scene 1* opens with anatomy beside function (instructor review, Nov 2026): the whole-body
     screen shows an anatomical figure of the lymphatic system ("Anatomy of the Lymphatic System",
     OpenStax College, CC BY 3.0; `immune/img/CREDITS.md`) on the left and the lab's simplified
@@ -441,6 +441,16 @@ Each milestone is usable in a course on its own.
     B- and T-lymphocytes and that they are switched off here (instructor review, Nov 2026). The planned "twice the dose" run was dropped: in the model, as
     in the published experiments, what decides the outcome is the number of neutrophils at the
     site, not the dose.
+  - *Scene 5* opens by listing what is new in the picture (instructor review, Nov 2026): a
+    dendritic cell, drawn at the site as its own purple star-shaped cell and labelled, distinct
+    from the blue macrophages; the lymph vessel; the lymph node with its three kinds of
+    lymphocyte; the blood; and the two new curves on the timeline. The same purple star travels
+    along the lymph vessel and appears, large, in scene 7.
+    A second step sets the macrophage beside the dendritic cell in a three-row table (both swallow
+    bacteria; one stays to kill and raise the alarm, the other carries antigen to the node) and
+    names the antigen-presenting cell. Scene 7's name box keeps the textbook's list of
+    antigen-presenting cells (dendritic cells, macrophages, B-lymphocytes) and says how they
+    divide the work.
   - *Scene 6* asks about the lag as "about a week" (the B-lymphocyte clone reaches a thousand
     cells around day 7, because it waits for helper T-lymphocytes, which scene 7 then explains).
   - *Scene 7* has one self-tolerance sentence in a feedback, not a separate experiment.

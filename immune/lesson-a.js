@@ -444,14 +444,33 @@
       id: 'library', title: 'The library in the lymph node', speed: 6,
       steps: [
         {
-          view: 'places', viewOpts: { kind: 'bacterium', caption: 'All three places: the site, the lymph node that drains it, and the blood.' }, remount: true,
+          view: 'places', viewOpts: { kind: 'bacterium', caption: 'All three places: the site, the lymph node that drains it, and the blood.', marksAt: [[1, 418, 322], [2, 630, 300], [3, 664, 110], [4, 664, 424]] }, remount: true,
           timeline: TL(10), meters: METERS.full,
-          title: 'A messenger leaves the wound',
+          title: 'What is new in the picture',
           setup: () => setSim(person(), { kind: 'bacterium' }),
-          text: `<p>From now on the picture shows all three places, and the model has everything switched on.</p>
-                 <p>Among the cells at the wound are <b>dendritic cells</b>. A dendritic cell swallows bacteria, cuts their proteins into pieces, then leaves the tissue through a lymph vessel, carrying the pieces to the lymph node. Any molecule (usually a piece of a protein) that a lymphocyte's receptor can bind is called an <b>antigen</b>.</p>`,
-          actions: [{ label: 'Follow the first day', cls: 'germ', disabled: (c) => busy(c) || data(c).ran, run: (c) => experiment(c, { before: (b) => b.infect('bacterium'), hours: 24, speed: 4, after: (b, c) => c.recordValue('antigenNode', markerDay('antigen reaches the node')) }) }],
-          question: guess('Make a prediction: why carry pieces of the bacterium all the way to the lymph node?', ['The cells that could recognise this exact bacterium are waiting there', 'So that the node can filter the bacteria out and destroy them', 'To warn the rest of the body that there is an infection'], 'Go into the lymph node and see what is there.'),
+          enter: (c) => c.view().setMarks(true),
+          text: `<p>The wound is as you left it: the blue <b>macrophages</b>, the blood vessel and its neutrophils. <b>Four things are new</b> in the picture from this scene on:</p>
+                 <ol style="margin:0 0 6px 18px;padding:0"><li>A <b>dendritic cell</b> (purple, star-shaped): a different kind of cell from the macrophages, also living in the tissue.</li><li>The <b>lymph vessel</b> that drains the wound.</li><li>The <b>lymph node</b> in Priya's groin, with the <b>lymphocytes</b> that were switched off in scene 4: B-lymphocytes, helper T-lymphocytes and cytotoxic T-lymphocytes (the key is at the top of the box).</li><li>The <b>blood</b>, where antibody will appear.</li></ol>
+                 <p>The timeline has <b>two new curves</b> to match: lymphocytes that fit this antigen (green) and antibody (gold, dashed).</p>`,
+          question: { prompt: 'In scene 4 the bacteria were held level but never cleared. Which of these was missing then?', options: [
+            { t: 'The lymphocytes (and so the antibody)', ok: true, fb: 'Scene 4 had macrophages, inflammation and neutrophils only. The rest of Part A is about what the lymphocytes add, starting with how they find out that there is an infection at all.' },
+            { t: 'The macrophages', fb: 'The macrophages were there in scenes 3 and 4: they raised the alarm. Look at item 3 in the list.' },
+            { t: 'The blood vessel and its neutrophils', fb: 'Those were there in scenes 3 and 4: you brought the neutrophils out yourself. Look at item 3 in the list.' },
+          ] },
+        },
+        {
+          view: 'places', title: 'A messenger leaves the wound',
+          setup: () => setSim(person(), { kind: 'bacterium' }),
+          enter: (c) => c.view().setMarks(false),
+          text: `<p>Two kinds of cell at the wound swallow bacteria, and they do different jobs with them.</p>
+                 <table class="ptable" style="margin-bottom:8px"><tr><th></th><th>Macrophage (blue)</th><th>Dendritic cell (purple)</th></tr>
+                 <tr><td><b>Swallows bacteria?</b></td><td>yes</td><td>yes</td></tr>
+                 <tr><td><b>Main job</b></td><td>kill bacteria at the wound, and raise the alarm</td><td>carry pieces of them to the lymph node, and show the pieces to lymphocytes</td></tr>
+                 <tr><td><b>Leaves the wound?</b></td><td>no: it stays and fights</td><td>yes: it is the messenger</td></tr></table>
+                 <p>A dendritic cell that has swallowed bacteria cuts their proteins into pieces and leaves through the lymph vessel. Any molecule (usually a piece of a protein) that a lymphocyte's receptor can bind is called an <b>antigen</b>, so a cell that shows such pieces to lymphocytes is called an <b>antigen-presenting cell</b>. The dendritic cell is the body's specialist at it.</p>
+                 <p>Run the first day and watch the purple cell travel.</p>`,
+          actions: [{ label: 'Follow the first day', cls: 'germ', disabled: (c) => busy(c) || data(c).ran, run: (c) => { c.view().setMarks(false); experiment(c, { before: (b) => b.infect('bacterium'), hours: 24, speed: 4, after: (b, c) => c.recordValue('antigenNode', markerDay('antigen reaches the node')) }); } }],
+          question: guess('Make a prediction: why does the dendritic cell carry pieces of the bacterium all the way to the lymph node, instead of staying to fight like a macrophage?', ['The cells that could recognise this exact bacterium are waiting there', 'So that the node can filter the bacteria out and destroy them', 'To warn the rest of the body that there is an infection'], 'Go into the lymph node and see what is there.'),
           waitFor: (c) => data(c).ran, waitHint: 'Follow the first day',
         },
         {
@@ -572,7 +591,7 @@
           text: `<ol style="margin:0 0 6px 18px;padding:0"><li>The <b>dendritic cell</b> that came from the wound.</li><li>On its surface, <b>holders</b>, each showing a fragment of the bacterium's protein.</li><li>Five <b>helper T-lymphocytes</b>, each with a different receptor.</li><li>A <b>B-lymphocyte</b> whose receptor fits: it has caught a whole bacterium.</li><li>The B-lymphocyte's own holder, showing a fragment of what it caught.</li></ol>
                  <p>A T-lymphocyte's receptor cannot bind a whole bacterium, or anything floating free. It fits only a <b>fragment held in a holder</b> on another cell.</p>`,
           question: { prompt: 'The dendritic cell swallowed bacteria at the wound. What is it showing in its holders?', options: [
-            { t: 'Fragments of what it swallowed', ok: true, fb: nameBox('The holder is an <b>MHC class II molecule</b>. Cells that show fragments of what they have swallowed this way are <b>antigen-presenting cells</b>: dendritic cells, macrophages and B-lymphocytes.') },
+            { t: 'Fragments of what it swallowed', ok: true, fb: nameBox('The holder is an <b>MHC class II molecule</b>. Cells that show fragments of what they have swallowed this way are <b>antigen-presenting cells</b>: dendritic cells, macrophages and B-lymphocytes. They divide the work. The <b>dendritic cell</b> carries antigen to the lymph node and is the one that starts a response there. A <b>macrophage</b> mostly stays at the wound; it can show its fragments to helper T-lymphocytes that arrive there later, which spur it on to kill more.') },
             { t: 'Whole bacteria', fb: 'Look at the size of what is in the holders: small pieces. The dendritic cell digested the bacteria first.' },
             { t: 'Its own receptors', fb: 'The red pieces are the same colour as the bacterium. Where did they come from?' },
           ] },

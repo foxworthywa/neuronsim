@@ -107,6 +107,7 @@ const student = [
   q('Macrophages and neutrophils only, day 4: ____________ bacteria.  Cleared?  yes / no    A month later, same bacterium: ____________.    A strain never met before:  the same / different'),
 
   scene(5, 'The library in the lymph node', 'Hunt by hand · Let the antigen find it · A different pathogen', 2),
+  q('Both swallow bacteria. The ______________ stays at the wound to kill them and raise the alarm; the ______________ cell carries pieces of them (antigen) to the lymph node.'),
   q('Our prediction (circle one): a lymphocyte that fits   already exists  /  will be built to match  /  will be copied from the dendritic cell'),
   q('By hand we tested ______ of 1,296; best fit ______ %.   B-lymphocytes whose receptor fits: ______ of 1,296.   For the other strain: ______  (the same cells / different cells).'),
   q('Did the library change when the pathogen changed? What does that tell you about where a fitting receptor comes from?', true),

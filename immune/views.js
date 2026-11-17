@@ -62,6 +62,17 @@
   }
   const lymphocyte = (kind) => (g) => { const e = svgEl('g', {}, g); svgEl('circle', { r: 6, fill: '#fff', stroke: COL[kind], 'stroke-width': 1.5 }, e); svgEl('circle', { r: 3.6, fill: COL[kind] }, e); return e; };
   const dot = (color, r) => (g) => svgEl('circle', { r: r || 3, fill: color }, g);
+  // A dendritic cell: the same purple star wherever it appears (site, lymph vessel, scene 7).
+  const DC_STAR = 'M0,-11 L3,-4 L11,-6 L6,1 L11,8 L3,6 L0,13 L-3,6 L-11,8 L-6,1 L-11,-6 L-3,-4 Z';
+  function dendritic(parent, scale) {
+    const e = svgEl('g', {}, parent), k = svgEl('g', { transform: `scale(${scale || 1})` }, e);
+    svgEl('path', { d: DC_STAR, fill: '#dcd9f3', stroke: COL.dc, 'stroke-width': 1.5 / (scale || 1) * 1.6, 'stroke-linejoin': 'round' }, k);
+    svgEl('ellipse', { rx: 3.2, ry: 2.6, fill: COL.dc, opacity: 0.55 }, k);
+    // pieces of what it has swallowed
+    e.cargo = svgEl('g', { opacity: 0 }, k);
+    for (const [x, y] of [[-4, 3], [4, -2], [1, 5]]) svgEl('circle', { cx: x, cy: y, r: 1.5, fill: COL.pathogen }, e.cargo);
+    return e;
+  }
   function numbered(parent, list) {
     const g = svgEl('g', { opacity: 0, 'pointer-events': 'none' }, parent);
     for (const [n, x, y] of list) {
@@ -251,7 +262,7 @@
     label(site, 34, 44, virus ? '1  The site: the lining of the airway' : '1  The site: the wound', { 'font-weight': 650, 'font-size': 15.5 });
     const fluid = svgEl('rect', { x: 20, y: 96, width: SW, height: 320, fill: '#a9d3f5', opacity: 0 }, site);
     const fluidNote = small(site, 20 + SW - 14, 116, 'fluid leaking in from the vessel', { 'text-anchor': 'end', fill: '#2b6ea6', opacity: 0 });
-    let bacteria, virions, neut, pus, alarmDots, abSite, ctl, squares = [], vesselRect, vesselWall, macs = [], dcMark, coatedShare = 0;
+    let bacteria, virions, neut, pus, alarmDots, abSite, ctl, squares = [], vesselRect, vesselWall, macs = [], dcMark, dcHome = [], coatedShare = 0;
     const vesselY = 440;
     if (!virus) {
       // skin with a gap, tissue cells, resident macrophages
@@ -322,11 +333,15 @@
       bloodText2 = small(svg, 810, 508, '', { 'text-anchor': 'middle' });
       // the lymph vessel from the site to the node, and a dendritic cell that travels along it
       svgEl('path', { d: `M${SW + 8},330 C${SW + 44},330 ${SW + 30},190 742,172`, fill: 'none', stroke: COL.lymphLine, 'stroke-width': 9, 'stroke-linecap': 'round', opacity: 0.6 }, svg);
-      small(svg, SW + 30, 348, 'lymph', { 'text-anchor': 'middle', fill: '#5f7a3a', 'font-size': 12.5 });
-      dcMark = svgEl('g', { opacity: 0 }, svg);
-      svgEl('path', { d: 'M0,-11 L3,-4 L11,-6 L6,1 L11,8 L3,6 L0,13 L-3,6 L-11,8 L-6,1 L-11,-6 L-3,-4 Z', fill: '#dcd9f3', stroke: COL.dc, 'stroke-width': 1.5 }, dcMark);
-      svgEl('circle', { r: 2.5, fill: COL.pathogen }, dcMark);
+      small(svg, SW + 30, 350, 'lymph', { 'text-anchor': 'middle', fill: '#5f7a3a', 'font-size': 12.5 });
+      small(svg, SW + 30, 364, 'vessel', { 'text-anchor': 'middle', fill: '#5f7a3a', 'font-size': 12.5 });
+      // dendritic cells that live at the site (a different cell from the macrophages) ...
+      const HOME = virus ? [[SW - 60, 150], [150, 150]] : [[455, 352], [250, 150]];
+      HOME.forEach(([x, y], i) => { const d = dendritic(svg, 2.3); d.setAttribute('transform', `translate(${x},${y})`); dcHome.push(d); if (i === 0) small(svg, x, y + 46, 'dendritic cell', { 'text-anchor': 'middle', fill: COL.dc }); });
+      // ... and one on its way to the node, carrying pieces of what it swallowed
+      dcMark = dendritic(svg, 1.6); dcMark.setAttribute('opacity', 0); dcMark.cargo.setAttribute('opacity', 1);
     }
+    svg.appendChild(marks);   // numbered markers stay on top of everything drawn since
 
     let phase = 0;
     view.update = (dtReal) => {
@@ -382,6 +397,9 @@
         const u = (phase * 0.25) % 1, x = (1 - u) * (SW + 8) + u * 742 + 26 * Math.sin(Math.PI * u), y = 330 - 158 * u;
         setAttrs(dcMark, { opacity: 1, transform: `translate(${x.toFixed(1)},${y.toFixed(1)})` });
       } else dcMark.setAttribute('opacity', 0);
+      // the dendritic cells at the site show what they have swallowed while there is anything to swallow
+      const fed = (virus ? b.infected + s.virus : s.bacteria) > 50 || an > 0.02;
+      dcHome.forEach(d => d.cargo.setAttribute('opacity', fed ? 1 : 0));
       const cells = b.nodeCells, grow = 1 + 0.16 * log10(cells / 20);
       setAttrs(nodeShape, { rx: 70 * grow, ry: 54 * grow });
       let eff = { B: 0, Th: 0, Tc: 0 };
@@ -546,7 +564,7 @@
     }
     // dendritic cell
     const dc = svgEl('g', { transform: 'translate(170,250)' }, svg);
-    svgEl('path', { d: 'M0,-120 L26,-52 L104,-86 L58,-18 L128,36 L48,40 L40,124 L-6,58 L-78,112 L-52,30 L-128,10 L-58,-28 L-84,-100 L-22,-56 Z', fill: '#e4e1f6', stroke: COL.dc, 'stroke-width': 2.5, 'stroke-linejoin': 'round' }, dc);
+    svgEl('path', { d: 'M0,-120 L26,-52 L104,-86 L58,-18 L128,36 L48,40 L40,124 L-6,58 L-78,112 L-52,30 L-128,10 L-58,-28 L-84,-100 L-22,-56 Z', fill: '#dcd9f3', stroke: COL.dc, 'stroke-width': 2.5, 'stroke-linejoin': 'round' }, dc);
     svgEl('ellipse', { rx: 26, ry: 20, fill: COL.dc, opacity: 0.45 }, dc);
     label(svg, 170, 420, 'Dendritic cell', { 'text-anchor': 'middle', 'font-weight': 650, 'font-size': 16.5 });
     small(svg, 170, 440, 'ate bacteria at the wound, then', { 'text-anchor': 'middle' });

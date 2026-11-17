@@ -1589,28 +1589,37 @@ header a.home:hover { text-decoration: underline; }
   const oneIn = (p) => (p >= 0.4 ? 'about 1 count in 2' : `about 1 count in ${Math.round(1 / p)}`);
 
   // A table in which each row is matched to one choice. o: {head, rows: [{key, html}], options: [[value, label]], answer(key),
-  // store (object kept with the record), onChange(key, right), hint(key, value)}
+  // store (object kept with the record), onChange(key, right), hint(key, value),
+  // verdict(key, value, right): if given, each choice is marked right or wrong in words, under it}
   function matchTable(el, c, o) {
     const t = htmlEl('table', { class: 'ptable' });
     t.appendChild(htmlEl('tr', {}, `<th>${o.head[0]}</th><th style="width:${o.width || 34}%">${o.head[1]}</th>`));
     const note = htmlEl('div', { class: 'status', role: 'status' });
+    const score = () => { const n = o.rows.filter(r => o.store[r.key] === o.answer(r.key)).length, all = o.rows.length; note.classList.toggle('ok', n === all); note.innerHTML = n === all ? `<b>All ${all} are right.</b>` : o.rows.some(r => o.store[r.key]) ? `<b>${n} of ${all} right so far.</b> Change any marked ✗.` : ''; };
     for (const row of o.rows) {
       const tr = htmlEl('tr', {}, `<td>${row.html}</td>`), td = htmlEl('td'), sel = htmlEl('select', { 'aria-label': row.label || row.key });
       sel.appendChild(htmlEl('option', { value: '' }, 'Choose…'));
       for (const [v, text] of o.options) sel.appendChild(htmlEl('option', { value: v }, text));
-      const mark = () => { const v = o.store[row.key]; sel.value = v || ''; td.className = !v ? '' : v === o.answer(row.key) ? 'right' : 'wrong'; };
+      const said = o.verdict ? htmlEl('div', { role: 'status' }) : null;
+      const mark = () => {
+        const v = o.store[row.key], right = v === o.answer(row.key);
+        sel.value = v || ''; td.className = !v ? '' : right ? 'right' : 'wrong';
+        if (said) { said.className = v ? 'verdict ' + (right ? 'ok' : 'no') : ''; said.innerHTML = v ? o.verdict(row.key, v, right) : ''; }
+      };
       sel.addEventListener('change', () => {
         o.store[row.key] = sel.value; o.tries = (o.store._tries = (o.store._tries || 0) + 1);
         mark();
         const right = sel.value === o.answer(row.key);
-        note.innerHTML = right || !sel.value ? '' : (o.hint ? o.hint(row.key, sel.value) : 'Not that one. Look again.');
+        if (o.verdict) score(); else note.innerHTML = right || !sel.value ? '' : (o.hint ? o.hint(row.key, sel.value) : 'Not that one. Look again.');
         if (o.onChange) o.onChange(row.key, right);
         if (o.rows.every(r => o.store[r.key] === o.answer(r.key))) c.complete();
       });
+      td.appendChild(sel); if (said) td.appendChild(said);
       mark();
-      td.appendChild(sel); tr.appendChild(td); t.appendChild(tr);
+      tr.appendChild(td); t.appendChild(tr);
     }
     el.appendChild(t); el.appendChild(note);
+    if (o.verdict) score();
   }
   const matched = (o, rows, answer) => rows.every(k => o[k] === answer(k));
 
@@ -2139,12 +2148,19 @@ header a.home:hover { text-decoration: underline; }
     for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
     return Object.fromEntries(order.map((k, i) => [k, 'WXYZ'[i]]));
   }
-  const WHY_CASE = {
-    healthy: 'Nothing on this questionnaire calls for any cell. Which report has no flags?',
-    allergy: 'Which cell did the allergy call for in scene 3? Find the report where that cell is high.',
-    viral: 'Which cell deals with a virus? Find the report where that cell has become the commonest.',
-    bacterial: 'Which cell deals with bacteria, and rises within a day? Find the report where it is high.',
+  // What each person's answers lead you to expect, and what each report shows, in plain words.
+  const EXPECT = {
+    healthy: 'This person has no allergy and no infection, so nothing should be out of range',
+    allergy: 'Hay fever raises eosinophils',
+    viral: 'A virus raises lymphocytes',
+    bacterial: 'A bacterial infection raises neutrophils',
   };
+  const SHOWS = { healthy: 'has nothing out of range', allergy: 'has high eosinophils', viral: 'has high lymphocytes', bacterial: 'has high neutrophils' };
+  function caseVerdict(k, letter, right) {
+    const L = caseLetters(), chosen = KEYS.find(x => L[x] === letter);
+    if (right) return `✓ <b>Right.</b> ${k === 'healthy' ? `No allergy and no infection, and report ${letter} has nothing out of range.` : `${EXPECT[k]}, and report ${letter} ${SHOWS[k]}.`}`;
+    return `✗ <b>Wrong.</b> Report ${letter} ${SHOWS[chosen]}. ${EXPECT[k]}.`;
+  }
   const scene5 = {
     id: 'cases', title: 'Whose slide is it?',
     steps: [
@@ -2158,9 +2174,9 @@ header a.home:hover { text-decoration: underline; }
         extra(el, c) {
           const store = (tables().cases = tables().cases || {}), L = caseLetters();
           matchTable(el, c, {
-            head: ['Questionnaire', 'Report'], width: 22, store,
+            head: ['Questionnaire', 'Report'], width: 44, store,
             rows: KEYS.map(k => ({ key: k, label: PEOPLE[k].who, html: `<b>${PEOPLE[k].who}.</b> ${PEOPLE[k].says}` })),
-            options: ['W', 'X', 'Y', 'Z'].map(x => [x, x]), answer: (k) => L[k], hint: (k) => WHY_CASE[k],
+            options: ['W', 'X', 'Y', 'Z'].map(x => [x, x]), answer: (k) => L[k], verdict: caseVerdict,
           });
         },
         waitFor: () => { const s = tables().cases, L = caseLetters(); return !!(s && matched(s, KEYS, (k) => L[k])); },

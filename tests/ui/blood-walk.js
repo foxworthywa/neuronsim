@@ -102,7 +102,22 @@ const URL = (arg ? (arg.includes('://') ? arg : 'file://' + path.resolve(arg)) :
           if (!(await b.isDisabled())) { await b.click(); await page.waitForTimeout(150); await finishRuns(); await page.waitForTimeout(80); }
         }
       }
+      let wrongMark = [];
+      if (id === 'cases' && ki === 0) {
+        // every choice is marked in words: a wrong one first (Continue stays off), then all four right
+        const first = page.locator('.extra .ptable select').first(), right = await page.evaluate(() => window.__bloodsim.caseLetters().healthy);
+        await first.selectOption(right === 'W' ? 'X' : 'W');
+        wrongMark = await page.locator('.ptable .verdict.no').allTextContents();
+        if (wrongMark.length !== 1 || !wrongMark[0].includes('Wrong')) report.push('!! a wrong match is not marked wrong: ' + JSON.stringify(wrongMark));
+        if (await continueEnabled()) report.push('!! Continue is enabled with a wrong match showing');
+      }
       await fillTable();
+      if (id === 'cases' && ki === 0) {
+        const marks = await page.locator('.ptable .verdict.ok').allTextContents();
+        if (marks.length !== 4 || !marks.every(m => m.includes('Right'))) report.push('!! right matches are not all marked right: ' + JSON.stringify(marks));
+        if (!(await page.locator('.extra .status').textContent()).includes('All 4 are right')) report.push('!! no count of right matches');
+        if (process.env.VERBOSE) console.log('scene 5 verdicts:\n  ' + wrongMark.concat(marks).join('\n  '));
+      }
       if (si === lesson.length - 1 && ki === lesson[si].steps.length - 1) await page.fill('#rec-name', 'Test Student, Another Person');
       const last = si === lesson.length - 1 && ki === lesson[si].steps.length - 1;
       const ok = await waitContinue(15000) || last;

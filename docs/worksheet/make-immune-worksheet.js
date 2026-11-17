@@ -39,12 +39,12 @@ const pts = (n) => run(`  (${n} point${n === 1 ? '' : 's'})`, { color: GREY, siz
 // The print version sets its own page breaks (brk), so that it paginates the same way in Word,
 // LibreOffice and Google Docs and no answer space is split across pages. The type-in version flows.
 const part = (label, note, brk) => new Paragraph({
-  spacing: { before: 200, after: 60 }, keepNext: true, pageBreakBefore: !TYPE && !!brk,
+  spacing: { before: 200, after: 60 }, keepNext: true, pageBreakBefore: (!TYPE && !!brk) || undefined,
   shading: { type: ShadingType.CLEAR, fill: 'e3f3f1' },
   children: [run(`  ${label}`, { bold: true, size: 22, color: '0b5f59' }), run(note ? `   ${note}` : '', { color: '4a5468', size: 19 })],
 });
 const scene = (n, title, step, points, brk) => new Paragraph({
-  spacing: { before: 130, after: 40 }, keepNext: true, pageBreakBefore: !TYPE && !!brk,
+  spacing: { before: 130, after: 40 }, keepNext: true, pageBreakBefore: (!TYPE && !!brk) || undefined,
   border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: LINE, space: 2 } },
   children: [
     run(` ${n} `, { bold: true, color: 'ffffff', shading: { type: ShadingType.CLEAR, fill: ACCENT } }),
@@ -76,7 +76,9 @@ function rich(t, o) {
 }
 // A sentence with blanks is set with single line spacing in print: LibreOffice otherwise lets the
 // tall yellow blanks cover the line above.
-const q = (t, talk, points, brk) => p([].concat(talk ? [TALK_TAG()] : [], rich(t), points ? [pts(points)] : []), Object.assign({ keepNext: true, pageBreakBefore: !TYPE && !!brk }, !TYPE && /_{3,}/.test(t) ? { spacing: { after: 40 } } : {}));
+// END marks the last paragraph before a page break: it must not be kept with the next paragraph,
+// or Google Docs carries it over and leaves it alone on a page of its own.
+const q = (t, talk, points, brk, end) => p([].concat(talk ? [TALK_TAG()] : [], rich(t), points ? [pts(points)] : []), Object.assign({ keepNext: TYPE || !end || undefined, pageBreakBefore: (!TYPE && !!brk) || undefined }, !TYPE && /_{3,}/.test(t) ? { spacing: { after: 40 } } : {}));
 // Space for a written answer. Print: a pale yellow block of ruled lines 24 pt apart (close to wide
 // ruled paper), for handwriting larger than the type. Type-in: a pale yellow box that grows.
 const answerBox = (n) => new Table({
@@ -93,7 +95,7 @@ const ruled = (n) => new Table({
   rows: Array.from({ length: n }, (_, i) => new TableRow({ height: { value: RULE, rule: HeightRule.EXACT }, cantSplit: true, children: [new TableCell({
     width: { size: TEXT_W, type: WidthType.DXA }, borders: { top: b(), bottom: b(), left: b(), right: b() }, margins: { top: 0, bottom: 0, left: 120, right: 120 },
     shading: { type: ShadingType.CLEAR, fill: FILL },
-    children: [new Paragraph({ spacing: { after: 0 }, keepNext: i < n - 1, children: [run('', { size: 16 })] })],
+    children: [new Paragraph({ spacing: { after: 0 }, keepNext: i < n - 1 || undefined, children: [run('', { size: 16 })] })],
   })] })),
 });
 const b = () => ({ style: BorderStyle.SINGLE, size: 4, color: LINE });
@@ -127,6 +129,7 @@ const box = (height, label, setup) => new Table({
 });
 
 const BRK = true;      // start a new page here in the print version
+const END = true;      // the last paragraph before such a break
 const W3 = [3600, 2400, 2400, 2400], W5 = [2800, 2000, 2000, 2000, 2000];
 const sheet = () => [
   new Paragraph({ spacing: { after: 20 }, children: [run('ImmuneSim: the immune response', { bold: true, size: 32 })] }),
@@ -168,7 +171,7 @@ const sheet = () => [
   ...lines(1, 3),
 
   scene(4, 'The same every time', 'If this were all you had · The second time', 1),
-  q('Macrophages and neutrophils only, day 4: ____________ bacteria.  Cleared?  {{yes / no}}    A month later, same bacterium: ____________.    A strain never met before:  {{the same / different}}'),
+  q('Macrophages and neutrophils only, day 4: ____________ bacteria.  Cleared?  {{yes / no}}    A month later, same bacterium: ____________.    A strain never met before:  {{the same / different}}', false, 0, false, END),
 
   scene(5, 'The library in the lymph node', 'Hunt by hand · Let the antigen find it · A different pathogen', 2, BRK),
   q('Both swallow bacteria. The ______________ stays at the wound to kill them and raise the alarm; the ______________ cell carries pieces of them (antigen) to the lymph node.'),
@@ -192,7 +195,7 @@ const sheet = () => [
     blankRow([3600, 3600, 3600], 'No antibody'),
     blankRow([3600, 3600, 3600], 'With antibody'),
   ]),
-  q('Priya’s first infection:  first antibody on day ________;  bacteria cleared on day ________.'),
+  q('Priya’s first infection:  first antibody on day ________;  bacteria cleared on day ________.', false, 0, false, END),
 
   scene(9, 'The second time', 'After the fight · Six months later · A different strain', 1, BRK),
   q('Lymphocytes that fit this antigen:  before the infection ________   at the peak ________   on day 42 ________'),

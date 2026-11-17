@@ -1,9 +1,19 @@
 # Lab: The immune response (ImmuneSim)
 
 *Paste this into a Canvas assignment (a **group** assignment for in-person sections, an individual
-one for online sections; submission type **File upload**). The questions are on the handout,
-`docs/worksheet/ImmuneSim-handout.pdf` (or `.docx` to fill in on a computer). The answer key and
-grading rubric are kept out of this public repository.*
+one for online sections; submission type **File upload**). The questions are on the handout, which
+comes in two versions with the same questions, numbering and points:*
+
+- ***Print version:** `docs/worksheet/ImmuneSim-handout.pdf` (four pages, written and drawn by
+  hand).*
+- ***Type-in version:** `docs/worksheet/ImmuneSim-handout-typed.docx`, made to be uploaded to
+  Google Drive and opened as a Google Doc. Before sharing it, put an empty drawing in each of its
+  two drawing places (the red notes in the document say how; a drawing cannot be added
+  automatically), then give students their own copy: either share a link that ends in `/copy`
+  instead of `/edit`, or attach it with Canvas's Google Assignments tool, which makes a copy for
+  each student. Replace the bracketed link in "What you need" below with yours.*
+
+*The answer key and grading rubric are kept out of this public repository.*
 
 ---
 
@@ -11,7 +21,14 @@ grading rubric are kept out of this public repository.*
 scene 9. In the lab, work in your group: one person drives the simulation on a laptop or desktop;
 everyone predicts and discusses. Online students do the same exercise, alone or with classmates.
 
-**Open the simulation:** [ImmuneSim](https://foxworthywa.github.io/neuronsim/immune.html)
+**What you need:** the simulation, [ImmuneSim](https://foxworthywa.github.io/neuronsim/immune.html),
+and the handout in ONE of two versions. They ask the same questions, so pick whichever suits you:
+
+- **Print version** (attached PDF): print it, write and draw by hand, then scan or photograph it.
+- **Type-in version** ([make your own copy of the Google Doc](PASTE-YOUR-COPY-LINK-HERE)): type in
+  the yellow spaces. For the two drawings, either use the drawing already in the document
+  (double-click it) or draw on paper and insert a photo. When you finish, choose File → Download →
+  PDF and upload that.
 
 ### What to do
 
@@ -30,7 +47,8 @@ everyone predicts and discusses. Online students do the same exercise, alone or 
    attach them) and write the code in the box in scene 13.
 5. Answer Part C in full sentences, using **your own** numbers from the simulation. Explain *why*,
    not just *what*: the points are for reasoning that links cause to effect.
-6. Upload one completed handout (one per group, or your own if you worked alone).
+6. Upload one completed handout as a PDF or as clear photos (one per group, or your own if you
+   worked alone).
 
 Your numbers will not match another group's exactly. The simulation gives each group one of twelve
 slightly different people, as real patients differ.

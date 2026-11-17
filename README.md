@@ -65,9 +65,10 @@ timeline) and one picture of three places (site, lymph node, blood) stay on scre
 Patient cases: Priya (a scraped knee, twice), Elena (influenza), Mr. Hall (chemotherapy, few
 neutrophils) and Ms. Adeyemi (HIV, few helper T-lymphocytes). Built for groups or for one student
 working alone: the completion code comes from the names typed (instructors check it at
-`immune.html#verify`), progress is saved in the browser, and the graded work is a handout
-(`docs/worksheet/ImmuneSim-handout.pdf`, built by `node docs/worksheet/make-immune-worksheet.js`;
-Canvas page `assignments/immune.md`). The anatomical figure in scene 1 is "Anatomy of the Lymphatic
+`immune.html#verify`), progress is saved in the browser, and the graded work is a handout in two
+versions with the same questions: a print version (`docs/worksheet/ImmuneSim-handout.pdf`) and a
+type-in version for Google Docs (`docs/worksheet/ImmuneSim-handout-typed.docx`), both built by
+`node docs/worksheet/make-immune-worksheet.js` (Canvas page `assignments/immune.md`). The anatomical figure in scene 1 is "Anatomy of the Lymphatic
 System" by OpenStax College, CC BY 3.0, which is not covered by this repository's own licence
 (`immune/img/CREDITS.md`). Design and model: `docs/IMMUNE_MODULE.md`. Tests:
 `tests/immune.test.js` (physiology) and `npm run test:immune` (performs every step in Chromium).

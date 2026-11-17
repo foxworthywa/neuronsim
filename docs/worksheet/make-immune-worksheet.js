@@ -1,22 +1,31 @@
-// Builds the handout that accompanies immune.html, ImmuneSim (docs/worksheet/ImmuneSim-handout.docx).
-// One sheet per group, or per student for those working alone (online sections). Three parts:
-// before the sim (draw what you think happens; a prediction), during (boxes keyed to the sim's
-// scene numbers, predictions written before each run), after (questions about the four patients,
-// answered with the group's own numbers, and a redrawn timeline), 50 points in all (A 4, B 16 + 2, C 28). TALK FIRST
-// items require every person to answer aloud before anyone writes. The answer key and grading
-// rubric are kept outside this public repository.
-// Usage: node docs/worksheet/make-immune-worksheet.js   (then convert to PDF with LibreOffice:
+// Builds the handout that accompanies immune.html, ImmuneSim, in two clearly labelled versions with
+// the same questions, numbering and points (50: A 4, B 16 + 2, C 28):
+//   ImmuneSim-handout.docx        PRINT version: four pages, lines and boxes to write and draw in.
+//   ImmuneSim-handout-typed.docx  TYPE-IN version: yellow spaces to type in and answer boxes that
+//                                 grow; made to be uploaded to Google Drive as a Google Doc. Its two
+//                                 drawing places carry a note for the instructor, who inserts an
+//                                 empty drawing there (Insert > Drawing > New) before sharing it.
+// Both come from the one list of questions below, so they cannot drift apart. Three parts: before
+// the sim (draw what you think happens; a prediction), during (boxes keyed to the sim's scene
+// numbers, predictions written before each run), after (questions about the four patients,
+// answered with the student's own numbers, and a redrawn timeline). TALK FIRST items require every
+// person to answer aloud before anyone writes. The answer key and grading rubric are kept outside
+// this public repository.
+// Usage: node docs/worksheet/make-immune-worksheet.js   (then convert the print version to PDF:
 //        soffice --headless --convert-to pdf --outdir docs/worksheet docs/worksheet/ImmuneSim-handout.docx)
 'use strict';
 const fs = require('fs'), path = require('path');
 function loadDocx() { try { return require('docx'); } catch (e) { const g = require('child_process').execSync('npm root -g', { encoding: 'utf8' }).trim(); return require(path.join(g, 'docx')); } }
-const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, BorderStyle, ShadingType, HeightRule, VerticalAlign } = loadDocx();
+const D = loadDocx();
+const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, BorderStyle, ShadingType, HeightRule, VerticalAlign } = D;
 
 const FONT = 'Calibri', SIZE = 20;            // 10 pt
 const GREY = '8a8a8a', LINE = 'b0b0b0', INK = '1f2430', ACCENT = '12877f', TALK = '7a4a00';
 const IN = 1440, LETTER = { width: 12240, height: 15840 }, MARGIN = 0.5 * IN;
 const TEXT_W = LETTER.width - 2 * MARGIN;   // 10800 DXA
 
+let TYPE = false;      // true while the type-in version is being built
+const v = (print, typed) => (TYPE ? typed : print);
 const run = (text, o) => new TextRun(Object.assign({ text, font: FONT, size: SIZE, color: INK }, o || {}));
 const p = (children, o) => new Paragraph(Object.assign({ spacing: { after: 40, line: 252 } }, o || {}, { children: Array.isArray(children) ? children : [children] }));
 const text = (t, o) => p(run(t, o));
@@ -39,14 +48,33 @@ const scene = (n, title, step, points) => new Paragraph({
     points ? pts(points) : run(''),
   ],
 });
-const q = (t, talk, points) => p([].concat(talk ? [TALK_TAG()] : [], [run(t)], points ? [pts(points)] : []), { keepNext: true });
-const lines = (n) => Array.from({ length: n }, () => new Paragraph({
+// In the type-in version every blank (a run of underscores) becomes a yellow space to type in. The
+// brackets keep it visible where it falls at the end of a line, and show where to click.
+const BLANK = (n) => run('[' + '\u00a0'.repeat(n || 10) + ']', { highlight: 'yellow' });
+function rich(t, o) {
+  if (!TYPE) return [run(t, o)];
+  const parts = t.split(/_{3,}/), out = [];
+  parts.forEach((part, i) => { if (part) out.push(run(part, o)); if (i < parts.length - 1) out.push(BLANK()); });
+  return out;
+}
+const q = (t, talk, points) => p([].concat(talk ? [TALK_TAG()] : [], rich(t), points ? [pts(points)] : []), { keepNext: true });
+// Space for a written answer: ruled lines to write on, or (type-in) a pale yellow box that grows.
+const answerBox = (n) => new Table({
+  width: { size: TEXT_W, type: WidthType.DXA }, columnWidths: [TEXT_W],
+  rows: [new TableRow({ height: { value: 250 * n + 150, rule: HeightRule.ATLEAST }, children: [new TableCell({
+    width: { size: TEXT_W, type: WidthType.DXA }, borders: { top: b(), bottom: b(), left: b(), right: b() }, margins: { top: 60, bottom: 60, left: 120, right: 120 },
+    shading: { type: ShadingType.CLEAR, fill: 'fffbe0' }, verticalAlign: VerticalAlign.TOP, children: [text('')],
+  })] })],
+});
+const lines = (n) => (TYPE ? [answerBox(n), spacer(60)] : ruled(n));
+const ruled = (n) => Array.from({ length: n }, () => new Paragraph({
   spacing: { before: 80, after: 0 }, children: [run('')],
   border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: LINE, space: 1 } },
 }));
 const b = () => ({ style: BorderStyle.SINGLE, size: 4, color: LINE });
 const cell = (content, w, o) => new TableCell(Object.assign({
   width: { size: w, type: WidthType.DXA }, margins: { top: 30, bottom: 30, left: 90, right: 90 },
+  shading: TYPE && content === '' ? { type: ShadingType.CLEAR, fill: 'fffbe0' } : undefined,
   borders: { top: b(), bottom: b(), left: b(), right: b() },
   children: (Array.isArray(content) ? content : [content]).map(c => typeof c === 'string' ? text(c, { size: 20, spacing: { after: 0, line: 240 } }) : c),
 }, o || {}));
@@ -56,30 +84,38 @@ const table = (widths, rows, noHead) => new Table({
   rows: rows.map(r => new TableRow({ children: r.map((c, i) => typeof c === 'string' && r === rows[0] && !noHead ? head(c, widths[i]) : cell(c, widths[i])) })),
 });
 const blankRow = (widths, first) => [first].concat(widths.slice(1).map(() => ''));
-const box = (height, label) => new Table({
+// A place to draw. Print: an empty box. Type-in: instructions for the student, and a note telling
+// the instructor to insert an empty drawing there before sharing the document.
+const box = (height, label, setup) => new Table({
   width: { size: TEXT_W, type: WidthType.DXA }, columnWidths: [TEXT_W],
-  rows: [new TableRow({ height: { value: height, rule: HeightRule.ATLEAST }, children: [new TableCell({
-    width: { size: TEXT_W, type: WidthType.DXA }, borders: { top: b(), bottom: b(), left: b(), right: b() }, margins: { top: 60, left: 120 },
-    verticalAlign: VerticalAlign.TOP, children: [text(label || '', { color: GREY, size: 17, italics: true })],
+  rows: [new TableRow({ height: { value: TYPE ? 1500 : height, rule: HeightRule.ATLEAST }, children: [new TableCell({
+    width: { size: TEXT_W, type: WidthType.DXA }, borders: { top: b(), bottom: b(), left: b(), right: b() }, margins: { top: 60, bottom: 60, left: 120, right: 120 },
+    shading: TYPE ? { type: ShadingType.CLEAR, fill: 'fffbe0' } : undefined,
+    verticalAlign: VerticalAlign.TOP,
+    children: !TYPE ? [text(label || '', { color: GREY, size: 17, italics: true })] : [
+      p([run('To draw here, either: ', { bold: true }), run('double-click the drawing below and use the shapes, arrows, text boxes and the “scribble” line; '), run('or ', { bold: true }), run('draw on paper, take a photo, and put it here with Insert → Image. Either way is fine.')]),
+      p([run(`INSTRUCTOR, BEFORE SHARING: click on this line, choose Insert → Drawing → New, ${setup}, press “Save and close”, then delete this red note.`, { bold: true, color: 'b0352b' })]),
+    ],
   })] })],
 });
 
-
 const W3 = [3600, 2400, 2400, 2400], W5 = [2800, 2000, 2000, 2000, 2000];
-const student = [
+const sheet = () => [
   new Paragraph({ spacing: { after: 20 }, children: [run('ImmuneSim: the immune response', { bold: true, size: 32 })] }),
-  p([run('Lab handout · 50 points', { color: GREY, size: 22 }), run('     foxworthywa.github.io/neuronsim/immune.html', { color: ACCENT, size: 20 })]),
+  p([run(v('Lab handout · PRINT version · 50 points', 'Lab handout · TYPE-IN version · 50 points'), { color: GREY, size: 22 }), run('     ', { size: 20 }), new D.ExternalHyperlink({ link: 'https://foxworthywa.github.io/neuronsim/immune.html', children: [run('foxworthywa.github.io/neuronsim/immune.html', { color: ACCENT, size: 20 })] })]),
   spacer(40),
-  p([run('Name(s): ', { bold: true }), run('____________________________________________________________________________')]),
+  p([run('Name(s): ', { bold: true })].concat(TYPE ? [BLANK(70)] : [run('____________________________________________________________________________')])),
   spacer(30),
   table([TEXT_W], [[[
     p([run('The idea in one line: ', { bold: true, size: 20 }), run('an infection is a race. A fast, general defense holds the line within hours; a slow, exact one is selected from cells that already exist, takes days to multiply, and is remembered.', { size: 20 })]),
-    p([run('How to use this sheet. ', { bold: true, size: 20 }), run('Part A before you open the sim. In Part B the numbers match the circles across the top of the sim: when a box names a scene, stop there and fill it in. Write predictions BEFORE you press the run button. ', { size: 20 }), TALK_TAG(), run('means every person says their answer out loud before anyone writes. Working alone? Write your own first answer before you run the experiment, then add what changed. Part C is answered after the sim, in full sentences, using your own numbers. The sim takes about 90 minutes, with a natural break after scene 9. You can return to any scene with the numbered circles.', { size: 20 })]),
+    TYPE
+      ? p([run('How to use this document. ', { bold: true, size: 20 }), run('First make your own copy (File → Make a copy) if you were not given one. Type between the yellow brackets [   ] and in the pale yellow boxes; they grow as you type. Where there is a choice (yes / no), delete the choices that do not apply. Do Part A before you open the sim. In Part B the numbers match the circles across the top of the sim: when a box names a scene, stop there and fill it in. Write predictions BEFORE you press the run button. ', { size: 20 }), TALK_TAG(), run('means every person says their answer out loud before anyone types. Working alone? Type your own first answer before you run the experiment, then add what changed. Part C is answered after the sim, in full sentences, using your own numbers. The sim takes about 90 minutes, with a natural break after scene 9. You can return to any scene with the numbered circles. There is also a print version of this handout with the same questions.', { size: 20 })])
+      : p([run('How to use this sheet. ', { bold: true, size: 20 }), run('Part A before you open the sim. In Part B the numbers match the circles across the top of the sim: when a box names a scene, stop there and fill it in. Write predictions BEFORE you press the run button. ', { size: 20 }), TALK_TAG(), run('means every person says their answer out loud before anyone writes. Working alone? Write your own first answer before you run the experiment, then add what changed. Part C is answered after the sim, in full sentences, using your own numbers. The sim takes about 90 minutes, with a natural break after scene 9. You can return to any scene with the numbered circles. There is also a type-in version of this handout (a Google Doc) with the same questions.', { size: 20 })]),
   ]]]),
 
   part('A · Before you open the sim', 'what you think now; there are no wrong answers here (4 points)'),
   q('Bacteria get into a scrape on your knee. Draw what you think happens over the next two weeks, and where in the body it happens. Label any cells or structures you know.', false, 2),
-  box(2100, 'your drawing'),
+  box(2100, 'your drawing', 'draw one large empty rectangle (about the width of the page and a third of its height)'),
   q('If you have had chickenpox (or the vaccine), you will probably never have it again. What do you think your body kept, and where?', true, 2),
   ...lines(2),
 
@@ -108,7 +144,7 @@ const student = [
 
   scene(5, 'The library in the lymph node', 'Hunt by hand · Let the antigen find it · A different pathogen', 2),
   q('Both swallow bacteria. The ______________ stays at the wound to kill them and raise the alarm; the ______________ cell carries pieces of them (antigen) to the lymph node.'),
-  q('Our prediction (circle one): a lymphocyte that fits   already exists  /  will be built to match  /  will be copied from the dendritic cell'),
+  q(v('Our prediction (circle one): a lymphocyte that fits   already exists  /  will be built to match  /  will be copied from the dendritic cell', 'Our prediction (keep one, delete the others): a lymphocyte that fits   already exists  /  will be built to match  /  will be copied from the dendritic cell')),
   q('By hand we tested ______ of 1,296; best fit ______ %.   B-lymphocytes whose receptor fits: ______ of 1,296.   For the other strain: ______  (the same cells / different cells).'),
   q('Did the library change when the pathogen changed? What does that tell you about where a fitting receptor comes from?', true),
   ...lines(1),
@@ -153,7 +189,7 @@ const student = [
   ]),
 
   scene(12, 'Take one piece away', 'What is each cell for? · Mr. Hall · Ms. Adeyemi', 1),
-  q('Write each prediction (C = cleared, N = not cleared) BEFORE you press Run, then what happened. Circle any prediction that was wrong.'),
+  q(v('Write each prediction (C = cleared, N = not cleared) BEFORE you press Run, then what happened. Circle any prediction that was wrong.', 'Type each prediction (C = cleared, N = not cleared) BEFORE you press Run, then what happened. Put a * after any prediction that was wrong.')),
   table(W5, [
     ['Take away', 'Bacteria: predicted', 'Bacteria: observed', 'Virus: predicted', 'Virus: observed'],
     blankRow(W5, 'Neutrophils'),
@@ -166,7 +202,9 @@ const student = [
   q('Vaccine:  antibody on day 3 ________;  on day 14 ________ units;  virus at any time ________.'),
   q('Most cells infected:  exposed 2 weeks after the vaccine ________  (Elena, no vaccine: ________);   exposed on day 3 ________;   a changed strain ________.'),
   q('Borrowed antibody:  400 units → week 3 ________ → week 12 ________;   memory cells ________.'),
-  q('Paste the results text from the last screen of the sim on the back of this sheet (or attach it), and write your completion code here:  ____________________', false, 2),
+  ...(TYPE
+    ? [q('Completion code:  ____________________     Paste the results text from the last screen of the sim in the box below.', false, 2), answerBox(6), spacer(60)]
+    : [q('Paste the results text from the last screen of the sim on the back of this sheet (or attach it), and write your completion code here:  ____________________', false, 2)]),
 
   part('C · After the sim', 'full sentences, your own numbers; explain why, not just what (28 points)'),
   q('1. Priya’s knee. What made her knee red, warm and swollen: the bacteria, or Priya? Explain what each sign is and what it achieves. Use your prednisone result as evidence.', false, 3),
@@ -184,13 +222,18 @@ const student = [
   q('7. Transfer: two things people say. “I had my flu shot yesterday, so I’m covered for the party tonight.” “The flu shot gave me the flu.” Respond to each, using your scene 13 results. Then explain why a newborn is protected for a few months without ever having been vaccinated, and why that protection does not last.', true, 3),
   ...lines(5),
   q('Now redraw your Part A picture as a timeline. Sketch four curves for a FIRST infection (bacteria, neutrophils at the site, lymphocytes that fit, antibody), from day 0 to day 12. Then add, in another colour or as dashed lines, the bacteria and antibody for a SECOND infection with the same strain. Label three events. Under it, write one thing in your Part A drawing that you would now change.', false, 2),
-  box(2300, 'your timeline: how many (up the page) against time in days (across)'),
+  box(2300, 'your timeline: how many (up the page) against time in days (across)', 'draw two axes for the students to use: time across, marked day 0 to day 12, and “how many” up the side, marked 1, 100, 10 thousand, 1 million and 100 million'),
   ...lines(2),
 ];
 
-const doc = new Document({
-  styles: { default: { document: { run: { font: FONT, size: SIZE, color: INK } } } },
-  sections: [{ properties: { page: { size: LETTER, margin: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN } } }, children: student }],
-});
-const out = path.join(__dirname, 'ImmuneSim-handout.docx');
-Packer.toBuffer(doc).then(buf => { fs.writeFileSync(out, buf); console.log('wrote', out, (buf.length / 1024).toFixed(0), 'KB'); });
+async function build(typed, file) {
+  TYPE = typed;
+  const doc = new Document({
+    styles: { default: { document: { run: { font: FONT, size: SIZE, color: INK } } } },
+    sections: [{ properties: { page: { size: LETTER, margin: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN } } }, children: sheet() }],
+  });
+  const out = path.join(__dirname, file), buf = await Packer.toBuffer(doc);
+  fs.writeFileSync(out, buf);
+  console.log('wrote', out, (buf.length / 1024).toFixed(0), 'KB');
+}
+build(false, 'ImmuneSim-handout.docx').then(() => build(true, 'ImmuneSim-handout-typed.docx'));

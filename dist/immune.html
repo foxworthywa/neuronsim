@@ -743,7 +743,8 @@ header a.home:hover { text-decoration: underline; }
       const an = this.antigen(kind, strain);
       // a new infection can be announced again (its first neutrophils, its antigen reaching the
       // node); "first antibody" only if there is none against this antigen already
-      delete this.flags.neutrophilsArrive; delete this.flags.ctlArrive; delete this.flags['antigenInNode:' + an.pt.key];
+      delete this.flags.neutrophilsArrive; delete this.flags.ctlArrive;
+      if (an.A < 0.05) delete this.flags['antigenInNode:' + an.pt.key];
       if (this.antibodyTo(kind, strain) < 1) delete this.flags.firstAntibody;
       if (kind === 'bacterium') { this.site.bacteria += o.dose == null ? 1e4 : o.dose; this.site.bStrain = strain; this.flags.bCleared = false; }
       else { this.site.virus += o.dose == null ? 100 : o.dose; this.site.vStrain = strain; this.flags.vCleared = false; }

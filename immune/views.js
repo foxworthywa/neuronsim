@@ -7,8 +7,8 @@
   const stage = $('#stage');
   const sat = (x, K) => (x <= 0 ? 0 : x / (x + K));
   const log10 = (x) => Math.log10(Math.max(1, x));
-  const label = (parent, x, y, text, o) => svgEl('text', Object.assign({ x, y, 'font-size': 15, fill: COL.ink, text }, o || {}), parent);
-  const small = (parent, x, y, text, o) => label(parent, x, y, text, Object.assign({ 'font-size': 13, fill: COL.muted }, o || {}));
+  const label = (parent, x, y, text, o) => svgEl('text', Object.assign({ x, y, 'font-size': 16.5, fill: COL.ink, text }, o || {}), parent);
+  const small = (parent, x, y, text, o) => label(parent, x, y, text, Object.assign({ 'font-size': 14.5, fill: COL.muted }, o || {}));
 
   // A cloud of moving marks inside a rectangle; the number shown follows the model.
   function swarm(parent, box, make) {
@@ -66,7 +66,7 @@
     const g = svgEl('g', { opacity: 0, 'pointer-events': 'none' }, parent);
     for (const [n, x, y] of list) {
       svgEl('circle', { cx: x, cy: y, r: 13, fill: '#f0b429', stroke: '#fff', 'stroke-width': 2 }, g);
-      svgEl('text', { x, y: y + 5, 'text-anchor': 'middle', 'font-size': 14, 'font-weight': 700, fill: '#1f2430', text: String(n) }, g);
+      svgEl('text', { x, y: y + 5, 'text-anchor': 'middle', 'font-size': 15.5, 'font-weight': 700, fill: '#1f2430', text: String(n) }, g);
     }
     return g;
   }
@@ -155,15 +155,15 @@
       }
       const names = svgEl('g', {}, g); view.names0 = names;
       const lead = (x1, y1, x2, y2, text, sub) => { svgEl('path', { d: `M${x1},${y1} L${x2},${y2}`, stroke: '#9aa0ad', 'stroke-width': 1 }, names); label(names, x2 + (x2 > x1 ? 6 : -6), y2 + 4, text, { 'text-anchor': x2 > x1 ? 'start' : 'end', 'font-weight': 600 }); if (sub) small(names, x2 + (x2 > x1 ? 6 : -6), y2 + 20, sub, { 'text-anchor': x2 > x1 ? 'start' : 'end' }); };
-      lead(224, 426, 120, 440, 'The scrape', 'the skin is broken here');
+      lead(224, 426, 150, 440, 'The scrape', 'broken skin');
       lead(274, 372, 410, 396, 'Red bone marrow', 'makes the white blood cells');
       lead(258, 164, 410, 130, 'Heart and blood', 'carry cells everywhere');
-      lead(240, 262, 120, 250, 'Lymph vessels', 'drain fluid from the tissues');
+      lead(240, 262, 150, 250, 'Lymph vessels', 'drain the tissues');
       lead(304, 164, 410, 214, 'Lymph nodes', 'filters along the lymph vessels');
       svgEl('rect', { x: 640, y: 60, width: 345, height: 262, rx: 12, fill: '#fff', stroke: '#d9d6cc' }, g);
-      label(g, 656, 92, 'The immune system is not one organ.', { 'font-weight': 650, 'font-size': 16 });
+      label(g, 656, 92, 'The immune system is not one organ.', { 'font-weight': 650, 'font-size': 17.5 });
       const lines = ['Its cells are made in the bone marrow,', 'travel in the blood, patrol the tissues,', 'and gather in lymph nodes.', '', 'In this lab you will watch three places:', '1  the site of infection (the wound)', '2  the lymph node that drains it', '3  the blood'];
-      lines.forEach((t, i) => label(g, 656, 122 + i * 24, t, { 'font-size': 14.5, fill: i > 4 ? COL.ink : COL.muted, 'font-weight': i > 4 ? 600 : 400 }));
+      lines.forEach((t, i) => label(g, 656, 122 + i * 24, t, { 'font-size': 16, fill: i > 4 ? COL.ink : COL.muted, 'font-weight': i > 4 ? 600 : 400 }));
       view.ring = svgEl('ellipse', { cx: 250 - 24, cy: 14 + 316, rx: 18, ry: 14, fill: 'none', stroke: '#f0b429', 'stroke-width': 4, opacity: 0 }, g);
     }
     // ---- slide 1: the skin as a barrier
@@ -172,7 +172,7 @@
       const half = (x0, broken) => {
         const h = svgEl('g', {}, g);
         svgEl('rect', { x: x0, y: 210, width: 430, height: 300, fill: COL.tissue, stroke: '#d9d6cc' }, h);
-        label(h, x0 + 215, 60, broken ? 'Scraped skin' : 'Intact skin', { 'text-anchor': 'middle', 'font-size': 17, 'font-weight': 650 });
+        label(h, x0 + 215, 60, broken ? 'Scraped skin' : 'Intact skin', { 'text-anchor': 'middle', 'font-size': 18.5, 'font-weight': 650 });
         // epidermis: tightly joined layers of cells, the top ones dead and dry
         for (let r = 0; r < 4; r++) for (let i = 0; i < 12; i++) {
           const x = x0 + i * 36 + (r % 2 ? 0 : -6), y = 130 + r * 20;
@@ -198,7 +198,7 @@
     // ---- slide 2: the three places
     {
       const g = svgEl('g', {}, svg); slides.push(g);
-      const box = (x, title, sub, fill, stroke) => { svgEl('rect', { x, y: 150, width: 250, height: 230, rx: 16, fill, stroke, 'stroke-width': 2.5 }, g); label(g, x + 125, 186, title, { 'text-anchor': 'middle', 'font-size': 17, 'font-weight': 650 }); sub.forEach((t, i) => small(g, x + 125, 214 + i * 19, t, { 'text-anchor': 'middle', 'font-size': 13 })); };
+      const box = (x, title, sub, fill, stroke) => { svgEl('rect', { x, y: 150, width: 250, height: 230, rx: 16, fill, stroke, 'stroke-width': 2.5 }, g); label(g, x + 125, 186, title, { 'text-anchor': 'middle', 'font-size': 18.5, 'font-weight': 650 }); sub.forEach((t, i) => small(g, x + 125, 214 + i * 19, t, { 'text-anchor': 'middle', 'font-size': 14.5 })); };
       box(50, '1  The site', ['the wound in the knee:', 'bacteria between the cells,', 'and the cells that live there'], COL.tissue, COL.cellLine);
       box(375, '2  The lymph node', ['in the groin: fluid from the', 'wound drains here, and', 'lymphocytes wait here'], COL.node, COL.lymphLine);
       box(700, '3  The blood', ['carries cells and antibody', 'to the site, and back', 'around the body'], COL.blood, COL.bloodLine);
@@ -208,7 +208,7 @@
       arrow('M305,265 L368,265', COL.lymphLine, 'lymph', 337, 252);
       arrow('M630,265 L693,265', COL.lymphLine, 'lymph', 662, 252);
       arrow('M825,385 C825,470 175,470 175,388', COL.bloodLine, 'blood flows to the site', 500, 492);
-      label(g, 500, 96, 'Three places to watch', { 'text-anchor': 'middle', 'font-size': 20, 'font-weight': 650 });
+      label(g, 500, 96, 'Three places to watch', { 'text-anchor': 'middle', 'font-size': 21, 'font-weight': 650 });
     }
     view.show = (i) => slides.forEach((g, j) => g.setAttribute('display', i === j ? 'inline' : 'none'));
     view.names = (on) => view.names0.setAttribute('opacity', on ? 1 : 0.25);
@@ -233,7 +233,7 @@
     // ---------------- the site
     const site = svgEl('g', {}, svg);
     svgEl('rect', { x: 20, y: 20, width: SW, height: 520, rx: 12, fill: virus ? '#eef4fb' : COL.tissue, stroke: '#d9d6cc' }, site);
-    label(site, 34, 44, virus ? '1  The site: the lining of the airway' : '1  The site: the wound', { 'font-weight': 650, 'font-size': 14 });
+    label(site, 34, 44, virus ? '1  The site: the lining of the airway' : '1  The site: the wound', { 'font-weight': 650, 'font-size': 15.5 });
     const fluid = svgEl('rect', { x: 20, y: 96, width: SW, height: 320, fill: '#a9d3f5', opacity: 0 }, site);
     const fluidNote = small(site, 20 + SW - 14, 116, 'fluid leaking in from the vessel', { 'text-anchor': 'end', fill: '#2b6ea6', opacity: 0 });
     let bacteria, virions, neut, pus, alarmDots, abSite, ctl, squares = [], vesselRect, vesselWall, macs = [], dcMark, coatedShare = 0;
@@ -292,22 +292,22 @@
     let nodeShape, nodeCells = {}, nodeText, nodeText2, bloodAb, bloodText, bloodText2;
     if (!wide) {
       svgEl('rect', { x: 640, y: 20, width: 340, height: 300, rx: 12, fill: '#f7f9f1', stroke: '#d9d6cc' }, svg);
-      label(svg, 654, 44, '2  The lymph node', { 'font-weight': 650, 'font-size': 14 });
+      label(svg, 654, 44, '2  The lymph node', { 'font-weight': 650, 'font-size': 15.5 });
       nodeShape = svgEl('ellipse', { cx: 810, cy: 170, rx: 70, ry: 54, fill: COL.node, stroke: COL.lymphLine, 'stroke-width': 3 }, svg);
       for (const k of ['Th', 'B', 'Tc']) nodeCells[k] = swarm(svg, { x: 760, y: 135, w: 100, h: 70 }, lymphocyte(k));
-      nodeText = label(svg, 810, 276, '', { 'text-anchor': 'middle', 'font-size': 13, 'font-weight': 600 });
+      nodeText = label(svg, 810, 276, '', { 'text-anchor': 'middle', 'font-size': 14.5, 'font-weight': 600 });
       nodeText2 = small(svg, 810, 296, '', { 'text-anchor': 'middle' });
       const lg = svgEl('g', { transform: 'translate(654,60)' }, svg);
       [['B', 'B'], ['Th', 'helper T'], ['Tc', 'cytotoxic T']].forEach(([k, t], i) => { lymphocyte(k)(lg).setAttribute('transform', `translate(${8 + i * 92},4)`); small(lg, 18 + i * 92, 8, t); });
       svgEl('rect', { x: 640, y: 340, width: 340, height: 200, rx: 12, fill: '#fdf6f4', stroke: '#d9d6cc' }, svg);
-      label(svg, 654, 364, '3  The blood', { 'font-weight': 650, 'font-size': 14 });
+      label(svg, 654, 364, '3  The blood', { 'font-weight': 650, 'font-size': 15.5 });
       svgEl('rect', { x: 654, y: 384, width: 312, height: 76, rx: 38, fill: COL.blood, stroke: COL.bloodLine, 'stroke-width': 2 }, svg);
       bloodAb = swarm(svg, { x: 676, y: 398, w: 268, h: 48 }, (g) => antibodyY(g, 1.2));
-      bloodText = label(svg, 810, 488, '', { 'text-anchor': 'middle', 'font-size': 13, 'font-weight': 600 });
+      bloodText = label(svg, 810, 488, '', { 'text-anchor': 'middle', 'font-size': 14.5, 'font-weight': 600 });
       bloodText2 = small(svg, 810, 508, '', { 'text-anchor': 'middle' });
       // the lymph vessel from the site to the node, and a dendritic cell that travels along it
       svgEl('path', { d: `M${SW + 8},330 C${SW + 44},330 ${SW + 30},190 742,172`, fill: 'none', stroke: COL.lymphLine, 'stroke-width': 9, 'stroke-linecap': 'round', opacity: 0.6 }, svg);
-      small(svg, SW + 30, 348, 'lymph', { 'text-anchor': 'middle', fill: '#5f7a3a', 'font-size': 11 });
+      small(svg, SW + 30, 348, 'lymph', { 'text-anchor': 'middle', fill: '#5f7a3a', 'font-size': 12.5 });
       dcMark = svgEl('g', { opacity: 0 }, svg);
       svgEl('path', { d: 'M0,-11 L3,-4 L11,-6 L6,1 L11,8 L3,6 L0,13 L-3,6 L-11,8 L-6,1 L-11,-6 L-3,-4 Z', fill: '#dcd9f3', stroke: COL.dc, 'stroke-width': 1.5 }, dcMark);
       svgEl('circle', { r: 2.5, fill: COL.pathogen }, dcMark);
@@ -391,7 +391,7 @@
       let key, text;
       if (!virus) {
         const crit = b.p.critN;
-        if (s.bacteria <= 0 && s.neutrophils < 20 && s.alarm < 0.02) { key = 'quiet'; text = sp.memory > 50 ? `No bacteria. In the lymph node, <b>${fmt(sp.memory)} memory cells</b> remain from the last infection, and the blood carries ${fmtAb(ab)} units of antibody.` : 'No bacteria at the site. The macrophages are at rest and the vessel is its normal width.'; }
+        if (s.bacteria <= 0 && s.neutrophils < 20 && s.alarm < 0.02) { key = sp.effector > 200 ? 'quietBusy' : 'quiet'; text = sp.effector > 200 ? `No bacteria. <b>${fmt(sp.total)}</b> lymphocytes that fit this antigen are still in the lymph node, and the blood carries ${fmtAb(ab)} units of antibody. Most of those cells will die over the next few weeks.` : sp.memory > 50 ? `No bacteria. In the lymph node, <b>${fmt(sp.memory)} memory cells</b> remain from the last infection, and the blood carries ${fmtAb(ab)} units of antibody.` : 'No bacteria at the site. The macrophages are at rest and the vessel is its normal width.'; }
         else if (s.bacteria <= 0) { key = 'after'; text = `The bacteria are gone. The alarm fades, the vessel narrows, and the ${fmt(s.neutrophils)} neutrophils left at the site die off within a day.`; }
         else if (b.p.manualAlarm != null) { key = 'manual'; text = `<b>You are holding the alarm at ${pct(b.p.manualAlarm)}.</b> The vessel is ${s.flow > 1.5 ? 'wide and leaky' : 'widening'}; ${fmt(s.neutrophils)} neutrophils are at the site. Bacteria fall only when there are more than about ${fmt(crit)}.`; }
         else if (s.neutrophils < 30 && s.alarm < 0.05) { key = 'early'; text = `${fmt(s.bacteria)} bacteria${b.p.macrophages > 0 ? '. The resident macrophages are eating them, but there are only a few macrophages' : ', doubling every 90 minutes, with nothing to stop them'}.`; }
@@ -400,7 +400,7 @@
         else { key = 'held'; text = `${fmt(s.neutrophils)} neutrophils are killing bacteria about as fast as they divide, so the count is roughly level at ${fmt(s.bacteria)}.${b.p.adaptive > 0 ? ` In the lymph node, ${fmt(sp.total)} lymphocytes fit this antigen${ab < 1 ? '; no antibody yet' : ''}.` : ''}`; }
       } else {
         const inf = b.infected;
-        if (inf < 1 && s.virus < 1) { key = 'vquiet'; text = sp.memory > 50 || ab > 1 ? `No virus. The blood carries ${fmtAb(ab)} units of antibody to it, and ${fmt(sp.memory)} memory cells wait in the lymph node.` : 'No virus. The cells lining the airway are healthy.'; }
+        if (inf < 1 && s.virus < 1) { key = sp.effector > 200 ? 'vquietBusy' : 'vquiet'; text = sp.effector > 200 ? `No virus. <b>${fmt(sp.total)}</b> lymphocytes that fit this antigen are in the lymph node (the selected clones), and the blood carries ${fmtAb(ab)} units of antibody.` : sp.memory > 50 || ab > 1 ? `No virus. The blood carries ${fmtAb(ab)} units of antibody to it, and ${fmt(sp.memory)} memory cells wait in the lymph node.` : 'No virus. The cells lining the airway are healthy.'; }
         else if (s.ctl > 300) { key = 'ctl'; text = `<b>${fmt(s.ctl)} cytotoxic T-lymphocytes</b> have reached the airway and are killing infected cells: ${fmt(inf)} left.`; }
         else if (ab > 5 && inf > 100) { key = 'vab'; text = `Antibody is coating the free virus (${fmt(s.virus)} left), but ${fmt(inf)} cells are still infected. Antibody cannot get inside a cell.`; }
         else { key = 'vspread'; text = `${fmt(inf)} cells are infected and releasing virus; ${fmt(s.virus)} free virus particles. Infected cells have warned their neighbours, which slows the spread but does not stop it.`; }
@@ -418,7 +418,7 @@
     const view = { svg, onPick: null, selected: null, lib: opts.lib || 'B', revealed: false, showSelf: !!opts.showSelf, tested: new Set() };
     const body = () => app.sim;
     svgEl('rect', { x: 52, y: 38, width: 556, height: 500, rx: 110, fill: COL.node, stroke: COL.lymphLine, 'stroke-width': 3 }, svg);
-    const title = label(svg, 330, 26, '', { 'font-weight': 650, 'font-size': 15, 'text-anchor': 'middle' });
+    const title = label(svg, 330, 26, '', { 'font-weight': 650, 'font-size': 16.5, 'text-anchor': 'middle' });
     const gridG = svgEl('g', {}, svg);
     // where each clone is drawn has nothing to do with its shape: neighbours on screen are not alike
     const order = Array.from({ length: GRID * GRID }, (_, i) => i);
@@ -444,14 +444,14 @@
 
     // the close-up: the antigen and the receptor under test
     svgEl('rect', { x: 640, y: 20, width: 340, height: 520, rx: 12, fill: '#fff', stroke: '#d9d6cc' }, svg);
-    const closeTitle = label(svg, 656, 46, 'Does this receptor fit?', { 'font-weight': 650, 'font-size': 14 });
+    const closeTitle = label(svg, 656, 46, 'Does this receptor fit?', { 'font-weight': 650, 'font-size': 15.5 });
     small(svg, 656, 66, 'the antigen (red) and the receptor of the cell you picked');
     const dock = dockPicture(svg, 810, 250, { w: 70, H: 70 });
-    const fitText = label(svg, 810, 316, 'Pick a lymphocyte to test its receptor.', { 'text-anchor': 'middle', 'font-size': 15, 'font-weight': 650 });
+    const fitText = label(svg, 810, 316, 'Pick a lymphocyte to test its receptor.', { 'text-anchor': 'middle', 'font-size': 16.5, 'font-weight': 650 });
     const fitSub = small(svg, 810, 338, '', { 'text-anchor': 'middle' });
     svgEl('rect', { x: 670, y: 352, width: 280, height: 12, rx: 6, fill: '#eceae3' }, svg);
     const fitBar = svgEl('rect', { x: 670, y: 352, width: 0, height: 12, rx: 6, fill: COL.lymph }, svg);
-    const tally = [0, 1, 2, 3].map(i => small(svg, 656, 394 + i * 20, '', { 'font-size': 13, fill: COL.ink }));
+    const tally = [0, 1, 2, 3].map(i => small(svg, 656, 394 + i * 20, '', { 'font-size': 14.5, fill: COL.ink }));
     const marks = numbered(svg, [[1, 80, 280], [2, 690, 240], [3, 690, 150], [4, 660, 322]]);
     view.setMarks = (on) => marks.setAttribute('opacity', on ? 1 : 0);
     const pt = () => antigenShape(app.kind, app.strain);
@@ -488,7 +488,7 @@
         let rad = 4.4, fill = '#fff', stroke = COL[view.lib], sw = 1.4, op = 1;
         if (c.self && view.showSelf === 'made') { fill = '#f3c9c4'; stroke = '#b0352b'; sw = 2.2; }
         else if (!c.present) op = c.self && view.showSelf ? 0.12 : (c.self ? 0 : 0.15);
-        if (view.revealed && good && c.present) { fill = COL[view.lib]; sw = 2.5; stroke = '#0b4f4a'; }
+        if (view.revealed && good && c.present) { fill = COL[view.lib]; sw = 2.5; stroke = '#0b4f4a'; rad = 7.5; }
         if (cells > 6 && c.present) { rad = Math.min(30, 4.4 + 5.2 * Math.log10(cells / 3)); fill = COL[view.lib]; op = 0.85; }
         else if (view.tested.has(c.id) && !good) { fill = '#e3e1da'; }
         setAttrs(ce.e, { r: rad.toFixed(1), fill, stroke, 'stroke-width': sw, opacity: op });
@@ -533,14 +533,14 @@
     const dc = svgEl('g', { transform: 'translate(170,250)' }, svg);
     svgEl('path', { d: 'M0,-120 L26,-52 L104,-86 L58,-18 L128,36 L48,40 L40,124 L-6,58 L-78,112 L-52,30 L-128,10 L-58,-28 L-84,-100 L-22,-56 Z', fill: '#e4e1f6', stroke: COL.dc, 'stroke-width': 2.5, 'stroke-linejoin': 'round' }, dc);
     svgEl('ellipse', { rx: 26, ry: 20, fill: COL.dc, opacity: 0.45 }, dc);
-    label(svg, 170, 420, 'Dendritic cell', { 'text-anchor': 'middle', 'font-weight': 650, 'font-size': 15 });
+    label(svg, 170, 420, 'Dendritic cell', { 'text-anchor': 'middle', 'font-weight': 650, 'font-size': 16.5 });
     small(svg, 170, 440, 'ate bacteria at the wound, then', { 'text-anchor': 'middle' });
     small(svg, 170, 456, 'carried the pieces here', { 'text-anchor': 'middle' });
     for (const [x, y, r] of [[268, 178, 62], [306, 262, 92], [272, 344, 122]]) holder(svg, x, y, r, true);
     view.mhcLabel = small(svg, 300, 150, '', { 'text-anchor': 'middle', fill: COL.dc, 'font-weight': 600 });
     // helper T candidates
     const thG = svgEl('g', {}, svg);
-    label(svg, 480, 46, 'Helper T-lymphocytes', { 'text-anchor': 'middle', 'font-weight': 650, 'font-size': 15 });
+    label(svg, 480, 46, 'Helper T-lymphocytes', { 'text-anchor': 'middle', 'font-weight': 650, 'font-size': 16.5 });
     const thNote = small(svg, 480, 66, 'each has a different receptor', { 'text-anchor': 'middle' });
     const cand = [];
     function buildTh() {
@@ -559,7 +559,7 @@
         // its receptor, facing the dendritic cell: the cleft drawn from the model's fit
         const c = cleftParams(q.c, P);
         svgEl('path', { d: cleftBlock(c, 19, 26, 34), transform: 'translate(-30,0) rotate(-90)', fill: '#fff', stroke: COL.Th, 'stroke-width': 2.5, 'stroke-linejoin': 'round' }, g);
-        const count = small(g, 40, 5, '', { 'font-size': 13, fill: COL.ink });
+        const count = small(g, 40, 5, '', { 'font-size': 14.5, fill: COL.ink });
         clickable(g, `Helper T-lymphocyte ${i + 1}`, () => view.onTh && view.onTh(q.c, q.f, i));
         cand.push({ g, cell, count, c: q.c, f: q.f });
       });
@@ -571,12 +571,12 @@
     for (const a of [-40, 0, 40]) { const g = svgEl('g', { transform: `rotate(${a}) translate(0,-78)` }, bG); antibodyY(g, 2.2).setAttribute('transform', 'translate(0,-12) scale(2.2) rotate(180)'); }
     const bact = bacterium(bG); bact.setAttribute('transform', 'translate(0,-118) scale(2.4)');
     holder(svg, 736, 304, -104, true);
-    label(svg, 810, 420, 'B-lymphocyte', { 'text-anchor': 'middle', 'font-weight': 650, 'font-size': 15 });
+    label(svg, 810, 420, 'B-lymphocyte', { 'text-anchor': 'middle', 'font-weight': 650, 'font-size': 16.5 });
     small(svg, 810, 440, 'its receptor has caught a whole bacterium;', { 'text-anchor': 'middle' });
     small(svg, 810, 456, 'it shows fragments of it in the same holders', { 'text-anchor': 'middle' });
     clickable(bG, 'B-lymphocyte', () => view.onB && view.onB());
-    const bCount = label(svg, 810, 490, '', { 'text-anchor': 'middle', 'font-weight': 650, 'font-size': 14 });
-    const abCount = small(svg, 810, 510, '', { 'text-anchor': 'middle', 'font-size': 13 });
+    const bCount = label(svg, 810, 490, '', { 'text-anchor': 'middle', 'font-weight': 650, 'font-size': 15.5 });
+    const abCount = small(svg, 810, 510, '', { 'text-anchor': 'middle', 'font-size': 14.5 });
     const helpArrow = svgEl('path', { d: 'M560,280 L700,280', stroke: COL.Th, 'stroke-width': 6, 'stroke-linecap': 'round', 'stroke-dasharray': '2 12', opacity: 0 }, svg);
     const helpText = label(svg, 630, 266, 'help', { 'text-anchor': 'middle', fill: COL.Th, 'font-weight': 650, opacity: 0 });
     const marks = numbered(svg, [[1, 60, 150], [2, 300, 124], [3, 400, 110], [4, 720, 170], [5, 716, 330]]);
@@ -626,9 +626,9 @@
     svgEl('ellipse', { cx: 400, cy: 290, rx: 318, ry: 208, fill: '#fdf8ee', stroke: '#d9d6cc' }, svg);
     const box = { x: 190, y: 150, w: 420, h: 280 };
     const bact = swarm(svg, box, bacterium), phag = swarm(svg, box, neutrophil);
-    label(svg, 400, 46, 'A dish of bacteria in warm broth', { 'text-anchor': 'middle', 'font-weight': 650, 'font-size': 15 });
+    label(svg, 400, 46, 'A dish of bacteria in warm broth', { 'text-anchor': 'middle', 'font-weight': 650, 'font-size': 16.5 });
     svgEl('rect', { x: 760, y: 120, width: 220, height: 300, rx: 12, fill: '#fff', stroke: '#d9d6cc' }, svg);
-    const rows = ['Bacteria', 'Antibody', 'Coated', 'Phagocytes'].map((t, i) => { small(svg, 776, 154 + i * 68, t, { 'font-size': 13 }); return label(svg, 776, 180 + i * 68, '', { 'font-size': 19, 'font-weight': 650 }); });
+    const rows = ['Bacteria', 'Antibody', 'Coated', 'Phagocytes'].map((t, i) => { small(svg, 776, 154 + i * 68, t, { 'font-size': 14.5 }); return label(svg, 776, 180 + i * 68, '', { 'font-size': 20, 'font-weight': 650 }); });
     view.update = (dtReal) => {
       const d = app.sim; if (d instanceof Immune || !d) return;
       const nb = d.bacteria <= 0 ? 0 : clamp(9 * log10(d.bacteria) - 14, 2, 70);
@@ -655,13 +655,13 @@
   views.windows = function () {
     const svg = svgEl('svg', { viewBox: '0 0 1000 560', role: 'img', 'aria-label': 'A row of airway cells, each showing fragments of the proteins it is making' }, stage);
     const view = { svg, onCell: null, patch: null, reveal: false };
-    label(svg, 500, 44, 'A row of cells lining the airway, seen from the side', { 'text-anchor': 'middle', 'font-weight': 650, 'font-size': 15 });
+    label(svg, 500, 44, 'A row of cells lining the airway, seen from the side', { 'text-anchor': 'middle', 'font-weight': 650, 'font-size': 16.5 });
     const lg = svgEl('g', { transform: 'translate(250,470)' }, svg);
     svgEl('rect', { x: 0, y: 0, width: 500, height: 70, rx: 10, fill: '#fff', stroke: '#d9d6cc' }, lg);
     svgEl('circle', { cx: 24, cy: 22, r: 6, fill: '#8a93a6' }, lg); svgEl('rect', { x: 44, y: 16, width: 12, height: 12, fill: '#8a93a6' }, lg);
-    small(lg, 68, 27, "fragments of the cell's own proteins", { 'font-size': 13, fill: COL.ink });
+    small(lg, 68, 27, "fragments of the cell's own proteins", { 'font-size': 14.5, fill: COL.ink });
     svgEl('path', { d: 'M24,42 L31,56 L17,56 Z', fill: COL.pathogen, stroke: '#7d1f19' }, lg);
-    small(lg, 68, 54, 'a fragment of a viral protein', { 'font-size': 13, fill: COL.ink });
+    small(lg, 68, 54, 'a fragment of a viral protein', { 'font-size': 14.5, fill: COL.ink });
     const cellsG = svgEl('g', {}, svg);
     const marks = numbered(svg, [[1, 30, 300], [2, 30, 208], [3, 232, 505]]);
     view.setMarks = (on) => marks.setAttribute('opacity', on ? 1 : 0);
@@ -682,7 +682,7 @@
         }
         const cross = svgEl('path', { d: 'M-22,290 L22,340 M22,290 L-22,340', stroke: '#6b7385', 'stroke-width': 6, 'stroke-linecap': 'round', opacity: 0 }, g);
         const out = swarm(g, { x: -w / 2 + 6, y: 120, w: w - 12, h: 60 }, virion);
-        const tag = small(g, 0, 424, '', { 'text-anchor': 'middle', 'font-size': 12 });
+        const tag = small(g, 0, 424, '', { 'text-anchor': 'middle', 'font-size': 13.5 });
         clickable(g, `Cell ${i + 1}`, () => view.onCell && view.onCell(i));
         els.push({ g, bodyEl, nuc, frags, cross, out, tag, shown: null });
       });

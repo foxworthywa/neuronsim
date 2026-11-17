@@ -261,13 +261,20 @@ test('the same seed gives the same run; another seed gives another library', () 
   assert.notEqual(run(3)[2], run(4)[2]);
 });
 
-test('every seed a group might get gives a first infection inside the targets', () => {
+test('every seed a group might get gives the same story: timings in range, the vaccine protects, each knock-out has the same outcome', () => {
   for (let seed = 1; seed <= 12; seed++) {
     const r = follow(person(b => b.infect('bacterium'), seed), 14);
     between(r.when('firstAntibody'), 3.5, 7.5, `seed ${seed}: first antibody (day)`);
     between(r.when('cleared'), 6.5, 11.5, `seed ${seed}: cleared (day)`);
     const v = follow(person(b => b.infect('virus'), seed), 16, 2, 'virus');
     between(v.when('cleared'), 7, 12.5, `seed ${seed}: virus cleared (day)`);
+    const vx = person(b => b.vaccinate('virus'), seed); vx.advance(14 * DAY); vx.takeEvents(); vx.infect('virus');
+    const prot = follow(vx, 10, 2, 'virus');
+    assert.ok(prot.max('infected') < 0.25 * v.max('infected') && prot.maxSign('fever') < 0.25, `seed ${seed}: the vaccine protects (peak infected ${prot.max('infected').toFixed(0)} vs ${v.max('infected').toFixed(0)})`);
+    for (const [knock, kind, cleared] of [[['neutrophils', 0.05], 'bacterium', false], [['neutrophils', 0.05], 'virus', true], [['bcells', 0], 'bacterium', false], [['bcells', 0], 'virus', true], [['tcells', 0], 'bacterium', true], [['tcells', 0], 'virus', false], [['helperT', 0], 'bacterium', false], [['helperT', 0], 'virus', false]]) {
+      const k = follow(person(b => { b.set(knock[0], knock[1]); b.infect(kind); }, seed), 21, 6, kind);
+      assert.equal(k.when('cleared') != null, cleared, `seed ${seed}: without ${knock[0]}, ${kind} ${cleared ? 'is' : 'is not'} cleared in 21 days`);
+    }
   }
 });
 

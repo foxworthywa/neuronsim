@@ -16,7 +16,8 @@
   // A prediction must be made before the experiment can be run.
   const predict = (q) => Object.assign(q, { onCorrect: (c) => c.refresh() });
   const afterPrediction = (c) => !c.stepState().answered;
-  const guess = (prompt, options, fb) => ({ prompt, options: options.map(t => ({ t, ok: true, fb })) });
+  // An opening guess: every option is accepted and recorded, and none is called right.
+  const guess = (prompt, options, fb) => ({ prompt, options: options.map(t => ({ t, ok: true, neutral: true, fb })) });
   const nameBox = (html) => `<div class="name">${html}</div>`;
   const caseNote = (who, html) => `<div class="case"><div class="case-h">${who}</div>${html}</div>`;
 
@@ -160,7 +161,7 @@
   }
   // The same person six months after that infection.
   function sixMonthsOn() {
-    if (!cache.six) { const b = firstInfection().sim.copy(); b.advance(168 * DAY); b.takeEvents(); b.flags = {}; cache.six = b; }
+    if (!cache.six) { const b = firstInfection().sim.copy(); b.advance(168 * DAY); b.takeEvents(); cache.six = b; }
     return cache.six.copy();
   }
   const firstGhost = () => ({ label: 'first infection', zero: 0, rows: firstInfection().rows, keys: ['pathogen', 'ab'] });

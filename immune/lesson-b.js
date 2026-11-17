@@ -14,7 +14,7 @@
   function elenaRows() { if (!cache.elena) cache.elena = track(person((b) => b.infect('virus')), 14 * DAY, 'virus', 'A'); return cache.elena; }
   const elenaGhost = () => ({ label: 'Elena (no vaccine)', zero: elenaRows()[0].t, rows: elenaRows(), keys: ['infected'], color: '#b98a4a' });
   // Priya two weeks after her vaccine.
-  function vaccinated14() { if (!cache.vax) { const b = person((x) => x.vaccinate('virus')); b.advance(14 * DAY); b.takeEvents(); b.flags = {}; cache.vax = b; } return cache.vax.copy(); }
+  function vaccinated14() { if (!cache.vax) { const b = person((x) => x.vaccinate('virus')); b.advance(14 * DAY); b.takeEvents(); cache.vax = b; } return cache.vax.copy(); }
 
   // ---------------------------------------------------------------- scene 12: take one piece away
   const KO = [
@@ -270,8 +270,8 @@
           view: 'places', viewOpts: { kind: 'bacterium', caption: 'Mr. Hall\'s wound.' }, remount: true,
           timeline: TL(5, ['pathogen', 'phago']), meters: METERS.innate, speed: 12,
           title: 'A patient: Mr. Hall',
-          setup: () => { setSim(person((b) => b.set('neutrophils', 0.075)), { kind: 'bacterium' }); const rows = track(person((b) => b.infect('bacterium')), 5 * DAY, 'bacterium', 'A'); cache.hallHealthy = rows; app.ghosts = [{ label: 'a healthy person', zero: rows[0].t, rows, keys: ['pathogen', 'phago'] }]; },
-          text: () => `<div class="case"><div class="case-h">Mr. Hall</div>${HALL}</div>${labTable(app.sim.labPanel().slice(0, 1), 'Complete blood count (part)')}
+          setup: () => { setSim(person((b) => b.set('neutrophils', 0.075)), { kind: 'bacterium' }); const rows = track(person((b) => b.infect('bacterium')), 5 * DAY, 'bacterium', 'A'); cache.hallHealthy = rows; cache.hallLab = app.sim.labPanel().slice(0, 1); app.ghosts = [{ label: 'a healthy person', zero: rows[0].t, rows, keys: ['pathogen', 'phago'] }]; },
+          text: () => `<div class="case"><div class="case-h">Mr. Hall</div>${HALL}</div>${labTable(cache.hallLab, 'Complete blood count (part)')}
                  <p>Chemotherapy kills dividing cells, and that includes the cells in the bone marrow that make neutrophils. Run five days of his wound infection. The grey curves are a healthy person.</p>`,
           actions: [{ label: 'Run Mr. Hall\'s wound (5 days)', cls: 'germ', disabled: (c) => busy(c) || data(c).ran, run: (c) => experiment(c, { before: (b) => b.infect('bacterium'), hours: 5 * DAY, speed: 15, after: (b, c) => c.recordValue('hall', { bacteria: b.site.bacteria, healthy: cache.hallHealthy[cache.hallHealthy.length - 1].pathogen, swelling: peakOf(app.history, 'swelling'), swellingHealthy: peakOf(cache.hallHealthy, 'swelling'), neut: peakOf(app.history, 'phago') }) }) }],
           status: (c) => { const v = c.record.values.hall; return data(c).ran && v ? `Day 5: <b>${fmt(v.bacteria)}</b> bacteria (healthy person: ${fmt(v.healthy)}) · most swelling: <b>${pct(v.swelling)}</b> (healthy: ${pct(v.swellingHealthy)})` : ''; },
@@ -286,8 +286,8 @@
           view: 'places', viewOpts: { kind: 'virus', caption: 'Ms. Adeyemi: the same influenza virus as Elena.' }, remount: true,
           timeline: VTL(21), meters: METERS.virus, speed: 48,
           title: 'A patient: Ms. Adeyemi',
-          setup: () => { setSim(person((b) => b.set('helperT', 0.15)), { kind: 'virus' }); const rows = healthyRows('virus'); app.ghosts = [{ label: 'a healthy person', zero: rows[0].t, rows, keys: ['infected'] }]; },
-          text: () => `<div class="case"><div class="case-h">Ms. Adeyemi</div>${ADEYEMI}</div>${labTable(app.sim.labPanel().slice(1, 2), 'Lymphocyte subsets (part)')}
+          setup: () => { setSim(person((b) => b.set('helperT', 0.15)), { kind: 'virus' }); const rows = healthyRows('virus'); cache.adeyemiLab = app.sim.labPanel().slice(1, 2); app.ghosts = [{ label: 'a healthy person', zero: rows[0].t, rows, keys: ['infected'] }]; },
+          text: () => `<div class="case"><div class="case-h">Ms. Adeyemi</div>${ADEYEMI}</div>${labTable(cache.adeyemiLab, 'Lymphocyte subsets (part)')}
                  <p>HIV infects helper T-lymphocytes and, over years, destroys them. To see what that costs, give her the same influenza virus that Elena cleared in about ten days.</p>`,
           actions: [{ label: 'Run her infection (21 days)', cls: 'germ', disabled: (c) => busy(c) || data(c).ran, run: (c) => experiment(c, { before: (b) => b.infect('virus'), hours: 21 * DAY, speed: 60, after: (b, c) => c.recordValue('adeyemi', { cleared: clearedDay(), infected: b.infected, ab: b.antibodyTo('virus', 'A'), ctl: b.site.ctl }) }) }],
           status: (c) => { const v = c.record.values.adeyemi; return data(c).ran && v ? `Day 21: <b>${v.cleared != null ? 'cleared on day ' + v.cleared.toFixed(0) : 'not cleared'}</b>, ${fmt(v.infected)} cells still infected · antibody ${fmtAb(v.ab)} · cytotoxic T-lymphocytes at the site: ${fmt(v.ctl)}` : ''; },
@@ -323,8 +323,8 @@
           view: 'places', title: 'Exposed',
           setup: () => { setSim(vaccinated14(), { kind: 'virus' }); app.ghosts = [elenaGhost()]; },
           text: `<p>Two weeks after her vaccine, Priya breathes in the same virus that put Elena in bed for a week. The grey-brown curve is Elena's infected cells.</p>`,
-          actions: [{ label: 'Priya breathes in the virus (run 10 days)', cls: 'germ', disabled: (c) => busy(c) || data(c).ran, run: (c) => experiment(c, { before: (b) => b.infect('virus'), hours: 10 * DAY, speed: 36, after: (b, c) => c.recordValue('vaxExposed', { peak: peakOf(app.history, 'infected'), elena: peakOf(elenaRows(), 'infected'), fever: peakOf(app.history, 'fever') }) }) }],
-          status: (c) => { const v = c.record.values.vaxExposed; return data(c).ran && v ? `Most cells infected: <b>${fmt(v.peak)}</b> (Elena: ${fmt(v.elena)}) · fever: <b>${pct(v.fever)}</b> of Elena's worst` : ''; },
+          actions: [{ label: 'Priya breathes in the virus (run 10 days)', cls: 'germ', disabled: (c) => busy(c) || data(c).ran, run: (c) => experiment(c, { before: (b) => b.infect('virus'), hours: 10 * DAY, speed: 36, after: (b, c) => c.recordValue('vaxExposed', { peak: peakOf(app.history, 'infected'), elena: peakOf(elenaRows(), 'infected'), fever: peakOf(app.history, 'fever'), elenaFever: peakOf(elenaRows(), 'fever') }) }) }],
+          status: (c) => { const v = c.record.values.vaxExposed; return data(c).ran && v ? `Most cells infected: <b>${fmt(v.peak)}</b> (Elena: ${fmt(v.elena)}) · fever and aching at worst: <b>${pct(v.fever)}</b> (Elena: ${pct(v.elenaFever)})` : ''; },
           question: { prompt: 'Priya met the same virus as Elena. What protected her?', options: [
             { t: 'Antibody already in her blood and airway coated the virus before it could enter cells, and her expanded clones stood ready', ok: true, fb: 'This is scene 10\'s "antibody first" experiment, except that Priya made the antibody herself, and has memory cells to make more.' },
             { t: 'The vaccine was still in her body, killing the virus', fb: 'A vaccine contains nothing that can kill a virus: it is antigen. What did her own body make in response to it?' },
@@ -337,7 +337,7 @@
           setup: () => { setSim(person(), { kind: 'virus' }); app.ghosts = [elenaGhost()]; },
           text: `<p>Run both.</p><ol style="margin:0 0 6px 18px;padding:0"><li>Priya is exposed only <b>3 days</b> after her vaccine.</li><li>Two weeks after her vaccine, she meets a <b>changed strain</b> of influenza, with a differently shaped antigen.</li></ol>`,
           actions: [
-            { label: '1. Exposed on day 3', cls: 'germ', disabled: (c) => busy(c) || data(c).early, run: (c) => { app.ghosts = [elenaGhost()]; experiment(c, { sim: () => { const b = person((x) => x.vaccinate('virus')); b.advance(3 * DAY); b.takeEvents(); b.flags = {}; return b; }, kind: 'virus', strain: 'A', before: (b) => b.infect('virus'), hours: 10 * DAY, speed: 36, key: 'early', after: (b, c) => c.recordValue('vaxEarly', { peak: peakOf(app.history, 'infected') }) }); } },
+            { label: '1. Exposed on day 3', cls: 'germ', disabled: (c) => busy(c) || data(c).early, run: (c) => { app.ghosts = [elenaGhost()]; experiment(c, { sim: () => { const b = person((x) => x.vaccinate('virus')); b.advance(3 * DAY); b.takeEvents(); return b; }, kind: 'virus', strain: 'A', before: (b) => b.infect('virus'), hours: 10 * DAY, speed: 36, key: 'early', after: (b, c) => c.recordValue('vaxEarly', { peak: peakOf(app.history, 'infected') }) }); } },
             { label: '2. A changed strain', cls: 'germ', disabled: (c) => busy(c) || data(c).drift, run: (c) => { app.ghosts = [elenaGhost()]; experiment(c, { sim: () => vaccinated14(), kind: 'virus', strain: 'B', before: (b) => b.infect('virus', { strain: 'B' }), hours: 10 * DAY, speed: 36, key: 'drift', after: (b, c) => c.recordValue('vaxDrift', { peak: peakOf(app.history, 'infected') }) }); } },
           ],
           status: (c) => { const v = c.record.values, d = data(c); return (d.early && v.vaxEarly ? `Exposed on day 3: most cells infected <b>${fmt(v.vaxEarly.peak)}</b>.` : '') + (d.drift && v.vaxDrift ? `<br>Changed strain: most cells infected <b>${fmt(v.vaxDrift.peak)}</b>.` : ''); },
@@ -450,7 +450,7 @@
     if (v.adeyemi) L.push(`  Ms. Adeyemi, day 21: ${v.adeyemi.cleared != null ? 'cleared' : 'not cleared'}; ${fmt(v.adeyemi.infected)} cells infected; antibody ${fmtAb(v.adeyemi.ab)}`);
     L.push('Scene 13 · Teaching without the disease');
     if (v.vaccine) L.push(`  Vaccine: antibody day 3: ${fmtAb(v.vaccine.ab3)}; day 14: ${fmtAb(v.vaccine.ab14)} units; virus at any time: ${fmt(v.vaccine.virus)}`);
-    if (v.vaxExposed) L.push(`  Exposed 2 weeks after the vaccine: most cells infected ${fmt(v.vaxExposed.peak)} (Elena ${fmt(v.vaxExposed.elena)})`);
+    if (v.vaxExposed) L.push(`  Exposed 2 weeks after the vaccine: most cells infected ${fmt(v.vaxExposed.peak)} (Elena ${fmt(v.vaxExposed.elena)}); fever at worst ${pct(v.vaxExposed.fever)} (Elena ${pct(v.vaxExposed.elenaFever)})`);
     if (v.vaxEarly) L.push(`  Exposed 3 days after the vaccine: most cells infected ${fmt(v.vaxEarly.peak)}`);
     if (v.vaxDrift) L.push(`  A changed strain: most cells infected ${fmt(v.vaxDrift.peak)}`);
     if (v.borrowed) L.push(`  Borrowed antibody: 400 → week 3: ${fmtAb(v.borrowed.ab21)} → week 12: ${fmtAb(v.borrowed.ab84)} units; memory cells ${fmt(v.borrowed.memory)}`);
@@ -485,7 +485,7 @@
   }
 
   // ---------------------------------------------------------------- dialogs
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') document.querySelectorAll('.dialog.on').forEach(d => d.classList.remove('on')); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') document.querySelectorAll('.dialog.on:not(#resume)').forEach(d => d.classList.remove('on')); });
   $('#case-body').innerHTML = `<p style="margin:0 0 2px"><b>Part A</b></p>${PRIYA}<p style="margin:8px 0 2px"><b>Questions about Priya on your handout:</b></p>${PRIYA_Q}<p style="margin:12px 0 2px"><b>Part B</b></p>${ELENA}${HALL}${ADEYEMI}`;
   $('#btn-case').addEventListener('click', () => { $('#case').classList.add('on'); $('#case-close').focus(); });
   $('#case-close').addEventListener('click', () => $('#case').classList.remove('on'));
@@ -498,13 +498,48 @@
   $('#verify-close').addEventListener('click', () => $('#verify').classList.remove('on'));
 
   // =========================================================================
-  // Start
+  // Start (and saved progress)
   // =========================================================================
-  const runner = IM.start(LESSON, {});
-  // the header says which Part the current scene belongs to
-  const label = () => { $('#part-label').textContent = runner.runner.scene < FIRST_B ? 'Part A · outside the cells' : 'Part B · inside the cells'; };
-  new MutationObserver(label).observe($('#progress'), { childList: true });
-  label();
+  // Progress is kept in this browser, so a closed tab or a break does not cost the group its work.
+  // On a shared computer the next group is asked whether to continue or start again.
+  const SAVE_KEY = 'immunesim-progress-v1';
+  let runner = null;
+  function readSaved() {
+    try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); return s && s.answers && Object.keys(s.answers).length ? s : null; } catch (e) { return null; }
+  }
+  function save() {
+    if (!runner) return;
+    try {
+      const r = runner.runner.record;
+      localStorage.setItem(SAVE_KEY, JSON.stringify({ seed: app.seed, when: Date.now(), scene: runner.runner.scene, answers: r.answers, values: r.values, tables: r.tables || {}, completed: [...r.completed], visited: [...r.visited], name: r.name || '' }));
+    } catch (e) { /* private browsing or storage full: carry on without saving */ }
+  }
+  function begin(saved) {
+    if (saved) app.seed = saved.seed;
+    runner = IM.start(LESSON, {});
+    if (saved) {
+      const r = runner.runner.record;
+      Object.assign(r.answers, saved.answers); Object.assign(r.values, saved.values); r.tables = saved.tables || {}; r.name = saved.name || '';
+      for (const k of saved.completed || []) r.completed.add(k);
+      for (const k of saved.visited || []) r.visited.add(k);
+      runner.goto(Math.min(saved.scene || 0, LESSON.length - 1), 0);
+    }
+    // the header says which Part the current scene belongs to
+    const label = () => { $('#part-label').textContent = runner.runner.scene < FIRST_B ? 'Part A · outside the cells' : 'Part B · inside the cells'; };
+    new MutationObserver(label).observe($('#progress'), { childList: true });
+    label();
+    setInterval(save, 3000);
+    window.addEventListener('pagehide', save);
+  }
+  const saved = /[?&]seed=/.test(location.search) ? null : readSaved();
+  if (saved) {
+    const scenes = [...new Set(Object.values(saved.answers).filter(a => a.done).map(a => a.scene))].sort((a, b) => a - b);
+    $('#resume-info').textContent = `Saved ${new Date(saved.when).toLocaleString([], { weekday: 'long', hour: 'numeric', minute: '2-digit' })}${saved.name ? ' by ' + saved.name : ''}: questions answered in scene${scenes.length === 1 ? '' : 's'} ${scenes.join(', ') || '1'}.`;
+    $('#resume').classList.add('on');
+    $('#resume-continue').addEventListener('click', () => { $('#resume').classList.remove('on'); begin(saved); });
+    $('#resume-restart').addEventListener('click', () => { try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* ignore */ } $('#resume').classList.remove('on'); begin(null); });
+    $('#resume-continue').focus();
+  } else begin(null);
   if (location.hash === '#verify') openVerify();
   window.addEventListener('hashchange', () => { if (location.hash === '#verify') openVerify(); });
   Object.assign(window.__immunesim, { lesson: () => LESSON, completionCode, results: () => resultsLines().join('\n'), ORDER: IM.L.ORDER, KO, cache });

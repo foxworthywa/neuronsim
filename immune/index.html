@@ -8,6 +8,7 @@
 <style>
   :root { --pathogen: #b8322a; --phago: #2f6fb6; --lymph: #12877f; --ab: #9a6a00; --th: #7b3f99; }
   #trace { height: 205px; }
+  @media (max-height: 780px) { #trace { height: 165px; } #narrator { min-height: 0; margin-bottom: 6px; } #stage-wrap { min-height: 0; } }
   /* current values and the patient's signs sit in the bar above the picture, never on top of it */
   #stage-top { flex-wrap: wrap; row-gap: 4px; }
   #stage-caption { min-width: 180px; }
@@ -36,6 +37,8 @@
   .case p { margin: 0 0 6px; }
   .case p:last-child { margin-bottom: 0; }
   .case-h { font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: #0b5f59; font-weight: 700; margin-bottom: 4px; }
+  .question .options button.noted, .question .options button.noted:disabled { border-color: var(--accent); background: #eaf1fd; color: var(--ink); }
+  .feedback.note { background: #eaf1fd; border: 1px solid #c3d5f3; }
   .name { border-left: 4px solid #f0b429; background: #fff8e6; border-radius: 8px; padding: 6px 12px; margin: 6px 0; font-size: 14px; }
   /* lab report */
   .labrep { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; font-size: 13px; margin: 6px 0; }
@@ -117,7 +120,7 @@
   <aside id="panel" aria-label="Lesson"></aside>
   <div id="trace-wrap">
     <div id="trace-head">
-      <span id="trace-title">The infection timeline</span>
+      <span id="trace-title"><b style="color:var(--ink);font-weight:650">The infection timeline</b></span>
       <span class="legend" id="trace-legend"></span>
       <span style="flex:1"></span>
       <span id="sim-clock" style="font-variant-numeric: tabular-nums">day 0</span>
@@ -140,6 +143,15 @@
     <h2 id="case-title" style="margin:0;font-size:16px">The patients</h2>
     <div id="case-body" style="font-size:15px"></div>
     <div style="display:flex;justify-content:flex-end"><button type="button" class="primary" id="case-close">Close</button></div>
+  </div>
+</div>
+<div id="resume" class="dialog" role="dialog" aria-modal="true" aria-labelledby="resume-title">
+  <div class="box">
+    <h2 id="resume-title" style="margin:0;font-size:16px">Continue where you left off?</h2>
+    <p style="margin:0;font-size:15px">This browser has saved progress in ImmuneSim.</p>
+    <p id="resume-info" style="margin:0;font-size:14px;color:var(--muted)"></p>
+    <p style="margin:0;font-size:14px;color:var(--muted)">If that was not you (on a shared computer, for example), start again.</p>
+    <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" id="resume-restart">Start again</button><button type="button" class="primary" id="resume-continue">Continue</button></div>
   </div>
 </div>
 <script src="../lib/lesson.js"></script>

@@ -152,7 +152,11 @@
     infect(kind, o) {
       o = o || {};
       const strain = o.strain || 'A';
-      this.antigen(kind, strain);
+      const an = this.antigen(kind, strain);
+      // a new infection can be announced again (its first neutrophils, its antigen reaching the
+      // node); "first antibody" only if there is none against this antigen already
+      delete this.flags.neutrophilsArrive; delete this.flags.ctlArrive; delete this.flags['antigenInNode:' + an.pt.key];
+      if (this.antibodyTo(kind, strain) < 1) delete this.flags.firstAntibody;
       if (kind === 'bacterium') { this.site.bacteria += o.dose == null ? 1e4 : o.dose; this.site.bStrain = strain; this.flags.bCleared = false; }
       else { this.site.virus += o.dose == null ? 100 : o.dose; this.site.vStrain = strain; this.flags.vCleared = false; }
       this.events.push({ type: 'infect', kind, strain, t: this.t });
@@ -236,6 +240,8 @@
       ];
     }
     takeEvents() { const e = this.events; this.events = []; return e; }
+    // Has a vaccine (antigen with no infection) raised detectable antibody yet?
+    vaccineAb() { for (const k in this.antigens) { const a = this.antigens[k]; if ((a.depot > 0 || a.A > 0.01) && this.antibodyTo(a.pt.kind, a.pt.strain) >= 1) return true; } return false; }
     // An independent copy of this person as they are now (to run "what if" experiments from one moment).
     copy() {
       const b = Object.create(Immune.prototype);
@@ -379,7 +385,7 @@
         c.ab = make / kAb + (c.ab - make / kAb) * Math.exp(-kAb * dt);
       }
       if (this.borrowed) for (const b of this.borrowed) b.ab *= Math.exp(-kAb * dt);
-      if (aB >= 1 || aV >= 1) this.once('firstAntibody');
+      if ((s.bStrain && s.bacteria > 0 && aB >= 1) || (s.vStrain && aV >= 1) || this.vaccineAb()) this.once('firstAntibody');
 
       this.t += dt;
     }

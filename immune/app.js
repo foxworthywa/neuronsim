@@ -185,7 +185,7 @@
     }
     const W = cfg.window * DAY, now = app.sim.t;
     const t0 = Math.max(app.zero - (cfg.lead || 0) * DAY, now - W), t1 = t0 + W;
-    const padL = 84, padR = 14, padT = 4, padB = 18;
+    const padL = 94, padR = 14, padT = 4, padB = 18;
     c.font = '11px system-ui, sans-serif';
     const X = (t) => padL + (t - t0) / W * (w - padL - padR);
     // marker labels: stacked in rows above the plot
@@ -201,7 +201,7 @@
     c.fillStyle = '#fbfaf6'; c.fillRect(padL, top, w - padL - padR, bottom - top);
     for (const sp of app.spans) { const xa = Math.max(padL, X(sp.t0)), xb = Math.min(w - padR, X(sp.t1 == null ? now : sp.t1)); if (xb > xa) { c.fillStyle = sp.color || 'rgba(61,111,182,0.10)'; c.fillRect(xa, top, xb - xa, bottom - top); c.fillStyle = '#23497f'; c.textAlign = 'left'; c.textBaseline = 'top'; c.font = '600 11px system-ui, sans-serif'; c.fillText(sp.label, xa + 4, top + 2); c.font = '11px system-ui, sans-serif'; } }
     // y axis: each line is 100 times the one below
-    c.textAlign = 'left'; c.textBaseline = 'top'; c.fillStyle = '#9aa0ad'; c.fillText('how many (each line is 100 times the one below)', padL + 6, top + 3);
+    c.save(); c.translate(11, (top + bottom) / 2); c.rotate(-Math.PI / 2); c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#7b8190'; c.fillText('how many', 0, 0); c.restore();
     c.textAlign = 'right'; c.textBaseline = 'middle';
     for (const [v, label] of Y_TICKS) { c.strokeStyle = '#e6e3da'; c.beginPath(); c.moveTo(padL, Y(v)); c.lineTo(w - padR, Y(v)); c.stroke(); c.fillStyle = '#7b8190'; c.fillText(label, padL - 5, Y(v)); }
     // time axis, counted from the start of the experiment
@@ -226,7 +226,7 @@
     app.ghosts.forEach((g) => {
       for (const k of g.keys) if (cfg.traces.includes(k)) line(g.rows, k, g.zero, g.color || COL.ghost, 1.6, k === 'ab' ? [7, 3] : [2, 2]);
       const peak = g.rows.reduce((a, s) => (s[g.keys[0]] > a[g.keys[0]] ? s : a), g.rows[0]);
-      if (peak) { const x = clamp(X(peak.t - g.zero + app.zero), padL + 2, w - padR - 90); c.fillStyle = g.color || '#6c7280'; c.fillText(g.label, x + 3, Y(peak[g.keys[0]]) - 2); }
+      if (peak && g.label) { const x = clamp(X(peak.t - g.zero + app.zero), padL + 2, w - padR - 90), y = Math.max(top + 13, Y(peak[g.keys[0]]) - 3); c.lineWidth = 3; c.strokeStyle = '#fbfaf6'; c.strokeText(g.label, x + 3, y); c.fillStyle = g.color || '#6c7280'; c.fillText(g.label, x + 3, y); }
     });
     for (const k of cfg.traces) line(app.history, k, app.zero, TR[k].color, TR[k].width, TR[k].dash);
     // markers
@@ -273,6 +273,7 @@
       app.clock = eff.clock || 'idle';
       if (eff.timeline) { app.timeline = eff.timeline; app.sampleDt = Math.max(0.05, eff.timeline.window * DAY / 500); }
       const graphed = !!(app.timeline && app.timeline.traces.length);
+      $('#trace-wrap').style.display = graphed ? '' : 'none';   // no graph in this step: the picture gets the room
       $('#vm-badge').style.visibility = graphed ? 'visible' : 'hidden';
       app.meters = eff.meters || null;
       renderMeters(true);

@@ -68,7 +68,7 @@ const answerBox = (n) => new Table({
 });
 const lines = (n) => (TYPE ? [answerBox(n), spacer(60)] : ruled(n));
 const ruled = (n) => Array.from({ length: n }, () => new Paragraph({
-  spacing: { before: 80, after: 0 }, children: [run('')],
+  spacing: { before: 60, after: 0 }, children: [run('')],
   border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: LINE, space: 1 } },
 }));
 const b = () => ({ style: BorderStyle.SINGLE, size: 4, color: LINE });
@@ -222,7 +222,7 @@ const sheet = () => [
   q('7. Transfer: two things people say. “I had my flu shot yesterday, so I’m covered for the party tonight.” “The flu shot gave me the flu.” Respond to each, using your scene 13 results. Then explain why a newborn is protected for a few months without ever having been vaccinated, and why that protection does not last.', true, 3),
   ...lines(5),
   q('Now redraw your Part A picture as a timeline. Sketch four curves for a FIRST infection (bacteria, neutrophils at the site, lymphocytes that fit, antibody), from day 0 to day 12. Then add, in another colour or as dashed lines, the bacteria and antibody for a SECOND infection with the same strain. Label three events. Under it, write one thing in your Part A drawing that you would now change.', false, 2),
-  box(2300, 'your timeline: how many (up the page) against time in days (across)', 'draw two axes for the students to use: time across, marked day 0 to day 12, and “how many” up the side, marked 1, 100, 10 thousand, 1 million and 100 million'),
+  box(2200, 'your timeline: how many (up the page) against time in days (across)', 'draw two axes for the students to use: time across, marked day 0 to day 12, and “how many” up the side, marked 1, 100, 10 thousand, 1 million and 100 million'),
   ...lines(2),
 ];
 

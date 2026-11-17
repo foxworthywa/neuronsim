@@ -2732,7 +2732,7 @@ window.IM_ANATOMY = {
   const ELENA = `<p><b>Elena Cruz, 21,</b> Priya's roommate, comes down with <b>influenza</b> in January: fever, aching muscles, a dry cough. She is ill for about a week.</p>
     <p>Priya shares the apartment and is exposed to the same virus, but she had the <b>flu vaccine</b> in October and stays well. Elena's sister has a <b>newborn</b> son who has had no vaccines yet.</p>`;
   const HALL = `<p><b>Mr. Hall, 58,</b> is having chemotherapy for lymphoma. He has a fever of 38.6 °C. A small wound on his shin shows little redness or swelling and no pus.</p>`;
-  const ADEYEMI = `<p><b>Ms. Adeyemi, 34,</b> has untreated HIV infection. She is admitted with a lung infection caused by a fungus that healthy people breathe in every day without becoming ill.</p>`;
+  const ADEYEMI = `<p><b>Ms. Adeyemi, 34,</b> has untreated HIV infection. Three weeks ago she caught the same influenza that Elena shook off in about ten days. She is still feverish and coughing, and is now short of breath.</p>`;
 
   // ---------------------------------------------------------------- saved moments, worked out once
   const cache = {};
@@ -3736,18 +3736,18 @@ window.IM_ANATOMY = {
           waitFor: (c) => data(c).ran, waitHint: 'Run his infection',
         },
         {
-          view: 'places', viewOpts: { kind: 'virus', caption: 'Ms. Adeyemi: the same influenza virus as Elena.' }, remount: true,
+          view: 'places', viewOpts: { kind: 'virus', caption: 'Ms. Adeyemi\'s airway, lymph node and blood: the same influenza virus as Elena.' }, remount: true,
           timeline: VTL(21), meters: METERS.virus, speed: 48,
           title: 'A patient: Ms. Adeyemi',
           setup: () => { setSim(person((b) => b.set('helperT', 0.15)), { kind: 'virus' }); const rows = healthyRows('virus'); cache.adeyemiLab = app.sim.labPanel().slice(1, 2); app.ghosts = [{ label: 'a healthy person', zero: rows[0].t, rows, keys: ['infected'] }]; },
           text: () => `<div class="case"><div class="case-h">Ms. Adeyemi</div>${ADEYEMI}</div>${labTable(cache.adeyemiLab, 'Lymphocyte subsets (part)')}
-                 <p>HIV infects helper T-lymphocytes and, over years, destroys them. To see what that costs, give her the same influenza virus that Elena cleared in about ten days.</p>`,
-          actions: [{ label: 'Run her infection (21 days)', cls: 'germ', disabled: (c) => busy(c) || data(c).ran, run: (c) => experiment(c, { before: (b) => b.infect('virus'), hours: 21 * DAY, speed: 60, after: (b, c) => c.recordValue('adeyemi', { cleared: clearedDay(), infected: b.infected, ab: b.antibodyTo('virus', 'A'), ctl: b.site.ctl }) }) }],
+                 <p>HIV infects helper T-lymphocytes and, over years, destroys them. Her count is far below the normal range. Run her influenza from the day she caught it and follow the three weeks since. The grey curve is a healthy person with the same virus.</p>`,
+          actions: [{ label: 'Run her influenza (21 days)', cls: 'germ', disabled: (c) => busy(c) || data(c).ran, run: (c) => experiment(c, { before: (b) => b.infect('virus'), hours: 21 * DAY, speed: 60, after: (b, c) => c.recordValue('adeyemi', { cleared: clearedDay(), infected: b.infected, ab: b.antibodyTo('virus', 'A'), ctl: b.site.ctl }) }) }],
           status: (c) => { const v = c.record.values.adeyemi; return data(c).ran && v ? `Day 21: <b>${v.cleared != null ? 'cleared on day ' + v.cleared.toFixed(0) : 'not cleared'}</b>, ${fmt(v.infected)} cells still infected · antibody ${fmtAb(v.ab)} · cytotoxic T-lymphocytes at the site: ${fmt(v.ctl)}` : ''; },
-          question: { prompt: 'Why do people with very low CD4 counts die of infections that healthy people shrug off?', options: [
-            { t: 'Without helper T-lymphocytes, neither antibody nor cytotoxic T-lymphocytes get the go-ahead, so ordinary microbes are not cleared', ok: true, fb: 'A CD4 count below 200 per µL defines <b>AIDS</b>. The danger is not the virus\'s direct damage but the loss of the one cell both adaptive arms depend on. Treatment that stops HIV multiplying lets the count recover.' },
-            { t: 'HIV itself destroys the lungs', fb: 'Her lung infection is a fungus, and in the model her airway cells are being lost to influenza. What is missing that would normally clear them?' },
-            { t: 'Her neutrophils no longer work', fb: 'Her innate defenses are intact. Look at her antibody and her cytotoxic T-lymphocytes on day 21.' },
+          question: { prompt: 'Why is Ms. Adeyemi still ill with an infection that Elena cleared in about ten days?', options: [
+            { t: 'With so few helper T-lymphocytes, neither her antibody nor her cytotoxic T-lymphocytes get the go-ahead, so the virus is not cleared', ok: true, fb: 'The danger of HIV is not direct damage but the loss of the one cell that both arms of adaptive immunity depend on. A CD4 count below 200 per µL defines <b>AIDS</b>. The same loss explains the <b>opportunistic infections</b> of AIDS: microbes that healthy people meet every day and never notice, such as the fungus that causes <i>Pneumocystis</i> pneumonia, cause serious disease. Treatment that stops HIV multiplying lets the count recover.' },
+            { t: 'HIV itself is damaging her airway', fb: 'HIV infects helper T-lymphocytes, not the cells lining the airway. Those are being lost to influenza. Look at her antibody and her cytotoxic T-lymphocytes on day 21: what is missing that would normally clear it?' },
+            { t: 'Her neutrophils no longer work', fb: 'Her innate defenses are intact (and in scene 12\'s table the virus was cleared even without neutrophils). Look at her antibody and her cytotoxic T-lymphocytes on day 21.' },
           ] },
           waitFor: (c) => data(c).ran, waitHint: 'Run her infection',
         },

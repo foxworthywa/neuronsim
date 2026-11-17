@@ -185,7 +185,8 @@ Draft cases (names and details to be confirmed):
   borrowed-antibody step.
 - **Scene 12 short cases: Mr. Hall, 58,** on chemotherapy, fever, absolute neutrophil count
   300/µL, a wound with little redness and no pus; **Ms. Adeyemi, 34,** untreated HIV, CD4 count
-  150/µL, a lung infection that healthy people do not get.
+  150/µL, still ill three weeks into the influenza that Elena cleared in ten days (as built; the
+  opportunistic infections of AIDS are named in the feedback, since the model has no fungus).
 - **Daniel Price** from EndoSim returns for one step in scene 3: prednisone turns down the alarm.
 
 ## Worksheet (group, as EndoSim)

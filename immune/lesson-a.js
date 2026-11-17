@@ -146,7 +146,7 @@
   const ELENA = `<p><b>Elena Cruz, 21,</b> Priya's roommate, comes down with <b>influenza</b> in January: fever, aching muscles, a dry cough. She is ill for about a week.</p>
     <p>Priya shares the apartment and is exposed to the same virus, but she had the <b>flu vaccine</b> in October and stays well. Elena's sister has a <b>newborn</b> son who has had no vaccines yet.</p>`;
   const HALL = `<p><b>Mr. Hall, 58,</b> is having chemotherapy for lymphoma. He has a fever of 38.6 °C. A small wound on his shin shows little redness or swelling and no pus.</p>`;
-  const ADEYEMI = `<p><b>Ms. Adeyemi, 34,</b> has untreated HIV infection. She is admitted with a lung infection caused by a fungus that healthy people breathe in every day without becoming ill.</p>`;
+  const ADEYEMI = `<p><b>Ms. Adeyemi, 34,</b> has untreated HIV infection. Three weeks ago she caught the same influenza that Elena shook off in about ten days. She is still feverish and coughing, and is now short of breath.</p>`;
 
   // ---------------------------------------------------------------- saved moments, worked out once
   const cache = {};

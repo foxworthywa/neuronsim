@@ -304,6 +304,7 @@
       // cytotoxic T cells that fit this virus (they travel from the node to the site)
       s.ctl = 0;
       if (s.vStrain) { const pt = antigenShape('virus', s.vStrain); for (const c of this.lib.Tc) if (c.present && c.E > 0) s.ctl += c.E * fitAt(dist(c.x, c.y, pt.x, pt.y)); }
+      if (s.ctl > 300 && nInf > 0) this.once('ctlArrive');
       if (s.virus > 0 || nInf > 0) {
         const F = sat(nInf, p.KF), slow = 1 / (1 + p.brake * F);
         const kill = p.ctlKill * s.ctl;
@@ -411,7 +412,8 @@
       const p = params();
       this.eclipse = p.eclipse; this.produce = p.produce; this.t = 0;
       this.cells = Array.from({ length: o.n || 12 }, () => ({ state: 'healthy', since: 0 }));
-      for (const i of (o.infected || [2, 8])) this.cells[i] = { state: 'infected', since: -(o.age == null ? 2 : o.age) };
+      // infected cells: an index, or [index, hours since it was infected]
+      for (const e of (o.infected || [2, 8])) { const [i, age] = Array.isArray(e) ? e : [e, o.age == null ? 2 : o.age]; this.cells[i] = { state: 'infected', since: -age }; }
       this.killedHealthy = 0; this.killedInfected = 0;
     }
     shows(i) { const c = this.cells[i]; return (c.state === 'infected' || c.state === 'releasing') && this.t - c.since >= 1; }

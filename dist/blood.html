@@ -217,6 +217,9 @@ header a.home:hover { text-decoration: underline; }
   .ptable button { font-size: 12.5px; padding: 3px 7px; }
   .ptable td.right select { border-color: var(--good); background: #eaf7ee; }
   .ptable td.wrong select { border-color: var(--bad); background: #fdeeec; }
+  .ptable .verdict { margin-top: 4px; padding: 3px 6px; border-radius: 6px; font-size: 12.5px; line-height: 1.3; }
+  .ptable .verdict.ok { background: #eaf7ee; border: 1px solid #bfe3ca; color: #1e7a45; }
+  .ptable .verdict.no { background: #fdeeec; border: 1px solid #f0c3bd; color: #a3352b; }
   .ptable td img { vertical-align: middle; margin-right: 4px; }
   .actions button.cellbtn { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 6px; }
   .actions button.cellbtn.won { border-color: var(--good); background: #eaf7ee; }
@@ -1487,12 +1490,13 @@ header a.home:hover { text-decoration: underline; }
       for (const t of TYPES) {
         const want = Math.round(b.n[t] / 100), mine = agents.filter(a => a.type === t);
         // on a fresh picture the cells are already spread along the road; after that, new ones enter at the left
-        for (let i = mine.length; i < want; i++) agents.push({ type: t, age: fresh ? rand() * CELL[t].tau : 0, lane: rand(), seed: Math.floor(rand() * 5) });
+        for (let i = mine.length; i < want; i++) agents.push({ type: t, age: fresh || simDt > CELL[t].tau / 2 ? rand() * CELL[t].tau * 0.6 : 0, lane: rand(), seed: Math.floor(rand() * 5) });
         for (let i = want; i < mine.length; i++) mine[mine.length - 1 - (i - want)].age = 1e9;
       }
       for (let i = agents.length - 1; i >= 0; i--) {
         const a = agents[i], tau = CELL[a.type].tau / (1 + CELL[a.type].gExit * b.call(a.type));
         a.age += simDt;
+        if (simDt > tau / 2 && a.age < 1e8) a.age = rand() * tau;      // the clock jumped: the cells now on the road are spread along it
         if (a.age >= tau) { agents.splice(i, 1); if (a.age < 1e8) leaving.push({ type: a.type, x: T.x + 10 + rand() * (T.w - 20), y: y0 + 100 + a.lane * (y1 - y0 - 124), life: 1, seed: a.seed, back: a.type === 'lymph' }); continue; }
         stamp(c, a.type, B.x + 10 + (a.age / tau) * (B.w - 20), y0 + 16 + a.lane * (y1 - y0 - 32), R, a.seed);
       }
@@ -1936,7 +1940,7 @@ header a.home:hover { text-decoration: underline; }
         extra(el, c) {
           const store = (tables().conds = tables().conds || {}), d = data(c);
           const t = htmlEl('table', { class: 'ptable' });
-          t.appendChild(htmlEl('tr', {}, '<th>Condition</th><th style="width:31%">I predict this cell rises most</th><th style="width:22%"></th>'));
+          t.appendChild(htmlEl('tr', {}, '<th>Condition</th><th style="width:40%">I predict this cell rises most</th><th style="width:15%"></th>'));
           for (const key of Object.keys(CONDS)) {
             const C = CONDS[key], s = (store[key] = store[key] || {});
             const tr = htmlEl('tr', {}, `<td><b>${C.label}</b>${s.done ? `<br>${Plural(C.top)}: ${perUL(s.from)} → <b>${perUL(s.to)}</b> per µL (${pct1(s.pct0)} % → ${pct1(s.pct)} %). Outside the reference range from day ${s.flagDay}.` : ''}</td>`);
@@ -1945,7 +1949,10 @@ header a.home:hover { text-decoration: underline; }
             for (const k of TYPES) sel.appendChild(htmlEl('option', { value: k }, Plural(k)));
             sel.value = s.pred || ''; sel.disabled = !!s.done || !!d.running;
             sel.addEventListener('change', () => { s.pred = sel.value; c.refresh(); });
-            td.appendChild(sel); tr.appendChild(td);
+            td.appendChild(sel);
+            // once the run is over, say outright whether the prediction held
+            if (s.done) td.appendChild(htmlEl('div', { class: 'verdict ' + (s.pred === C.top ? 'ok' : 'no'), role: 'status' }, s.pred === C.top ? '✓ <b>Right.</b>' : `✗ <b>Not this time.</b> ${Plural(C.top)} rose most; ${plural(s.pred)} ${s.predFold > 1.15 ? 'rose less' : 'did not rise'}.`));
+            tr.appendChild(td);
             const td2 = htmlEl('td'), btn = htmlEl('button', { type: 'button', 'data-cond': key }, s.done ? 'Run again' : 'Run');
             btn.disabled = !s.pred || !!d.running;
             btn.addEventListener('click', () => {
@@ -1954,7 +1961,7 @@ header a.home:hover { text-decoration: underline; }
               b.start(key); d.running = key; c.refresh();
               startRun({ hours: C.days * DAY, speed: C.speed, onDone: () => {
                 const now = b.report();
-                Object.assign(s, { done: true, from: row(before, C.top).abs, to: row(now, C.top).abs, pct0: row(before, C.top).pct, pct: row(now, C.top).pct, flagDay: firstFlagDay(key, C.top) });
+                Object.assign(s, { done: true, predFold: row(now, s.pred).abs / row(before, s.pred).abs, from: row(before, C.top).abs, to: row(now, C.top).abs, pct0: row(before, C.top).pct, pct: row(now, C.top).pct, flagDay: firstFlagDay(key, C.top) });
                 d.running = null;
                 if (Object.keys(CONDS).every(k => store[k].done)) c.complete();
                 c.refresh();
@@ -1964,7 +1971,7 @@ header a.home:hover { text-decoration: underline; }
           }
           el.appendChild(t);
         },
-        status: (c) => { const d = data(c), s = tables().conds || {}; return d.running ? `Running: ${CONDS[d.running].label.toLowerCase()}…` : Object.keys(CONDS).every(k => s[k] && s[k].done) ? 'Both run. Each condition raised the cell whose job it calls for.' : 'Choose a prediction, then press Run.'; },
+        status: (c) => { const d = data(c), s = tables().conds || {}; return d.running ? `Running: ${CONDS[d.running].label.toLowerCase()}…` : Object.keys(CONDS).every(k => s[k] && s[k].done) ? `Both run: you predicted ${Object.keys(CONDS).filter(k => s[k].pred === CONDS[k].top).length} of 2 correctly. Each condition raised the cell whose job it calls for.` : 'Choose a prediction, then press Run.'; },
         waitFor: () => { const s = tables().conds; return !!(s && Object.keys(CONDS).every(k => s[k] && s[k].done)); },
         waitHint: 'Run both conditions to continue',
       },
@@ -2222,7 +2229,7 @@ header a.home:hover { text-decoration: underline; }
       L.push(`  Bacterial infection, day 2: neutrophils ${perUL(b.neut0)} → ${perUL(b.neut)} per µL (${pct1(b.pctN0)} % → ${pct1(b.pctN)} %)`);
       L.push(`    lymphocytes ${perUL(b.lymph0)} → ${perUL(b.lymph)} per µL (${pct1(b.pctL0)} % → ${pct1(b.pctL)} %); marrow reserve down ${Math.round(100 * (1 - b.reserve / b.reserve0))} %`);
     }
-    if (t.conds) for (const k of Object.keys(CONDS)) { const s = t.conds[k]; if (s && s.done) L.push(`  ${CONDS[k].label}: ${plural(CONDS[k].top)} ${perUL(s.from)} → ${perUL(s.to)} per µL (${pct1(s.pct0)} % → ${pct1(s.pct)} %), out of range from day ${s.flagDay}; we predicted ${plural(s.pred)}`); }
+    if (t.conds) for (const k of Object.keys(CONDS)) { const s = t.conds[k]; if (s && s.done) L.push(`  ${CONDS[k].label}: ${plural(CONDS[k].top)} ${perUL(s.from)} → ${perUL(s.to)} per µL (${pct1(s.pct0)} % → ${pct1(s.pct)} %), out of range from day ${s.flagDay}; we predicted ${plural(s.pred)} (${s.pred === CONDS[k].top ? 'right' : 'wrong'})`); }
     if (t.count) {
       L.push('Scene 4 · Counting 100 cells (a healthy person)');
       L.push(`  Our count: ${countLine(t.count)}${v.hand ? `; of the ${HAND} we named, ${v.hand.misses} not at the first try` : ''}`);

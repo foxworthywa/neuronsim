@@ -77,10 +77,13 @@ const URL = (arg ? (arg.includes('://') ? arg : 'file://' + path.resolve(arg)) :
       } else if (id === 'count' && st.title === 'Two more calls') {
         for (const key of await page.evaluate(() => Object.keys(window.__bloodsim.CONDS))) {
           const row = () => page.locator('.ptable tr', { has: page.locator(`button[data-cond="${key}"]`) });
-          await row().locator('select').selectOption('neut');
+          // one prediction wrong and one right, to see both verdicts
+          await row().locator('select').selectOption(key === 'allergy' ? 'neut' : 'lymph');
           await row().locator('button').click();
           await page.waitForTimeout(250); await finishRuns(); await page.waitForTimeout(150);
         }
+        const verdicts = await page.locator('.ptable .verdict').allTextContents();
+        if (verdicts.length !== 2 || !verdicts[0].includes('Not this time') || !verdicts[1].includes('Right')) report.push('!! predictions not marked right or wrong: ' + JSON.stringify(verdicts));
       } else if (id === 'hundred' && ki === 0) {
         // name 20 cells, the first one wrongly at first
         for (let i = 0; i < 20; i++) {

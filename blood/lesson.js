@@ -373,7 +373,7 @@
         extra(el, c) {
           const store = (tables().conds = tables().conds || {}), d = data(c);
           const t = htmlEl('table', { class: 'ptable' });
-          t.appendChild(htmlEl('tr', {}, '<th>Condition</th><th style="width:31%">I predict this cell rises most</th><th style="width:22%"></th>'));
+          t.appendChild(htmlEl('tr', {}, '<th>Condition</th><th style="width:40%">I predict this cell rises most</th><th style="width:15%"></th>'));
           for (const key of Object.keys(CONDS)) {
             const C = CONDS[key], s = (store[key] = store[key] || {});
             const tr = htmlEl('tr', {}, `<td><b>${C.label}</b>${s.done ? `<br>${Plural(C.top)}: ${perUL(s.from)} → <b>${perUL(s.to)}</b> per µL (${pct1(s.pct0)} % → ${pct1(s.pct)} %). Outside the reference range from day ${s.flagDay}.` : ''}</td>`);
@@ -382,7 +382,10 @@
             for (const k of TYPES) sel.appendChild(htmlEl('option', { value: k }, Plural(k)));
             sel.value = s.pred || ''; sel.disabled = !!s.done || !!d.running;
             sel.addEventListener('change', () => { s.pred = sel.value; c.refresh(); });
-            td.appendChild(sel); tr.appendChild(td);
+            td.appendChild(sel);
+            // once the run is over, say outright whether the prediction held
+            if (s.done) td.appendChild(htmlEl('div', { class: 'verdict ' + (s.pred === C.top ? 'ok' : 'no'), role: 'status' }, s.pred === C.top ? '✓ <b>Right.</b>' : `✗ <b>Not this time.</b> ${Plural(C.top)} rose most; ${plural(s.pred)} ${s.predFold > 1.15 ? 'rose less' : 'did not rise'}.`));
+            tr.appendChild(td);
             const td2 = htmlEl('td'), btn = htmlEl('button', { type: 'button', 'data-cond': key }, s.done ? 'Run again' : 'Run');
             btn.disabled = !s.pred || !!d.running;
             btn.addEventListener('click', () => {
@@ -391,7 +394,7 @@
               b.start(key); d.running = key; c.refresh();
               startRun({ hours: C.days * DAY, speed: C.speed, onDone: () => {
                 const now = b.report();
-                Object.assign(s, { done: true, from: row(before, C.top).abs, to: row(now, C.top).abs, pct0: row(before, C.top).pct, pct: row(now, C.top).pct, flagDay: firstFlagDay(key, C.top) });
+                Object.assign(s, { done: true, predFold: row(now, s.pred).abs / row(before, s.pred).abs, from: row(before, C.top).abs, to: row(now, C.top).abs, pct0: row(before, C.top).pct, pct: row(now, C.top).pct, flagDay: firstFlagDay(key, C.top) });
                 d.running = null;
                 if (Object.keys(CONDS).every(k => store[k].done)) c.complete();
                 c.refresh();
@@ -401,7 +404,7 @@
           }
           el.appendChild(t);
         },
-        status: (c) => { const d = data(c), s = tables().conds || {}; return d.running ? `Running: ${CONDS[d.running].label.toLowerCase()}…` : Object.keys(CONDS).every(k => s[k] && s[k].done) ? 'Both run. Each condition raised the cell whose job it calls for.' : 'Choose a prediction, then press Run.'; },
+        status: (c) => { const d = data(c), s = tables().conds || {}; return d.running ? `Running: ${CONDS[d.running].label.toLowerCase()}…` : Object.keys(CONDS).every(k => s[k] && s[k].done) ? `Both run: you predicted ${Object.keys(CONDS).filter(k => s[k].pred === CONDS[k].top).length} of 2 correctly. Each condition raised the cell whose job it calls for.` : 'Choose a prediction, then press Run.'; },
         waitFor: () => { const s = tables().conds; return !!(s && Object.keys(CONDS).every(k => s[k] && s[k].done)); },
         waitHint: 'Run both conditions to continue',
       },
@@ -659,7 +662,7 @@
       L.push(`  Bacterial infection, day 2: neutrophils ${perUL(b.neut0)} → ${perUL(b.neut)} per µL (${pct1(b.pctN0)} % → ${pct1(b.pctN)} %)`);
       L.push(`    lymphocytes ${perUL(b.lymph0)} → ${perUL(b.lymph)} per µL (${pct1(b.pctL0)} % → ${pct1(b.pctL)} %); marrow reserve down ${Math.round(100 * (1 - b.reserve / b.reserve0))} %`);
     }
-    if (t.conds) for (const k of Object.keys(CONDS)) { const s = t.conds[k]; if (s && s.done) L.push(`  ${CONDS[k].label}: ${plural(CONDS[k].top)} ${perUL(s.from)} → ${perUL(s.to)} per µL (${pct1(s.pct0)} % → ${pct1(s.pct)} %), out of range from day ${s.flagDay}; we predicted ${plural(s.pred)}`); }
+    if (t.conds) for (const k of Object.keys(CONDS)) { const s = t.conds[k]; if (s && s.done) L.push(`  ${CONDS[k].label}: ${plural(CONDS[k].top)} ${perUL(s.from)} → ${perUL(s.to)} per µL (${pct1(s.pct0)} % → ${pct1(s.pct)} %), out of range from day ${s.flagDay}; we predicted ${plural(s.pred)} (${s.pred === CONDS[k].top ? 'right' : 'wrong'})`); }
     if (t.count) {
       L.push('Scene 4 · Counting 100 cells (a healthy person)');
       L.push(`  Our count: ${countLine(t.count)}${v.hand ? `; of the ${HAND} we named, ${v.hand.misses} not at the first try` : ''}`);

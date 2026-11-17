@@ -415,12 +415,13 @@
       for (const t of TYPES) {
         const want = Math.round(b.n[t] / 100), mine = agents.filter(a => a.type === t);
         // on a fresh picture the cells are already spread along the road; after that, new ones enter at the left
-        for (let i = mine.length; i < want; i++) agents.push({ type: t, age: fresh ? rand() * CELL[t].tau : 0, lane: rand(), seed: Math.floor(rand() * 5) });
+        for (let i = mine.length; i < want; i++) agents.push({ type: t, age: fresh || simDt > CELL[t].tau / 2 ? rand() * CELL[t].tau * 0.6 : 0, lane: rand(), seed: Math.floor(rand() * 5) });
         for (let i = want; i < mine.length; i++) mine[mine.length - 1 - (i - want)].age = 1e9;
       }
       for (let i = agents.length - 1; i >= 0; i--) {
         const a = agents[i], tau = CELL[a.type].tau / (1 + CELL[a.type].gExit * b.call(a.type));
         a.age += simDt;
+        if (simDt > tau / 2 && a.age < 1e8) a.age = rand() * tau;      // the clock jumped: the cells now on the road are spread along it
         if (a.age >= tau) { agents.splice(i, 1); if (a.age < 1e8) leaving.push({ type: a.type, x: T.x + 10 + rand() * (T.w - 20), y: y0 + 100 + a.lane * (y1 - y0 - 124), life: 1, seed: a.seed, back: a.type === 'lymph' }); continue; }
         stamp(c, a.type, B.x + 10 + (a.age / tau) * (B.w - 20), y0 + 16 + a.lane * (y1 - y0 - 32), R, a.seed);
       }

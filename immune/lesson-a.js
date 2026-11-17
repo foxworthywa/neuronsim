@@ -50,7 +50,7 @@
   const peakOf = (rows, key) => rows.reduce((m, r) => Math.max(m, r[key] || 0), 0);
   // Start an experiment on the stage. o: {sim, kind, strain, before, hours, speed, schedule, key, after, zero}
   function experiment(c, o) {
-    if (o.sim) setSim(o.sim(), { kind: o.kind || app.kind, strain: o.strain || app.strain, keepGhosts: true });
+    if (o.sim) setSim(o.sim(), { kind: o.kind || app.kind, strain: o.strain || app.strain, keepGhosts: true, sampler: app.sampler });
     if (o.before) o.before(app.sim);
     const d = data(c);
     d.running = true;
@@ -474,11 +474,33 @@
           waitFor: (c) => data(c).ran, waitHint: 'Follow the first day',
         },
         {
-          view: 'node', viewOpts: { lib: 'B', caption: 'Inside the lymph node in Priya\'s groin.' }, remount: true,
+          view: 'meet', viewOpts: { caption: 'Inside the lymph node in Priya\'s groin, at the scale of single cells.' }, remount: true,
+          title: 'Inside the lymph node: what is a fit?',
+          setup: () => setSim(person(), { kind: 'bacterium' }),
+          enter: (c) => {
+            const v = c.view(), d = data(c);
+            v.onTry = (i, ok) => {
+              if (ok) d.fit = true; else d.other = true;
+              c.status(ok ? `<b>${v.cells[i].name} binds.</b> Its receptor sits snugly on the antigen. ${d.other ? '' : 'Now try one of the others, to see what a poor fit looks like.'}` : `<b>${v.cells[i].name} does not bind.</b> Its receptor is the wrong shape for this antigen, so the cell drifts away. ${d.fit ? '' : 'Try another.'}`, ok);
+            };
+          },
+          text: `<p><b>You are now inside the lymph node</b> in Priya's groin, looking at single cells. Lymph from the wound has carried a bacterium in.</p>
+                 <ul style="margin:0 0 6px 18px;padding:0"><li>The <b>bacterium</b> is covered with copies of one protein. That protein is the <b>antigen</b> you will follow. (A real bacterium has many different antigens; one is enough here.)</li><li>Each <b>B-lymphocyte</b> carries thousands of copies of one <b>receptor</b>, sticking out from its surface. All the receptors on one lymphocyte are the same shape. Lymphocytes A, B and C have three different shapes.</li></ul>
+                 <p>A lymphocyte can recognise this bacterium only if its receptor <b>fits</b> the antigen. <b>Click each lymphocyte</b> to bring it to the bacterium.</p>`,
+          question: { prompt: 'What decides whether a B-lymphocyte can recognise this bacterium?', options: [
+            { t: 'Whether the shape of its receptor fits the shape of the antigen', ok: true, fb: 'One of the three is what Priya needs. The question for the rest of this scene: among her hundreds of millions of lymphocytes, is there one like it, and how is it found?' },
+            { t: 'How many receptors it has', fb: 'All three lymphocytes have the same number of receptors. Bring each to the bacterium and compare where the receptor meets the antigen.' },
+            { t: 'Which lymphocyte reaches the bacterium first', fb: 'You brought each one right up to the bacterium. Two of them still could not hold on. What was different about the third?' },
+          ] },
+          waitFor: (c) => data(c).fit && data(c).other, waitHint: 'Find the lymphocyte that binds, and try one that does not',
+        },
+        {
+          view: 'node', viewOpts: { lib: 'B', caption: 'The same lymph node, zoomed out: about a thousand of its B-lymphocytes.' }, remount: true,
           title: 'How to read this picture',
           setup: () => setSim(person(), { kind: 'bacterium' }),
           enter: (c) => { const v = c.view(); v.setMarks(true); v.reveal(false); v.setSelf(false); v.reset(); },
-          text: `<ol style="margin:0 0 6px 18px;padding:0"><li>Each circle is one <b>lymphocyte</b>. These are <b>B-lymphocytes</b>.</li><li>The red shape is the <b>antigen</b> from Priya's bacterium.</li><li>Above it will be the <b>receptor</b> of whichever lymphocyte you pick. Every receptor on one lymphocyte is the same shape; different lymphocytes have different shapes.</li><li>The <b>fit</b>: how well that receptor's cleft matches the antigen's knob. It binds only if the fit is good.</li></ol>`,
+          text: `<p><b>This is the same lymph node, zoomed out.</b> The lymphocytes are now too small for you to see their receptors, so the picture has two parts.</p>
+                 <ol style="margin:0 0 6px 18px;padding:0"><li><b>The lymph node.</b> Each small circle is one whole <b>B-lymphocyte</b>, like A, B and C in the last picture. Every one has a differently shaped receptor.</li><li><b>The close-up</b> (right), at the bottom: the <b>antigen</b> on the surface of Priya's bacterium.</li><li>At the top of the close-up: one <b>receptor</b> of whichever lymphocyte you pick, brought down onto the antigen.</li><li>The <b>fit</b>: a receptor that fits sits snugly and binds. One that does not fit is held off, and the gap is shaded yellow.</li></ol>`,
           question: guess('Priya has never met this bacterium. Predict: how will her body come to have a lymphocyte whose receptor fits its antigen?', ['One already exists: lymphocytes are made with millions of different receptors before any infection', 'A lymphocyte will examine the antigen and build a receptor to match it', 'The dendritic cell will pass the shape on, and lymphocytes will copy it'], 'Keep your prediction in mind. The next three steps test it.'),
         },
         {
@@ -498,7 +520,20 @@
           waitFor: (c) => data(c).found, waitHint: 'Release the antigen, then click a marked cell',
         },
         {
-          view: 'node', title: 'A different pathogen',
+          view: 'meet', viewOpts: { caption: 'The lymphocyte the antigen found, at full size.' }, remount: true,
+          title: 'The cell it found',
+          setup: () => { app.strain = 'A'; },
+          enter: (c) => { const v = c.view(); v.onTry = null; v.showFit(); },
+          text: () => `<p>Zoom back in on the cell the antigen marked. It is one of the three you met at the start of this scene: its receptor sits on the antigen, and it holds on to the bacterium.</p>
+                 <p>Of the 1,296 B-lymphocytes in the picture of the node, <b>${fmt(app.sim.lib.B.filter(x => x.present && app.sim.fit(x, 'bacterium', 'A') >= GOOD_FIT).length)}</b> can do this. The other two cells here stand for all the rest.</p>`,
+          question: { prompt: 'The receptor on this lymphocyte fits Priya\'s bacterium. When was that receptor made?', options: [
+            { t: 'We cannot tell yet: test it by changing the bacterium', ok: true, fb: 'So far you have seen that a fitting cell exists. Whether it was there all along, or was made to order, needs an experiment: swap in a different antigen and see what the library does.' },
+            { t: 'After the bacterium arrived, to match it', fb: 'That may be your prediction, but nothing you have seen so far shows it. What experiment would tell you?' },
+            { t: 'Long before the bacterium arrived', fb: 'That may be your prediction, but nothing you have seen so far shows it. What experiment would tell you?' },
+          ] },
+        },
+        {
+          view: 'node', viewOpts: { lib: 'B', caption: 'The lymph node, zoomed out again.' }, remount: true, title: 'A different pathogen',
           setup: () => { app.strain = 'A'; },
           enter: (c) => { const v = c.view(); v.reveal(true); v.reset(); v.onPick = (cl, f) => { if (f >= GOOD_FIT && data(c).swapped) data(c).found = true; }; },
           text: `<p>Now swap in the antigen of a <b>different strain</b>. Nothing else changes: watch the library as you press the button. Then click a cell the new antigen has marked.</p>`,
@@ -583,68 +618,114 @@
       id: 'help', title: 'Two keys', speed: 12,
       steps: [
         {
-          view: 'handshake', viewOpts: { caption: 'Three cells in the lymph node, about a day after the scrape.' }, remount: true,
+          view: 'handshake', viewOpts: { caption: 'Three kinds of cell in the lymph node, about a day after the scrape.' }, remount: true,
           timeline: TL(10), meters: null,
-          title: 'How to read this picture',
+          title: 'A second opinion',
           setup: () => { setSim(person((b) => b.infect('bacterium')), { kind: 'bacterium' }); skip(30); },
-          enter: (c) => { const v = c.view(); v.setMarks(true); v.quiet = true; v.onTh = null; v.onB = null; },
-          text: `<ol style="margin:0 0 6px 18px;padding:0"><li>The <b>dendritic cell</b> that came from the wound.</li><li>On its surface, <b>holders</b>, each showing a fragment of the bacterium's protein.</li><li>Five <b>helper T-lymphocytes</b>, each with a different receptor.</li><li>A <b>B-lymphocyte</b> whose receptor fits: it has caught a whole bacterium.</li><li>The B-lymphocyte's own holder, showing a fragment of what it caught.</li></ol>
-                 <p>A T-lymphocyte's receptor cannot bind a whole bacterium, or anything floating free. It fits only a <b>fragment held in a holder</b> on another cell.</p>`,
-          question: { prompt: 'The dendritic cell swallowed bacteria at the wound. What is it showing in its holders?', options: [
-            { t: 'Fragments of what it swallowed', ok: true, fb: nameBox('The holder is an <b>MHC class II molecule</b>. Cells that show fragments of what they have swallowed this way are <b>antigen-presenting cells</b>: dendritic cells, macrophages and B-lymphocytes. They divide the work. The <b>dendritic cell</b> carries antigen to the lymph node and is the one that starts a response there. A <b>macrophage</b> mostly stays at the wound; it can show its fragments to helper T-lymphocytes that arrive there later, which spur it on to kill more.') },
-            { t: 'Whole bacteria', fb: 'Look at the size of what is in the holders: small pieces. The dendritic cell digested the bacteria first.' },
+          enter: (c) => { const v = c.view(); v.rebuild(); v.setMarks(true); v.onTh = null; v.onB = null; },
+          text: `<p>In scene 6 the B-lymphocytes that fit took days to get going. Part of the reason is a rule: <b>a B-lymphocyte that has found its antigen still does nothing until a second lymphocyte, which has recognised the same invader for itself, gives it the go-ahead.</b> That second cell is a <b>helper T-lymphocyte</b>.</p>
+                 <p>This scene shows the three steps (a helper is selected, it multiplies, it gives the go-ahead), and then why the body insists on two cells agreeing.</p>
+                 <ol style="margin:0 0 6px 18px;padding:0"><li>The <b>dendritic cell</b> that came from the wound.</li><li>Its <b>MHC class II molecules</b>: protein holders, each showing a fragment of the bacterium. (MHC stands for major histocompatibility complex.)</li><li>Five <b>helper T-lymphocytes</b>, each with a different receptor.</li><li>A <b>B-lymphocyte</b> whose receptor fits: it has caught a whole bacterium.</li><li>The B-lymphocyte's own MHC class II molecule, showing a fragment of what it caught.</li></ol>
+                 <p>A T-lymphocyte's receptor cannot bind a whole bacterium, or anything floating free. It fits only a <b>fragment held in an MHC molecule</b> on another cell.</p>`,
+          question: { prompt: 'The dendritic cell swallowed bacteria at the wound. What is it showing in its MHC class II molecules?', options: [
+            { t: 'Fragments of what it swallowed', ok: true, fb: nameBox('Cells that show fragments of what they have swallowed in <b>MHC class II molecules</b> are <b>antigen-presenting cells</b>: dendritic cells, macrophages and B-lymphocytes. They divide the work. The <b>dendritic cell</b> carries antigen to the lymph node and is the one that starts a response there. A <b>macrophage</b> mostly stays at the wound; it can show its fragments to helper T-lymphocytes that arrive there later, which spur it on to kill more.') },
+            { t: 'Whole bacteria', fb: 'Look at the size of what is in the MHC class II molecules, next to the whole bacterium on the right: small pieces. The dendritic cell digested the bacteria first.' },
             { t: 'Its own receptors', fb: 'The red pieces are the same colour as the bacterium. Where did they come from?' },
           ] },
         },
         {
-          view: 'handshake', title: 'Find the helper that fits',
+          view: 'handshake', title: 'Step 1: the dendritic cell selects a helper',
           setup: () => { setSim(person((b) => b.infect('bacterium')), { kind: 'bacterium' }); skip(30); },
           enter: (c) => {
-            const v = c.view(); v.setMarks(false); v.rebuild(); v.quiet = !data(c).found;
-            v.onTh = (cl, f) => {
-              if (f >= GOOD_FIT) { v.choose(cl); v.quiet = false; data(c).found = true; c.status(`<b>That one fits</b> (${pct(f)}). Its receptor matches the fragment in the holder. It has been selected, exactly as the B-lymphocyte was in scene 5.`, true); c.refresh(); }
-              else c.status(`Fit ${pct(f)}: its receptor does not match the fragment. Try another.`, false);
+            const v = c.view(); v.setMarks(false); v.rebuild({ docked: !!data(c).found || c.stepState().done });
+            v.onTh = (cl, f, i) => {
+              const n = v.candidates[i].name;
+              if (f >= GOOD_FIT) { data(c).found = true; c.status(`<b>Helper ${n} binds.</b> Its receptor fits the fragment in the MHC class II molecule, so it has been <b>selected</b>: the same rule as for the B-lymphocyte in scene 5.`, true); }
+              else c.status(`Helper ${n} does not bind: its receptor is the wrong shape for this fragment, and it drifts away. Try another.`, false);
             };
           },
-          text: `<p>The dendritic cell shows its fragments to every helper T-lymphocyte that passes. <b>Click the helper T-lymphocyte whose receptor fits</b> the fragment (compare the cleft on its left side with the red fragment). Then let two days pass.</p>`,
-          actions: [{ label: 'Let two days pass', cls: 'lym', disabled: (c) => !data(c).found || busy(c) || data(c).ran, run: (c) => experiment(c, { hours: 48, speed: 8, zero: false, after: (b, c) => c.recordValue('helpers', b.helpers) }) }],
-          status: (c) => (data(c).ran ? `<b>${fmt(app.sim.helpers)}</b> helper T-lymphocytes with that receptor now: a clone.` : (data(c).found ? 'Selected. Now let two days pass.' : '')),
-          waitFor: (c) => data(c).ran, waitHint: 'Find the helper that fits, then let two days pass',
+          text: `<p>Helper T-lymphocytes drift past the dendritic cell all the time, and each tries its receptor on the fragment the dendritic cell is holding out.</p>
+                 <p><b>Click a helper T-lymphocyte to bring it to the dendritic cell.</b> Find the one that binds.</p>`,
+          question: { prompt: 'The helper you found has never touched a bacterium. How does it know there is an infection?', options: [
+            { t: 'A dendritic cell from the wound showed it a fragment of the bacterium that its receptor fits', ok: true, fb: 'The dendritic cell is the messenger of scene 5. A helper T-lymphocyte learns of the infection second-hand, from a cell that was there and swallowed the evidence.' },
+            { t: 'It met the bacterium in the lymph node, as the B-lymphocyte did', fb: 'A T-lymphocyte\'s receptor cannot bind a whole bacterium. Look at what your helper is touching.' },
+            { t: 'The B-lymphocyte told it', fb: 'Not yet: so far the helper has only met the dendritic cell. Look at what its receptor is sitting on.' },
+          ] },
+          waitFor: (c) => data(c).found, waitHint: 'Find the helper T-lymphocyte that binds',
         },
         {
-          view: 'handshake', title: 'Can the B-lymphocyte go ahead alone?',
+          view: 'handshake', title: 'Step 2: the selected helper multiplies',
+          setup: () => { setSim(person((b) => b.infect('bacterium')), { kind: 'bacterium' }); skip(30); },
+          enter: (c) => { const v = c.view(); v.rebuild({ docked: true }); v.onTh = null; },
+          text: `<p>Being selected switches the helper on, and it starts to divide. Let two days pass and watch the middle of the picture.</p>`,
+          actions: [{ label: 'Let two days pass', cls: 'lym', disabled: (c) => busy(c) || data(c).ran, run: (c) => experiment(c, { hours: 48, speed: 8, zero: false, after: (b, c) => c.recordValue('helpers', b.helpers) }) }],
+          status: (c) => (data(c).ran ? `<b>${fmt(app.sim.helpers)}</b> helper T-lymphocytes now, all with the receptor of the one the dendritic cell selected.` : ''),
+          question: { prompt: 'Every cell of that clone has the same receptor as the helper the dendritic cell selected. What can each of them do?', options: [
+            { t: 'Recognise the same fragment, wherever another cell shows it in an MHC class II molecule', ok: true, fb: 'Now look at the B-lymphocyte on the right. It swallowed the bacterium it caught, and it is showing a fragment of it in its own MHC class II molecule: the same fragment. One of the new helpers has already found it.' },
+            { t: 'Make antibody against the bacterium', fb: 'T-lymphocytes never make antibody. What does a helper\'s receptor fit, and which other cell in the picture is showing that?' },
+            { t: 'Swallow bacteria in the lymph node', fb: 'Lymphocytes are not phagocytes. What does a helper\'s receptor fit, and which other cell in the picture is showing that?' },
+          ] },
+          waitFor: (c) => data(c).ran, waitHint: 'Let two days pass',
+        },
+        {
+          view: 'handshake', title: 'Step 3: the go-ahead',
           setup: () => { setSim(person((b) => b.infect('bacterium')), { kind: 'bacterium' }); skip(78); cache.day3 = snapshot(); },
-          enter: (c) => { const v = c.view(); v.rebuild(); v.quiet = false; v.onTh = null; },
-          text: `<p>Day 3. The B-lymphocyte bound its antigen days ago, directly, with no holder needed. Run the next five days twice from this moment: once with the helper T-lymphocytes removed, and once with them.</p>`,
+          enter: (c) => { const v = c.view(); v.rebuild({ docked: true }); v.onTh = null; },
+          text: `<p>Day 3. A helper from the clone has docked on the B-lymphocyte's MHC class II molecule. Both cells have now recognised the same bacterium, in different ways: the B-lymphocyte bound the whole bacterium; the helper recognised a fragment of it.</p>
+                 <p>Is the helper's go-ahead really needed? Run the next five days twice from this moment: once with the helper T-lymphocytes taken away, and once with them.</p>`,
           question: predict(guess('Predict: with no helper T-lymphocytes, what will the B-lymphocyte do?', ['Divide and make antibody anyway: it has found its antigen', 'Nothing: it waits', 'Divide, but more slowly'], 'Run both and compare.')),
           actions: [
             { label: '1. Five days without helper T', cls: 'drug', disabled: (c) => afterPrediction(c) || busy(c) || data(c).without, run: (c) => { restore(cache.day3); app.sim.set('helperT', 0); c.view().rebuild(); experiment(c, { hours: 5 * DAY, speed: 12, zero: false, key: 'without', after: (b, c) => { c.recordValue('noHelp', { b: b.specific('bacterium', 'A', 'B').total, ab: b.antibodyTo('bacterium', 'A') }); } }); } },
-            { label: '2. Five days with helper T', cls: 'lym', disabled: (c) => !data(c).without || busy(c) || data(c).withHelp, run: (c) => { keepGhost('without helper T', { keys: ['pathogen', 'lymph', 'ab'] }); const g = app.ghosts.slice(); restore(cache.day3); app.ghosts = g; c.view().rebuild(); experiment(c, { hours: 5 * DAY, speed: 12, zero: false, key: 'withHelp', after: (b, c) => { c.recordValue('withHelp', { b: b.specific('bacterium', 'A', 'B').total, ab: b.antibodyTo('bacterium', 'A') }); } }); } },
+            { label: '2. Five days with helper T', cls: 'lym', disabled: (c) => !data(c).without || busy(c) || data(c).withHelp, run: (c) => { keepGhost('without helper T', { keys: ['pathogen', 'lymph', 'ab'] }); const g = app.ghosts.slice(); restore(cache.day3); app.ghosts = g; c.view().rebuild({ docked: true }); experiment(c, { hours: 5 * DAY, speed: 12, zero: false, key: 'withHelp', after: (b, c) => { c.recordValue('withHelp', { b: b.specific('bacterium', 'A', 'B').total, ab: b.antibodyTo('bacterium', 'A') }); } }); } },
           ],
           status: (c) => { const v = c.record.values, d = data(c); return (d.without && v.noHelp ? `Without helper T, day 8: <b>${fmt(v.noHelp.b)}</b> B-lymphocytes that fit, antibody ${fmtAb(v.noHelp.ab)}.` : '') + (d.withHelp && v.withHelp ? `<br>With helper T, day 8: <b>${fmt(v.withHelp.b)}</b> B-lymphocytes, antibody <b>${fmtAb(v.withHelp.ab)}</b> units.` : ''); },
           waitFor: (c) => data(c).without && data(c).withHelp, waitHint: 'Predict, then run both',
         },
         {
-          view: 'handshake', title: 'Why two keys?',
-          text: `<p>The B-lymphocyte had found its antigen, yet it did nothing until a helper T-lymphocyte that recognised a fragment of the <b>same</b> antigen gave it the go-ahead. Then it divided, and its clone turned into <b>plasma cells</b>, which make antibody.</p>`,
-          question: { prompt: 'Why might it be safer for the body to require two different cells to recognise the same invader before antibody is made?', options: [
-            { t: 'If one cell makes a mistake (say, a B-lymphocyte that binds one of the body\'s own molecules), nothing happens unless a second cell agrees', ok: true, fb: nameBox('<b>Helper T-lymphocytes</b> (also called CD4 cells, after a protein on their surface) do not kill anything and make no antibody. They give the go-ahead. Antibody is a soluble copy of the B-lymphocyte\'s receptor, released by <b>plasma cells</b>.') },
-            { t: 'It makes the response faster', fb: 'Waiting for a second cell makes it slower, as you saw. What does a second opinion protect against?' },
-            { t: 'The helper T-lymphocytes make the antibody; the B-lymphocytes only carry it', fb: 'In your runs, antibody appeared only once the <i>B-lymphocyte</i> clone had expanded. What did the helpers contribute?' },
+          view: 'stray', viewOpts: { caption: 'Priya, healthy, with no infection. One B-lymphocyte has a receptor that fits one of her own proteins.' }, remount: true,
+          timeline: TL(10, ['lymph', 'ab']), title: 'Why insist on two cells?',
+          meters: () => (app.sim instanceof Immune && cache.selfPt ? [['B-lymphocytes that fit her own protein', fmt(app.sim.specificAt(cache.selfPt, 'B').total)], ['Antibody against her own protein', fmtAb(app.sim.antibodyAt(cache.selfPt))]] : []),
+          setup: () => { const b = person(); cache.selfPt = b.selfAntigen(0, { stray: true }); const pt = cache.selfPt; setSim(b, { kind: 'bacterium', sampler: (x) => ({ t: x.t, lymph: x.specificAt(pt, 'B').total, ab: x.antibodyAt(pt) }) }); },
+          text: `<p>Waiting for a second cell costs days. What does it buy? Remember from scene 5 that receptors are made at random, and that lymphocytes whose receptors fit the body's own molecules are removed. That screening is good but not perfect: a few such B-lymphocytes always get through.</p>
+                 <p>Here is one of them in Priya, with no infection anywhere. Its receptor fits a protein on her own healthy cells, and that protein is everywhere, all the time. Run ten days under the real rule, then ten days in an imagined body where a B-lymphocyte needs no go-ahead.</p>`,
+          actions: [
+            { label: '1. The real rule: two keys', cls: 'lym', disabled: (c) => busy(c) || data(c).two, run: (c) => experiment(c, { hours: 10 * DAY, speed: 30, key: 'two', after: (b, c) => c.recordValue('twoKeys', { b: b.specificAt(cache.selfPt, 'B').total, ab: b.antibodyAt(cache.selfPt) }) }) },
+            { label: '2. Imagine one key were enough', cls: 'drug', disabled: (c) => !data(c).two || busy(c) || data(c).one, run: (c) => { keepGhost('two keys', { keys: ['lymph', 'ab'] }); const pt = cache.selfPt; experiment(c, { sim: () => { const b = person(); b.selfAntigen(0, { stray: true }); b.set('needHelp', 0); return b; }, hours: 10 * DAY, speed: 30, key: 'one', after: (b, c) => c.recordValue('oneKey', { b: b.specificAt(pt, 'B').total, ab: b.antibodyAt(pt) }) }); } },
+          ],
+          status: (c) => { const v = c.record.values, d = data(c); return (d.two && v.twoKeys ? `Two keys, day 10: <b>${fmt(v.twoKeys.b)}</b> B-lymphocytes that fit her own protein, antibody against it <b>${fmtAb(v.twoKeys.ab)}</b>.` : '') + (d.one && v.oneKey ? `<br>One key, day 10: <b>${fmt(v.oneKey.b)}</b> B-lymphocytes, antibody against her own cells <b>${fmtAb(v.oneKey.ab)} units</b>.` : ''); },
+          question: { prompt: 'So what does the body gain by making a B-lymphocyte wait for a helper T-lymphocyte?', options: [
+            { t: 'A second, independent check: a B-lymphocyte that binds one of the body\'s own molecules finds no helper that agrees, so it never acts', ok: true, fb: 'For an attack on Priya\'s own cells, two different lymphocytes, screened separately, would both have to be wrong about the same molecule. One mistake is not enough. (There is a second benefit: a helper is only switched on by a dendritic cell that has come from real trouble, so antibody is made against things that arrive with an alarm, not against harmless material.)' + nameBox('<b>Helper T-lymphocytes</b> (also called CD4 cells, after a protein on their surface) kill nothing and make no antibody. They give the go-ahead. When this safeguard fails, the result is an <b>autoimmune disease</b>.') },
+            { t: 'Speed: two cells respond faster than one', fb: 'Waiting for a second cell made the response slower, as you saw in step 3. Compare your two runs here: what happened to Priya\'s own cells when one key was enough?' },
+            { t: 'More antibody: the helper T-lymphocytes make some too', fb: 'T-lymphocytes never make antibody. Compare your two runs here: what happened when one key was enough?' },
           ] },
+          waitFor: (c) => data(c).two && data(c).one, waitHint: 'Run both',
         },
       ],
     },
-    // ------------------------------------------------------------- 8. antibodies tag, phagocytes kill
+    // ------------------------------------------------------------- 8. what antibody does
     {
-      id: 'antibody', title: 'Antibodies tag, phagocytes kill', speed: 1,
+      id: 'antibody', title: 'What antibody does', speed: 1,
       steps: [
+        {
+          view: 'plasma', viewOpts: { caption: 'What happens to a B-lymphocyte once a helper T-lymphocyte has given it the go-ahead.' }, remount: true,
+          timeline: { window: 1, traces: [], note: 'The timeline returns with the next experiment.' }, meters: null,
+          title: 'From B-lymphocyte to plasma cell',
+          setup: () => setSim(person(), { kind: 'bacterium' }),
+          text: `<p>In scene 7 the B-lymphocyte got its go-ahead and antibody appeared. Here is what happened in between.</p>
+                 <ol style="margin:0 0 6px 18px;padding:0"><li>The selected <b>B-lymphocyte</b>, with its receptors fixed in its membrane.</li><li>It divides into a <b>clone</b>, every cell with the same receptor.</li><li>Most cells of the clone change into <b>plasma cells</b>. A plasma cell is a factory: it stops dividing, fills with protein-making machinery, and lives only a few days. (The rest of the clone become memory cells: scene 9.)</li><li>What the factory makes is <b>antibody</b>: the B-lymphocyte's receptor, released into the fluid instead of fixed in the membrane. An antibody is Y-shaped, and both tips of the Y are the same binding end as the receptor.</li></ol>
+                 <p>Antibody travels in the lymph and the blood. It is also called <b>immunoglobulin</b>.</p>`,
+          question: { prompt: 'The tips of this antibody are the same shape as the receptor of the B-lymphocyte the plasma cells came from. What will the antibody bind?', options: [
+            { t: 'The same antigen that selected that B-lymphocyte, and nothing else', ok: true, fb: 'So the whole chain is specific from end to end: one antigen selects one clone, whose plasma cells make antibody against that one antigen. Next: what that antibody actually does when it gets there.' },
+            { t: 'Any bacterium', fb: 'Compare the binding ends of the antibody with the receptor in the box at the bottom of the picture. Which antigen did that receptor fit?' },
+            { t: 'The B-lymphocyte that made it', fb: 'Look at what the antibody\'s tips are holding in the box at the bottom of the picture.' },
+          ] },
+        },
         {
           view: 'dish', viewOpts: { caption: 'A laboratory dish: no body, no cells except the ones you add.' }, remount: true,
           timeline: TL(0.3, ['pathogen']), meters: null,
-          title: 'What does antibody do?',
+          title: 'What does antibody do to bacteria?',
           setup: () => { setSim(new Dish({ bacteria: 1e5 }), { kind: 'bacterium' }); cache.dish = {}; },
-          text: `<p>Antibody molecules are Y-shaped proteins. The two tips of the Y are the binding sites, the same shape as the receptor of the B-lymphocyte that the plasma cell came from.</p><p>To see what antibody does by itself, take it out of the body: a dish of 100,000 bacteria in warm broth.</p>`,
+          text: `<p>Plasma cells have released antibody that fits Priya's bacterium. To see what antibody does by itself, take it out of the body: a dish of 100,000 bacteria in warm broth, with no cells and no blood.</p>`,
           question: guess('Predict: antibody against this bacterium is added to the dish. Six hours later, the bacteria are…', ['Dead: antibody kills them', 'Coated with antibody, but alive and still dividing', 'Unchanged: antibody does nothing outside the body'], 'Test it: run all four dishes.'),
         },
         {
@@ -668,8 +749,8 @@
         {
           view: 'dish', title: 'What antibody does',
           text: `<p>Look at your table. With antibody alone, the bacteria grew as if nothing had been added. With phagocytes alone, they still grew. Together, they were wiped out.</p>`,
-          question: { prompt: 'So what does antibody do to a bacterium?', options: [
-            { t: 'It coats it, which lets phagocytes grip and swallow it', ok: true, fb: 'Antibody is a <b>tag</b>, not a weapon. Phagocytes have receptors for the stem of the Y, so a coated bacterium is easy to seize. Your textbook calls this <b>opsonization</b>. (Antibody can also block a toxin or a virus from attaching to a cell, called neutralization: more on that in Part B.)' },
+          question: { prompt: 'In these dishes, what did antibody do to the bacteria?', options: [
+            { t: 'It coats it, which lets phagocytes grip and swallow it', ok: true, fb: 'Antibody did not kill these bacteria: they went on dividing until phagocytes were added. Phagocytes have receptors for the stem of the Y, so a coated bacterium is easy to seize. Your textbook calls this <b>opsonization</b>.' + nameBox('<b>Antibody works in three ways.</b> It <b>marks</b> a target for destruction by other things (opsonization for phagocytes; it can also set off complement, a set of blood proteins). It <b>neutralizes</b>: by covering the working part of a toxin or the attachment site of a virus, it stops them acting (you will see this in Part B). And it <b>agglutinates</b>: each antibody has two binding ends, so it links microbes into clumps that cannot spread and are easier to swallow. Neutralizing and clumping disarm a target; they do not, by themselves, kill a bacterium.') },
             { t: 'It kills it directly', fb: 'Look at the dish with antibody and no phagocytes: how many bacteria were there after six hours?' },
             { t: 'It stops it dividing', fb: 'Look at the dish with antibody and no phagocytes: did the number stop rising?' },
           ] },

@@ -704,6 +704,7 @@ header a.home:hover { text-decoration: underline; }
       abRate: 4e-4, abHalf: 21 * DAY, memAntibody: 4, // antibody units per plasma cell per hour; half-life 3 weeks
       // the person
       neutrophils: 1, macrophages: 1, alarm: 1, helperT: 1, bcells: 1, tcells: 1, adaptive: 1, selfScreen: 1,
+      needHelp: 1,                    // 0: imagine B- and cytotoxic T-lymphocytes could act without a helper's go-ahead
       manualAlarm: null,              // 0..1 while the student holds the alarm by hand
       ANC0: 4000, CD40: 1000,
     };
@@ -735,7 +736,7 @@ header a.home:hover { text-decoration: underline; }
       this.lib.Th.forEach((c, i) => { c.present = order[i] < p.helperT; });
       this.lib.B.forEach(c => { c.present = p.bcells > 0; });
       this.lib.Tc.forEach(c => { c.present = p.tcells > 0; });
-      if (p.selfScreen) for (const k of ['B', 'Th', 'Tc']) for (const c of this.lib[k]) if (c.self) c.present = false;
+      if (p.selfScreen) for (const k of ['B', 'Th', 'Tc']) for (const c of this.lib[k]) if (c.self && !c.stray) c.present = false;
       this._resp = null;
     }
 
@@ -764,6 +765,30 @@ header a.home:hover { text-decoration: underline; }
       this.antigen(kind, o.strain || 'A').depot += o.dose == null ? 1 : o.dose;
       this.events.push({ type: 'vaccine', kind, strain: o.strain || 'A', t: this.t });
     }
+    // One of the body's own proteins, treated as an antigen: it is there all the time, in quantity.
+    // With `stray`, the B-lymphocyte clone that fits it best is taken to have escaped screening
+    // (as a few always do). No helper T-lymphocyte fits it: those were removed in the thymus.
+    selfAntigen(i, o) {
+      const [x, y] = SELF[i || 0], key = 'self:' + (i || 0);
+      const pt = { x, y, key, kind: 'self', strain: String(i || 0) };
+      if (!this.antigens[key]) { this.antigens[key] = { pt, depot: 0, d1: 1, A: 1, i1: 0, inside: 0, constant: true }; this._resp = null; }
+      if (o && o.stray) {
+        const best = this.lib.B.filter(c => c.self).reduce((a, c) => (dist(c.x, c.y, x, y) < dist(a.x, a.y, x, y) ? c : a));
+        best.stray = true; this.applyKnockouts();
+      }
+      return pt;
+    }
+    // Antibody, and lymphocytes, that fit any given shape (antigenShape is for pathogens only).
+    antibodyAt(pt) { let a = 0; for (const c of this.lib.B) if (c.ab > 0) a += c.ab * fitAt(dist(c.x, c.y, pt.x, pt.y)); return a; }
+    specificAt(pt, lib) {
+      const out = { resting: 0, effector: 0, memory: 0, total: 0, clones: 0 };
+      for (const k of (lib ? [lib] : ['B', 'Th', 'Tc'])) for (const c of this.lib[k]) {
+        if (!c.present || fitAt(dist(c.x, c.y, pt.x, pt.y)) < GOOD_FIT) continue;
+        out.clones++; out.resting += c.R; out.effector += c.E; out.memory += c.mem;
+      }
+      out.total = out.resting + out.effector;
+      return out;
+    }
     // Ready-made antibody from someone else: it acts at once and leaves the library unchanged.
     giveAntibody(kind, o) {
       o = o || {};
@@ -785,7 +810,9 @@ header a.home:hover { text-decoration: underline; }
         let fits = null;
         for (const key in this.antigens) {
           const pt = this.antigens[key].pt, f = fitAt(dist(c.x, c.y, pt.x, pt.y));
-          if (f >= 0.02) (fits || (fits = {}))[key] = f;
+          // a receptor has to fit reasonably well to be triggered at all; anything that fits one of the
+          // body's own shapes this well was removed when the library was screened
+          if (f >= 0.3) (fits || (fits = {}))[key] = f;
         }
         if (fits) out.push({ c, fits });
       }
@@ -931,6 +958,7 @@ header a.home:hover { text-decoration: underline; }
       // ---- dendritic cells carry antigen to the node
       for (const key in this.antigens) {
         const a = this.antigens[key];
+        if (a.constant) continue;           // one of the body's own proteins: always there
         let load = a.depot > 0 ? sat(a.depot, 0.25) : 0;
         if (a.pt.kind === 'bacterium' && s.bStrain === a.pt.strain) load = Math.max(load, sat(s.bacteria, p.loadB));
         if (a.pt.kind === 'virus' && s.vStrain === a.pt.strain) load = Math.max(load, sat(nInf, p.loadV));
@@ -961,7 +989,7 @@ header a.home:hover { text-decoration: underline; }
             if (A > 0) stim += r.fits[key] * A / (A + (experienced ? p.KA / p.memGain : p.KA));
           }
           stim = Math.min(1, stim);
-          const drive = stim * (c.kind === 'Th' ? 1 : help);
+          const drive = stim * (c.kind === 'Th' || !p.needHelp ? 1 : help);
           if (experienced && drive > 0.2 && c.E < c.mem) c.boosted = true;   // this response starts from memory cells
           const start = (experienced ? p.recruitMem : p.recruitNaive) * drive * c.R;
           const grow = p.divide * drive * c.E * Math.max(0, 1 - tot[c.kind] / p.Emax);
@@ -1137,6 +1165,7 @@ window.IM_ANATOMY = {
   function setSim(sim, o) {
     o = o || {};
     app.sim = sim; app.run = null;
+    app.sampler = o.sampler || null;      // a step may graph something other than the pathogen (e.g. a self protein)
     if (o.kind) app.kind = o.kind;
     if (o.strain) app.strain = o.strain; else if (o.kind) app.strain = 'A';
     if (!o.keepGhosts) app.ghosts = [];
@@ -1154,6 +1183,7 @@ window.IM_ANATOMY = {
   }
   function sample() {
     const b = app.sim;
+    if (app.sampler) return app.sampler(b);
     return b instanceof Immune ? sampleOf(b, app.kind, app.strain) : { t: b.t, pathogen: b.bacteria };
   }
   // Put a saved moment back on screen: the person, and the history that led to it.
@@ -1525,7 +1555,9 @@ window.IM_ANATOMY = {
   function wrapDiff(a, b) { let d = a - b; if (d > 0.5) d -= 1; if (d < -0.5) d += 1; return d; }
   function cleftParams(clone, pt) {
     const k = knobParams(pt);
-    return { a: k.a + 1.1 * Math.tanh(wrapDiff(clone.x, pt.x) / (2.5 * SIGMA)), h: k.h + 0.55 * Math.tanh(wrapDiff(clone.y, pt.y) / (2.5 * SIGMA)) };
+    // mismatch grows slowly while the receptor still binds, then quickly
+    const off = (d) => { const u = d / SIGMA; return Math.sign(u) * Math.tanh(u * u / 4); };
+    return { a: k.a + 1.1 * off(wrapDiff(clone.x, pt.x)), h: k.h + 0.55 * off(wrapDiff(clone.y, pt.y)) };
   }
   // The outline of a knob (or of the cleft that fits it) of half-width w and height H·h, peak shifted by a.
   function knobPath(k, w, H) {
@@ -1537,23 +1569,60 @@ window.IM_ANATOMY = {
     const px = c.a * w * 0.55, py = -c.h * H, m = w * 0.17;
     return `M${-w - m},${-top} L${w + m},${-top} L${w + m},0 L${w},0 C${w * 0.55},0 ${px + w * 0.5},${py} ${px},${py} C${px - w * 0.5},${py} ${-w * 0.55},0 ${-w},0 L${-w - m},0 Z`;
   }
-  // Draw an antigen knob with a receptor cleft over it at (x, y); returns a function to update it.
+  // Points along a knob (or cleft) outline, and its height at any x, for seating one on the other.
+  function profile(k, w, H) {
+    const px = k.a * w * 0.55, py = -k.h * H, pts = [];
+    const cubic = (p0, p1, p2, p3) => { for (let i = 0; i <= 24; i++) { const t = i / 24, u = 1 - t; pts.push([u * u * u * p0[0] + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t * t * t * p3[0], u * u * u * p0[1] + 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1] + t * t * t * p3[1]]); } };
+    cubic([-w, 0], [-w * 0.55, 0], [px - w * 0.5, py], [px, py]);
+    cubic([px, py], [px + w * 0.5, py], [w * 0.55, 0], [w, 0]);
+    return pts;
+  }
+  function heightAt(pts, x) {
+    for (let i = 1; i < pts.length; i++) if (x <= pts[i][0]) { const a = pts[i - 1], b = pts[i], f = b[0] === a[0] ? 0 : (x - a[0]) / (b[0] - a[0]); return a[1] + f * (b[1] - a[1]); }
+    return 0;
+  }
+  // How far a receptor has to stay off the surface before its cleft clears the knob (0 = it sits right down).
+  function seat(k, c, w, H) {
+    const kp = profile(k, w, H), cp = profile(c, w, H);
+    let d = 0;
+    for (let i = 0; i <= 60; i++) { const x = -w + 2 * w * i / 60; d = Math.max(d, heightAt(cp, x) - heightAt(kp, x)); }
+    return { d, kp, cp };
+  }
+  // The close-up: an antigen on the bacterium's surface (below) and one receptor of a lymphocyte
+  // (above), brought together until they touch. A gap between them is shaded.
   function dockPicture(parent, x, y, o) {
     o = o || {};
-    const w = o.w || 46, H = o.H || 46;
+    const w = o.w || 60, H = o.H || 56, top = H * 1.55, stem = 22;
     const g = svgEl('g', { transform: `translate(${x},${y})` }, parent);
-    const rec = svgEl('path', { fill: '#fff', stroke: COL.B, 'stroke-width': 3, 'stroke-linejoin': 'round' }, g);
+    // the bacterium: its surface, with the antigen standing on it
+    svgEl('path', { d: `M${-w - 78},4 Q0,-10 ${w + 78},4 L${w + 78},46 L${-w - 78},46 Z`, fill: COL.pathogen, stroke: '#7d1f19', 'stroke-width': 1.5 }, g);
+    label(g, 0, 32, 'bacterium', { 'text-anchor': 'middle', fill: '#fff', 'font-size': 14.5, 'font-weight': 600 });
+    const gap = svgEl('path', { fill: '#ffe08a', stroke: 'none', opacity: 0 }, g);
     const knob = svgEl('path', { fill: COL.pathogen, stroke: '#7d1f19', 'stroke-width': 1.5 }, g);
-    const base = svgEl('rect', { x: -w - 14, y: 0, width: 2 * w + 28, height: 16, rx: 5, fill: COL.pathogen, stroke: '#7d1f19', 'stroke-width': 1.5 }, g);
+    const agLabel = small(g, w + 14, -6, 'antigen', { fill: '#7d1f19', 'font-size': 13.5 });
+    // the lymphocyte: its membrane, a stalk, and the receptor's binding end
+    const lym = svgEl('g', { opacity: 0 }, g);
+    const mem = svgEl('path', { d: `M${-w - 78},${-top - stem - 34} L${w + 78},${-top - stem - 34} L${w + 78},${-top - stem - 6} Q0,${-top - stem + 10} ${-w - 78},${-top - stem - 6} Z`, fill: '#e3f3f1', stroke: COL.B, 'stroke-width': 2 }, lym);
+    const lymLabel = label(lym, 0, -top - stem - 14, 'B-lymphocyte', { 'text-anchor': 'middle', 'font-size': 14.5, 'font-weight': 600, fill: '#0b5f59' });
+    const stalk = svgEl('rect', { x: -9, y: -top - stem + 2, width: 18, height: stem, fill: '#fff', stroke: COL.B, 'stroke-width': 2.5 }, lym);
+    const rec = svgEl('path', { fill: '#fff', stroke: COL.B, 'stroke-width': 3, 'stroke-linejoin': 'round' }, lym);
+    const recLabel = small(lym, w + 18, -top * 0.62, 'receptor', { fill: '#0b5f59', 'font-size': 13.5 });
+    const NAME = { B: 'B-lymphocyte', Th: 'helper T-lymphocyte', Tc: 'cytotoxic T-lymphocyte' };
     return {
-      g, base,
+      g, height: top + stem + 34,
       set(pt, clone, kind) {
-        knob.setAttribute('d', knobPath(knobParams(pt), w, H) + ' Z');
-        if (!clone) { rec.setAttribute('opacity', 0); return; }
-        const c = cleftParams(clone, pt);
-        // the receptor: a block above the knob with the cleft cut into its lower edge
-        rec.setAttribute('d', cleftBlock(c, w, H, H * 1.75));
-        setAttrs(rec, { opacity: 1, stroke: COL[kind || clone.kind] });
+        const k = knobParams(pt);
+        knob.setAttribute('d', knobPath(k, w, H) + ' Z');
+        if (!clone) { lym.setAttribute('opacity', 0); gap.setAttribute('opacity', 0); return 0; }
+        const c = cleftParams(clone, pt), st = seat(k, c, w, H), col = COL[kind || clone.kind];
+        rec.setAttribute('d', cleftBlock(c, w, H, top));
+        for (const e of [rec, stalk, mem]) e.setAttribute('stroke', col);
+        lymLabel.textContent = NAME[kind || clone.kind];
+        setAttrs(lym, { opacity: 1, transform: `translate(0,${(-st.d).toFixed(1)})` });
+        // the space left between the cleft (lifted by d) and the knob
+        const up = st.cp.map(([px, py]) => `${px.toFixed(1)},${(py - st.d).toFixed(1)}`), down = st.kp.slice().reverse().map(([px, py]) => `${px.toFixed(1)},${py.toFixed(1)}`);
+        setAttrs(gap, { d: `M${-w},${(-st.d).toFixed(1)} L${up.join(' L')} L${w},0 L${down.join(' L')} Z`, opacity: 1 });
+        return st.d;
       },
     };
   }
@@ -1907,15 +1976,15 @@ window.IM_ANATOMY = {
 
     // the close-up: the antigen and the receptor under test
     svgEl('rect', { x: 640, y: 20, width: 340, height: 520, rx: 12, fill: '#fff', stroke: '#d9d6cc' }, svg);
-    const closeTitle = label(svg, 656, 46, 'Does this receptor fit?', { 'font-weight': 650, 'font-size': 15.5 });
-    small(svg, 656, 66, 'the antigen (red) and the receptor of the cell you picked');
-    const dock = dockPicture(svg, 810, 250, { w: 70, H: 70 });
-    const fitText = label(svg, 810, 316, 'Pick a lymphocyte to test its receptor.', { 'text-anchor': 'middle', 'font-size': 16.5, 'font-weight': 650 });
-    const fitSub = small(svg, 810, 338, '', { 'text-anchor': 'middle' });
-    svgEl('rect', { x: 670, y: 352, width: 280, height: 12, rx: 6, fill: '#eceae3' }, svg);
-    const fitBar = svgEl('rect', { x: 670, y: 352, width: 0, height: 12, rx: 6, fill: COL.lymph }, svg);
-    const tally = [0, 1, 2, 3].map(i => small(svg, 656, 394 + i * 20, '', { 'font-size': 14.5, fill: COL.ink }));
-    const marks = numbered(svg, [[1, 80, 280], [2, 690, 240], [3, 690, 150], [4, 660, 322]]);
+    label(svg, 656, 46, 'Close-up: does this receptor fit?', { 'font-weight': 650, 'font-size': 15.5 });
+    small(svg, 656, 65, 'one receptor of the cell you pick, against one antigen');
+    const dock = dockPicture(svg, 810, 268, { w: 60, H: 56 });
+    const fitText = label(svg, 810, 346, 'Pick a lymphocyte to test its receptor.', { 'text-anchor': 'middle', 'font-size': 16.5, 'font-weight': 650 });
+    const fitSub = small(svg, 810, 366, '', { 'text-anchor': 'middle' });
+    svgEl('rect', { x: 670, y: 378, width: 280, height: 12, rx: 6, fill: '#eceae3' }, svg);
+    const fitBar = svgEl('rect', { x: 670, y: 378, width: 0, height: 12, rx: 6, fill: COL.lymph }, svg);
+    const tally = [0, 1, 2, 3].map(i => small(svg, 656, 418 + i * 20, '', { 'font-size': 14.5, fill: COL.ink }));
+    const marks = numbered(svg, [[1, 80, 280], [2, 666, 262], [3, 666, 160], [4, 656, 346]]);
     view.setMarks = (on) => marks.setAttribute('opacity', on ? 1 : 0);
     const pt = () => antigenShape(app.kind, app.strain);
     view.best = 0;
@@ -1928,7 +1997,7 @@ window.IM_ANATOMY = {
       setAttrs(sel, { cx: ce.p.x, cy: ce.p.y, opacity: 1 });
       fitText.textContent = f >= GOOD_FIT ? `Fit ${pct(f)}: it binds` : `Fit ${pct(f)}: it does not bind`;
       fitText.setAttribute('fill', f >= GOOD_FIT ? '#1e7a45' : COL.ink);
-      fitSub.textContent = f >= GOOD_FIT ? 'The cleft matches the knob.' : 'Look at the gap between the cleft and the knob.';
+      fitSub.textContent = f >= GOOD_FIT ? 'The receptor sits snugly on the antigen.' : 'It cannot sit down on the antigen: see the gap (yellow).';
       setAttrs(fitBar, { width: 280 * f, fill: f >= GOOD_FIT ? '#2f9e5b' : '#9aa0ad' });
       if (view.onPick) view.onPick(c, f);
     };
@@ -1978,18 +2047,122 @@ window.IM_ANATOMY = {
   };
 
   // =========================================================================
+  // Whole cells: a bacterium and B-lymphocytes (scene 5). What "a receptor that fits" means.
+  // =========================================================================
+  views.meet = function (opts) {
+    const svg = svgEl('svg', { viewBox: '0 0 1000 560', role: 'img', 'aria-label': 'A bacterium with antigen on its surface, and B-lymphocytes with receptors on theirs' }, stage);
+    const view = { svg, onTry: null, docked: null };
+    const body = () => app.sim;
+    const P = antigenShape(app.kind, app.strain), k = knobParams(P);
+    const KW = 15, KH = 18, TOP = 27, STEM = 12, R = 44;
+    label(svg, 500, 30, 'Inside the lymph node: a bacterium and three B-lymphocytes', { 'text-anchor': 'middle', 'font-weight': 650, 'font-size': 16.5 });
+    // ---- the bacterium, with the same surface protein (the antigen) all over it
+    const BX = 235, BY = 290, RX = 150, RY = 100;
+    const bact = svgEl('g', {}, svg);
+    for (let i = 0; i < 12; i++) {
+      const th = i * Math.PI / 6, x = BX + RX * Math.cos(th), y = BY + RY * Math.sin(th);
+      const nu = Math.atan2(Math.sin(th) / RY, Math.cos(th) / RX) * 180 / Math.PI;
+      svgEl('path', { d: knobPath(k, KW, KH) + ' Z', transform: `translate(${x.toFixed(1)},${y.toFixed(1)}) rotate(${(nu + 90).toFixed(1)})`, fill: COL.pathogen, stroke: '#7d1f19', 'stroke-width': 1.2 }, bact);
+    }
+    svgEl('ellipse', { cx: BX, cy: BY, rx: RX, ry: RY, fill: '#cf5a50', stroke: '#7d1f19', 'stroke-width': 2 }, bact);
+    label(svg, BX, BY - 4, 'bacterium', { 'text-anchor': 'middle', fill: '#fff', 'font-size': 18.5, 'font-weight': 650 });
+    small(svg, BX, BY + 18, 'Streptococcus pyogenes', { 'text-anchor': 'middle', fill: '#fbe9e7', 'font-style': 'italic' });
+    svgEl('path', { d: `M${BX - 60},${BY - RY - 22} L${BX - 100},${BY - RY - 58}`, stroke: '#9aa0ad' }, svg);
+    label(svg, BX - 104, BY - RY - 78, 'antigen', { 'text-anchor': 'end', 'font-weight': 650, fill: '#7d1f19' });
+    small(svg, BX - 104, BY - RY - 60, 'a protein on its surface', { 'text-anchor': 'end' });
+    small(svg, BX - 40, BY + RY + 44, 'Every copy of this protein', { 'text-anchor': 'middle' });
+    small(svg, BX - 40, BY + RY + 62, 'has the same shape.', { 'text-anchor': 'middle' });
+    // ---- three B-lymphocytes: one whose receptor fits (the model's best), two that do not
+    const lib = body().lib.B.filter(c => c.present).map(c => ({ c, f: body().fit(c, app.kind, app.strain) })).sort((a, b) => b.f - a.f);
+    const rr = rng(app.seed * 13 + 3);
+    const others = []; while (others.length < 2) { const q = lib[40 + Math.floor(rr() * (lib.length - 40))]; if (!others.includes(q)) others.push(q); }
+    const order = [others[0], lib[0], others[1]];
+    if (rr() < 0.5) order.reverse(); if (rr() < 0.34) order.push(order.shift());
+    const HOME = [[790, 132], [850, 296], [790, 460]];
+    const cells = order.map((q, i) => {
+      const c = cleftParams(q.c, P), st = seat(k, c, KW, KH);
+      const g = svgEl('g', {}, svg);
+      for (let j = 0; j < 8; j++) {
+        const ph = Math.PI + j * Math.PI / 4, deg = ph * 180 / Math.PI;
+        const m = R + STEM + TOP, x = m * Math.cos(ph), y = m * Math.sin(ph);
+        svgEl('path', { d: `M${(R * Math.cos(ph)).toFixed(1)},${(R * Math.sin(ph)).toFixed(1)} L${((R + STEM + 2) * Math.cos(ph)).toFixed(1)},${((R + STEM + 2) * Math.sin(ph)).toFixed(1)}`, stroke: COL.B, 'stroke-width': 5 }, g);
+        svgEl('path', { d: cleftBlock(c, KW, KH, TOP), transform: `translate(${x.toFixed(1)},${y.toFixed(1)}) rotate(${(deg - 90).toFixed(1)})`, fill: '#fff', stroke: COL.B, 'stroke-width': 2, 'stroke-linejoin': 'round' }, g);
+      }
+      const disc = svgEl('circle', { r: R, fill: '#e3f3f1', stroke: COL.B, 'stroke-width': 3 }, g);
+      svgEl('circle', { r: R * 0.55, fill: COL.B, opacity: 0.4 }, g);
+      label(g, 0, 6, String.fromCharCode(65 + i), { 'text-anchor': 'middle', 'font-size': 20, 'font-weight': 700, fill: '#0b5f59' });
+      const cell = { g, disc, q, st, pos: HOME[i].slice(), home: HOME[i], target: HOME[i], wait: 0, name: String.fromCharCode(65 + i) };
+      clickable(g, `B-lymphocyte ${cell.name}`, () => view.tryCell(i));
+      return cell;
+    });
+    small(svg, 640, 96, 'receptor', { 'text-anchor': 'end', fill: '#0b5f59', 'font-size': 14.5, 'font-weight': 600 });
+    small(svg, 640, 114, 'thousands of copies, all alike', { 'text-anchor': 'end' });
+    svgEl('path', { d: 'M646,102 L704,122', stroke: '#9aa0ad' }, svg);
+    const verdict = label(svg, 560, 300, '', { 'text-anchor': 'middle', 'font-size': 16.5, 'font-weight': 650 });
+    const zoom = svgEl('g', { opacity: 0 }, svg);
+    svgEl('circle', { cx: BX + RX + 16, cy: BY, r: 40, fill: 'none', stroke: '#f0b429', 'stroke-width': 3, 'stroke-dasharray': '6 5' }, zoom);
+    svgEl('path', { d: `M${BX + RX + 16},${BY + 40} L${BX + RX + 16},${BY + 108}`, stroke: '#f0b429', 'stroke-width': 2, 'stroke-dasharray': '4 4' }, zoom);
+    small(zoom, BX + RX + 16, BY + 126, 'one receptor on one antigen:', { 'text-anchor': 'middle', fill: COL.ink });
+    small(zoom, BX + RX + 16, BY + 144, 'the close-up in the next picture', { 'text-anchor': 'middle', fill: COL.ink });
+    // where a cell's centre sits when its receptor is on the antigen at the bacterium's right-hand end
+    const dockAt = (cell) => [BX + RX + cell.st.d + TOP + STEM + R, BY];
+    view.cells = cells;
+    view.fits = (i) => cells[i].q.f >= GOOD_FIT;
+    view.tryCell = (i) => {
+      const cell = cells[i];
+      if (cells.some(c => c.busy)) return;
+      cells.forEach(c => { if (c !== cell) { c.target = c.home; } });
+      view.docked = null; zoom.setAttribute('opacity', 0); verdict.textContent = '';
+      cell.target = dockAt(cell); cell.busy = true; cell.arrived = false;
+    };
+    view.showFit = () => { const i = cells.findIndex(c => c.q.f >= GOOD_FIT); if (view.docked !== i) view.tryCell(i); };
+    view.update = (dtReal) => {
+      const kf = Math.min(1, dtReal / 1000 * 5);
+      cells.forEach((cell, i) => {
+        cell.pos[0] += (cell.target[0] - cell.pos[0]) * kf; cell.pos[1] += (cell.target[1] - cell.pos[1]) * kf;
+        cell.g.setAttribute('transform', `translate(${cell.pos[0].toFixed(1)},${cell.pos[1].toFixed(1)})`);
+        if (cell.busy && !cell.arrived && Math.hypot(cell.target[0] - cell.pos[0], cell.target[1] - cell.pos[1]) < 1.5) {
+          cell.arrived = true;
+          const ok = cell.q.f >= GOOD_FIT;
+          setAttrs(verdict, { x: cell.target[0] + 4, y: BY - R - TOP - 34, fill: ok ? '#1e7a45' : '#8a4b0f' });
+          verdict.textContent = ok ? `${cell.name} binds` : `${cell.name} does not bind`;
+          if (ok) { cell.busy = false; view.docked = i; zoom.setAttribute('opacity', 1); }
+          else cell.wait = 1300;
+          if (view.onTry) view.onTry(i, ok, cell.q.f);
+        } else if (cell.busy && cell.arrived && cell.wait > 0) {
+          cell.wait -= dtReal;
+          if (cell.wait <= 0) { cell.target = cell.home; cell.busy = false; }
+        }
+        cell.disc.setAttribute('fill', view.docked === i ? '#bfe6e1' : '#e3f3f1');
+      });
+    };
+    view.narrate = () => {
+      if (view.docked != null) return { key: 'meetDocked', html: `B-lymphocyte ${cells[view.docked].name}'s receptor sits snugly on the antigen, so it <b>binds</b>: this lymphocyte can recognise this bacterium. The others cannot, however many times they meet it.` };
+      return { key: 'meet', html: 'Lymph from the wound carries bacteria, and pieces of them, into the lymph node, where they drift past the lymphocytes. A lymphocyte can recognise the bacterium only if its receptor fits the antigen.' };
+    };
+    return view;
+  };
+
+  // =========================================================================
   // Two keys: the dendritic cell, the helper T-lymphocyte and the B-lymphocyte (scene 7)
   // =========================================================================
-  views.handshake = function () {
+  views.handshake = function (opts) {
+    opts = opts || {};
     const svg = svgEl('svg', { viewBox: '0 0 1000 560', role: 'img', 'aria-label': 'A dendritic cell shows a fragment of the bacterium to helper T-lymphocytes; a helper T-lymphocyte then helps a B-lymphocyte' }, stage);
     const view = { svg, onTh: null, onB: null, stage: 0, chosen: null };
     const body = () => app.sim;
     const P = antigenShape(app.kind, app.strain), k = knobParams(P);
-    // a fragment in a holder (MHC class II): the holder is a cradle, the fragment a small knob
-    function holder(parent, x, y, rot, withFragment) {
+    // One scale for every molecule in this picture: an antigen on the bacterium, a receptor's
+    // binding end, and a fragment in an MHC class II molecule are all about the same size, and all
+    // far smaller than the bacterium or the cells (though still drawn much larger than life).
+    const MW = 12, MH = 16, BW = 13, BH = 17;
+    // An MHC class II molecule: a cradle on a short stalk, holding a fragment of the antigen.
+    // (x, y) is where it leaves the cell; rot turns "up" to point out of the cell.
+    function holder(parent, x, y, rot) {
       const g = svgEl('g', { transform: `translate(${x},${y}) rotate(${rot})` }, parent);
-      svgEl('path', { d: 'M-26,0 L-26,-22 M26,0 L26,-22 M-26,-5 L26,-5', fill: 'none', stroke: COL.dc, 'stroke-width': 5, 'stroke-linecap': 'round' }, g);
-      if (withFragment) svgEl('path', { d: knobPath(k, 19, 26) + ' Z', transform: 'translate(0,-8)', fill: COL.pathogen, stroke: '#7d1f19' }, g);
+      svgEl('path', { d: 'M0,8 L0,-4', stroke: COL.dc, 'stroke-width': 6 }, g);
+      svgEl('path', { d: 'M-17,-4 L-17,-20 M17,-4 L17,-20 M-17,-8 L17,-8', fill: 'none', stroke: COL.dc, 'stroke-width': 4.5, 'stroke-linecap': 'round' }, g);
+      svgEl('path', { d: knobPath(k, MW, MH) + ' Z', transform: 'translate(0,-11)', fill: COL.pathogen, stroke: '#7d1f19' }, g);
       return g;
     }
     // dendritic cell
@@ -1999,15 +2172,28 @@ window.IM_ANATOMY = {
     label(svg, 170, 420, 'Dendritic cell', { 'text-anchor': 'middle', 'font-weight': 650, 'font-size': 16.5 });
     small(svg, 170, 440, 'ate bacteria at the wound, then', { 'text-anchor': 'middle' });
     small(svg, 170, 456, 'carried the pieces here', { 'text-anchor': 'middle' });
-    for (const [x, y, r] of [[268, 178, 62], [306, 262, 92], [272, 344, 122]]) holder(svg, x, y, r, true);
-    view.mhcLabel = small(svg, 300, 150, '', { 'text-anchor': 'middle', fill: COL.dc, 'font-weight': 600 });
-    // helper T candidates
+    for (const [x, y, r] of [[262, 176, 62], [290, 284, 90], [218, 316, 118]]) holder(svg, x, y, r);
+    label(svg, 300, 96, 'MHC class II molecules', { 'text-anchor': 'middle', fill: COL.dc, 'font-weight': 650, 'font-size': 14.5 });
+    small(svg, 300, 114, 'each holding a fragment', { 'text-anchor': 'middle', fill: COL.dc });
+    svgEl('path', { d: 'M292,120 L280,162', stroke: '#9aa0ad' }, svg);
+    // ---- helper T-lymphocytes: each can be brought to the dendritic cell to try its receptor on the fragment
     const thG = svgEl('g', {}, svg);
     label(svg, 480, 46, 'Helper T-lymphocytes', { 'text-anchor': 'middle', 'font-weight': 650, 'font-size': 16.5 });
     const thNote = small(svg, 480, 66, 'each has a different receptor', { 'text-anchor': 'middle' });
     const cand = [];
-    function buildTh() {
-      thG.innerHTML = ''; cand.length = 0;
+    const DOCK = [290 + 11 + 60, 284];      // a helper's centre when its receptor is on the fragment in the middle MHC molecule
+    // a helper T-lymphocyte with its receptor; side = -1: receptor on its left, +1: on its right
+    function helperCell(parent, c, side) {
+      const g = svgEl('g', {}, parent);
+      svgEl('path', { d: `M${26 * side},0 L${40 * side},0`, stroke: COL.Th, 'stroke-width': 6 }, g);
+      svgEl('path', { d: cleftBlock(c, MW, MH, 22), transform: `translate(${60 * side},0) rotate(${side < 0 ? 90 : -90})`, fill: '#fff', stroke: COL.Th, 'stroke-width': 2.2, 'stroke-linejoin': 'round' }, g);
+      const cell = svgEl('circle', { r: 28, fill: '#f2e8f7', stroke: COL.Th, 'stroke-width': 2.5 }, g);
+      svgEl('circle', { r: 15, fill: COL.Th, opacity: 0.5 }, g);
+      return { g, cell };
+    }
+    function buildTh(o) {
+      o = o || {};
+      thG.innerHTML = ''; cand.length = 0; view.chosen = null;
       const lib = body().lib.Th.filter(c => c.present);
       if (!lib.length) { thNote.textContent = 'none: this person has no helper T-lymphocytes'; return; }
       thNote.textContent = 'each has a different receptor';
@@ -2016,66 +2202,264 @@ window.IM_ANATOMY = {
       const picks = [ranked[0]]; while (picks.length < Math.min(5, ranked.length)) { const q = ranked[10 + Math.floor(rr() * (ranked.length - 10))]; if (!picks.includes(q)) picks.push(q); }
       for (let i = picks.length - 1; i > 0; i--) { const j = Math.floor(rr() * (i + 1)); [picks[i], picks[j]] = [picks[j], picks[i]]; }
       picks.forEach((q, i) => {
-        const y = 110 + i * 86, g = svgEl('g', { transform: `translate(480,${y})` }, thG);
-        const cell = svgEl('circle', { r: 30, fill: '#f2e8f7', stroke: COL.Th, 'stroke-width': 2.5 }, g);
-        svgEl('circle', { r: 16, fill: COL.Th, opacity: 0.5 }, g);
-        // its receptor, facing the dendritic cell: the cleft drawn from the model's fit
-        const c = cleftParams(q.c, P);
-        svgEl('path', { d: cleftBlock(c, 19, 26, 34), transform: 'translate(-30,0) rotate(-90)', fill: '#fff', stroke: COL.Th, 'stroke-width': 2.5, 'stroke-linejoin': 'round' }, g);
-        const count = small(g, 40, 5, '', { 'font-size': 14.5, fill: COL.ink });
-        clickable(g, `Helper T-lymphocyte ${i + 1}`, () => view.onTh && view.onTh(q.c, q.f, i));
-        cand.push({ g, cell, count, c: q.c, f: q.f });
+        const cl = cleftParams(q.c, P), st = seat(k, cl, MW, MH), h = helperCell(thG, cl, -1);
+        const home = [480, 110 + i * 86];
+        const t = { g: h.g, cell: h.cell, c: q.c, f: q.f, d: st.d, home, pos: home.slice(), target: home, wait: 0, name: String(i + 1) };
+        small(h.g, 0, 5, t.name, { 'text-anchor': 'middle', fill: '#fff', 'font-weight': 700, 'font-size': 14.5 });
+        clickable(h.g, `Helper T-lymphocyte ${i + 1}`, () => view.tryTh(i));
+        cand.push(t);
       });
+      // on later steps the helper that fits is already at the dendritic cell
+      if (o.docked) { const t = cand.find(x => x.f >= GOOD_FIT); if (t) { t.pos = [DOCK[0] + t.d, DOCK[1]]; t.target = t.pos; view.chosen = t.c; } }
     }
-    // B cell with a whole bacterium on its receptors
-    const bG = svgEl('g', { transform: 'translate(810,270)' }, svg);
-    const bCell = svgEl('circle', { r: 78, fill: '#e3f3f1', stroke: COL.B, 'stroke-width': 3 }, bG);
-    svgEl('circle', { r: 40, fill: COL.B, opacity: 0.4 }, bG);
-    for (const a of [-40, 0, 40]) { const g = svgEl('g', { transform: `rotate(${a}) translate(0,-78)` }, bG); antibodyY(g, 2.2).setAttribute('transform', 'translate(0,-12) scale(2.2) rotate(180)'); }
-    const bact = bacterium(bG); bact.setAttribute('transform', 'translate(0,-118) scale(2.4)');
-    holder(svg, 736, 304, -104, true);
-    label(svg, 810, 420, 'B-lymphocyte', { 'text-anchor': 'middle', 'font-weight': 650, 'font-size': 16.5 });
-    small(svg, 810, 440, 'its receptor has caught a whole bacterium;', { 'text-anchor': 'middle' });
-    small(svg, 810, 456, 'it shows fragments of it in the same holders', { 'text-anchor': 'middle' });
+    view.tryTh = (i) => {
+      const t = cand[i];
+      if (!t || view.chosen || cand.some(x => x.busy)) return;
+      t.target = [DOCK[0] + t.d, DOCK[1]]; t.busy = true; t.arrived = false;
+    };
+    // the clone that grows from the selected helper, and one of its cells at the B-lymphocyte
+    const cloneBox = { x: 420, y: 112, w: 180, h: 96 };
+    const clones = swarm(svg, cloneBox, lymphocyte('Th'));
+    const cloneText = label(svg, 512, 232, '', { 'text-anchor': 'middle', fill: COL.Th, 'font-weight': 650, 'font-size': 14.5 });
+    const selText = label(svg, DOCK[0] + 6, DOCK[1] + 52, '', { 'text-anchor': 'middle', 'font-weight': 650, 'font-size': 14.5 });
+    // ---- the B-lymphocyte, holding a whole bacterium by one of its receptors
+    const CX = 810, CY = 322, CR = 58, BSTEM = 10, BTOP = 24;
+    const bestB = body().lib.B.filter(c => c.present).map(c => ({ c, f: body().fit(c, app.kind, app.strain) })).sort((a, b) => b.f - a.f)[0];
+    const bc = cleftParams(bestB.c, P);
+    // the bacterium: large beside any molecule, covered with copies of its surface antigen
+    const RX = 80, RY = 46, BX2 = CX, BY2 = CY - CR - BSTEM - BTOP - RY;
+    const bactG = svgEl('g', {}, svg);
+    for (let i = 0; i < 10; i++) {
+      const th = Math.PI / 2 + i * Math.PI / 5, x = BX2 + RX * Math.cos(th), y = BY2 + RY * Math.sin(th);
+      const nu = Math.atan2(Math.sin(th) / RY, Math.cos(th) / RX) * 180 / Math.PI;
+      svgEl('path', { d: knobPath(k, BW, BH) + ' Z', transform: `translate(${x.toFixed(1)},${y.toFixed(1)}) rotate(${(nu + 90).toFixed(1)})`, fill: COL.pathogen, stroke: '#7d1f19', 'stroke-width': 1.2 }, bactG);
+    }
+    svgEl('ellipse', { cx: BX2, cy: BY2, rx: RX, ry: RY, fill: '#cf5a50', stroke: '#7d1f19', 'stroke-width': 2 }, bactG);
+    label(svg, BX2, BY2 + 5, 'whole bacterium', { 'text-anchor': 'middle', fill: '#fff', 'font-size': 15.5, 'font-weight': 650 });
+    const bG = svgEl('g', { transform: `translate(${CX},${CY})` }, svg);
+    // its receptors point outward; the one at the top is sitting on an antigen of the bacterium
+    for (const deg of [-90, -150, -30, 30, 90]) {
+      const ph = deg * Math.PI / 180, m = CR + BSTEM + BTOP;
+      svgEl('path', { d: `M${(CR * Math.cos(ph)).toFixed(1)},${(CR * Math.sin(ph)).toFixed(1)} L${((CR + BSTEM + 2) * Math.cos(ph)).toFixed(1)},${((CR + BSTEM + 2) * Math.sin(ph)).toFixed(1)}`, stroke: COL.B, 'stroke-width': 6 }, bG);
+      svgEl('path', { d: cleftBlock(bc, BW, BH, BTOP), transform: `translate(${(m * Math.cos(ph)).toFixed(1)},${(m * Math.sin(ph)).toFixed(1)}) rotate(${deg - 90})`, fill: '#fff', stroke: COL.B, 'stroke-width': 2.2, 'stroke-linejoin': 'round' }, bG);
+    }
+    const bCell = svgEl('circle', { r: CR, fill: '#e3f3f1', stroke: COL.B, 'stroke-width': 3 }, bG);
+    svgEl('circle', { r: CR * 0.55, fill: COL.B, opacity: 0.4 }, bG);
+    // its own MHC class II molecule, on the side facing the helper T-lymphocytes
+    holder(svg, CX - CR - 6, CY, -90);
+    small(svg, CX - CR - 18, CY + 44, 'MHC class II', { 'text-anchor': 'end', fill: COL.dc, 'font-weight': 600 });
+    small(svg, CX + CR + 18, CY - 46, 'receptor', { fill: '#0b5f59', 'font-weight': 600 });
+    label(svg, CX, 446, 'B-lymphocyte', { 'text-anchor': 'middle', 'font-weight': 650, 'font-size': 16.5 });
+    small(svg, CX, 465, 'one receptor has caught a whole bacterium; it shows', { 'text-anchor': 'middle' });
+    small(svg, CX, 481, 'a fragment of it in an MHC class II molecule', { 'text-anchor': 'middle' });
     clickable(bG, 'B-lymphocyte', () => view.onB && view.onB());
-    const bCount = label(svg, 810, 490, '', { 'text-anchor': 'middle', 'font-weight': 650, 'font-size': 15.5 });
-    const abCount = small(svg, 810, 510, '', { 'text-anchor': 'middle', 'font-size': 14.5 });
-    const helpArrow = svgEl('path', { d: 'M560,280 L700,280', stroke: COL.Th, 'stroke-width': 6, 'stroke-linecap': 'round', 'stroke-dasharray': '2 12', opacity: 0 }, svg);
-    const helpText = label(svg, 630, 266, 'help', { 'text-anchor': 'middle', fill: COL.Th, 'font-weight': 650, opacity: 0 });
-    const marks = numbered(svg, [[1, 60, 150], [2, 300, 124], [3, 400, 110], [4, 720, 170], [5, 716, 330]]);
+    const bCount = label(svg, CX, 510, '', { 'text-anchor': 'middle', 'font-weight': 650, 'font-size': 15.5 });
+    const abCount = small(svg, CX, 529, '', { 'text-anchor': 'middle', 'font-size': 14.5 });
+    small(svg, 300, 548, 'Receptors, antigens and MHC molecules are drawn far larger than life, but all to the same scale as each other.', { 'text-anchor': 'middle', 'font-size': 12.5 });
+    // a helper from the clone, at the B-lymphocyte's MHC class II molecule (drawn when the model has helpers to send)
+    const atB = svgEl('g', { opacity: 0 }, svg);
+    let atBKey = null;
+    const helpText = label(svg, CX - CR - 6 - 11 - 60, CY - 44, 'go-ahead', { 'text-anchor': 'middle', fill: COL.Th, 'font-weight': 650, opacity: 0 });
+    const marks = numbered(svg, [[1, 60, 150], [2, 196, 92], [3, 372, 40], [4, 706, 196], [5, 760, 392]]);
     view.setMarks = (on) => marks.setAttribute('opacity', on ? 1 : 0);
-    view.rebuild = () => { view.chosen = null; buildTh(); };
+    view.rebuild = (o) => buildTh(o);
     view.candidates = cand;
-    view.choose = (c) => { view.chosen = c; };
-    buildTh();
+    buildTh(opts);
     let ph = 0;
     view.update = (dtReal) => {
       const b = body(); if (!(b instanceof Immune)) return;
       ph += dtReal / 1000;
-      const help = sat(b.helpers, b.p.KH);
-      for (const q of cand) {
-        const n = q.c.R + q.c.E;
-        q.cell.setAttribute('fill', q.c === view.chosen ? '#e3c8f1' : '#f2e8f7');
-        q.cell.setAttribute('stroke-width', q.c === view.chosen ? 5 : 2.5);
-        q.count.textContent = n > 6 && !view.quiet ? `× ${fmt(n)}` : '';
+      const kf = Math.min(1, dtReal / 1000 * 5);
+      // helpers on the move: one that fits stays on the fragment; one that does not drifts back
+      for (const t of cand) {
+        t.pos[0] += (t.target[0] - t.pos[0]) * kf; t.pos[1] += (t.target[1] - t.pos[1]) * kf;
+        t.g.setAttribute('transform', `translate(${t.pos[0].toFixed(1)},${t.pos[1].toFixed(1)})`);
+        if (t.busy && !t.arrived && Math.hypot(t.target[0] - t.pos[0], t.target[1] - t.pos[1]) < 1.5) {
+          t.arrived = true;
+          const ok = t.f >= GOOD_FIT;
+          if (ok) { t.busy = false; view.chosen = t.c; } else t.wait = 1300;
+          setAttrs(selText, { fill: ok ? '#1e7a45' : '#8a4b0f' }); selText.textContent = ok ? `${t.name} binds: selected` : `${t.name} does not bind`;
+          if (view.onTh) view.onTh(t.c, t.f, cand.indexOf(t));
+        } else if (t.busy && t.arrived && t.wait > 0) { t.wait -= dtReal; if (t.wait <= 0) { t.target = t.home; t.busy = false; selText.textContent = ''; } }
+        const mine = t.c === view.chosen;
+        t.cell.setAttribute('fill', mine ? '#e3c8f1' : '#f2e8f7');
+        t.g.setAttribute('opacity', view.chosen && !mine ? 0.1 : 1);
       }
+      if (view.chosen && !cand.some(t => t.busy)) { selText.setAttribute('fill', '#1e7a45'); selText.textContent = 'selected'; }
+      if (!cand.length) selText.textContent = '';
+      // its clone, counted by the model
+      const h = view.chosen ? b.helpers : 0;
+      clones.set(h < 8 ? 0 : clamp(5 * log10(h) - 2, 2, 22), dtReal, { jitter: 30 });
+      cloneText.textContent = h >= 8 ? `its clone: ${fmt(h)} helper T-lymphocytes, all alike` : '';
+      // one of the clone at the B-lymphocyte, reading the fragment in its MHC class II molecule
+      const help = view.chosen ? sat(b.helpers, b.p.KH) : 0;
+      const key = help > 0.2 ? view.chosen.id : null;
+      if (key !== atBKey) {
+        atBKey = key; atB.innerHTML = '';
+        if (key) { const cl = cleftParams(view.chosen, P), st = seat(k, cl, MW, MH); helperCell(atB, cl, 1).g.setAttribute('transform', `translate(${CX - CR - 6 - 11 - 60 - st.d},${CY})`); }
+      }
+      atB.setAttribute('opacity', key ? 1 : 0);
+      helpText.setAttribute('opacity', key ? 0.6 + 0.4 * Math.sin(ph * 4) : 0);
       const sp = b.specific(app.kind, app.strain, 'B');
-      bCount.textContent = sp.total > 12 ? `clone of ${fmt(sp.total)} B-lymphocytes` : 'waiting';
+      bCount.textContent = sp.total > 12 ? `clone of ${fmt(sp.total)} B-lymphocytes` : 'waiting for the go-ahead';
       const ab = b.antibodyTo(app.kind, app.strain);
       abCount.textContent = ab >= 0.05 ? `antibody ${fmtAb(ab)} units` : 'no antibody';
-      setAttrs(helpArrow, { opacity: help > 0.2 ? 1 : 0, 'stroke-dashoffset': -(ph * 30) % 14 });
-      helpText.setAttribute('opacity', help > 0.2 ? 1 : 0);
       bCell.setAttribute('fill', sp.effector > 5 ? '#bfe6e1' : '#e3f3f1');
     };
     view.narrate = () => {
       const b = body(); if (!(b instanceof Immune)) return null;
       const h = b.helpers, sp = b.specific(app.kind, app.strain, 'B'), d = IM.dayNow();
-      if (!b.lib.Th.some(c => c.present)) return { key: 'noTh', html: `<b>Day ${d.toFixed(1)}.</b> There are no helper T-lymphocytes. The B-lymphocyte has caught its antigen, but nothing tells it to go ahead: ${fmt(sp.total)} cells, no antibody.` };
-      if (view.quiet) return { key: 'wait', html: 'The dendritic cell is holding out fragments of the bacterium to every helper T-lymphocyte that passes. Which one has a receptor that fits?' };
-      if (h < 1) return { key: 'wait2', html: 'The dendritic cell is holding out fragments of the bacterium. No helper T-lymphocyte has been selected yet.' };
-      if (sp.effector < 3) return { key: 'th', html: `<b>Day ${d.toFixed(1)}.</b> The helper T-lymphocyte that fits is dividing: <b>${fmt(h)}</b> so far. The B-lymphocyte is still waiting.` };
-      return { key: 'b', html: `<b>Day ${d.toFixed(1)}.</b> ${fmt(h)} helper T-lymphocytes are giving the go-ahead. The B-lymphocyte clone has reached <b>${fmt(sp.total)}</b> cells and is turning into antibody-making <b>plasma cells</b>.` };
+      if (!b.lib.Th.some(c => c.present)) return { key: 'noTh', html: `<b>Day ${d.toFixed(1)}.</b> There are no helper T-lymphocytes. The B-lymphocyte has caught its antigen, but nothing gives it the go-ahead: ${fmt(sp.total)} B-lymphocytes that fit, no antibody.` };
+      if (!view.chosen) return { key: 'wait', html: 'The dendritic cell holds out a fragment of the bacterium in each MHC class II molecule. A helper T-lymphocyte can recognise it only if its receptor fits the fragment.' };
+      if (h < 8) return { key: 'sel', html: 'One helper T-lymphocyte has a receptor that fits the fragment. It has been <b>selected</b>, and being selected switches it on.' };
+      if (sp.total < 50) return { key: 'th', html: `<b>Day ${d.toFixed(1)}.</b> The selected helper has divided into a clone of <b>${fmt(h)}</b>, every one with the same receptor. One of them has found the same fragment on the B-lymphocyte.` };
+      return { key: 'b', html: `<b>Day ${d.toFixed(1)}.</b> With the go-ahead from the helper T-lymphocytes (${fmt(h)} of them), the B-lymphocyte clone has reached <b>${fmt(sp.total)}</b> cells and is turning into antibody-making <b>plasma cells</b>.` };
     };
+    return view;
+  };
+
+  // =========================================================================
+  // Why two keys (scene 7): a B-lymphocyte whose receptor fits one of the body's own proteins
+  // =========================================================================
+  views.stray = function () {
+    const svg = svgEl('svg', { viewBox: '0 0 1000 560', role: 'img', 'aria-label': "One of Priya's own cells, and a B-lymphocyte whose receptor fits a protein on it" }, stage);
+    const view = { svg };
+    const body = () => app.sim;
+    const pt = body().selfAntigen(0), k = knobParams(pt);
+    const KW = 15, KH = 18, TOP = 27, STEM = 12, R = 44, SELFCOL = '#6f86b3';
+    label(svg, 500, 30, "One of Priya's own cells, and a B-lymphocyte that should not exist", { 'text-anchor': 'middle', 'font-weight': 650, 'font-size': 16.5 });
+    // the body's own cell, with one of its normal surface proteins
+    const BX = 235, BY = 290, RX = 150, RY = 100;
+    for (let i = 0; i < 12; i++) {
+      const th = i * Math.PI / 6, x = BX + RX * Math.cos(th), y = BY + RY * Math.sin(th);
+      const nu = Math.atan2(Math.sin(th) / RY, Math.cos(th) / RX) * 180 / Math.PI;
+      svgEl('path', { d: knobPath(k, KW, KH) + ' Z', transform: `translate(${x.toFixed(1)},${y.toFixed(1)}) rotate(${(nu + 90).toFixed(1)})`, fill: SELFCOL, stroke: '#44597f', 'stroke-width': 1.2 }, svg);
+    }
+    const own = svgEl('ellipse', { cx: BX, cy: BY, rx: RX, ry: RY, fill: COL.cell, stroke: COL.cellLine, 'stroke-width': 2.5 }, svg);
+    svgEl('ellipse', { cx: BX - 20, cy: BY + 6, rx: 46, ry: 34, fill: '#e9d2b0', stroke: COL.cellLine }, svg);
+    label(svg, BX, BY - 50, "one of Priya's own cells", { 'text-anchor': 'middle', 'font-size': 15.5, 'font-weight': 650 });
+    svgEl('path', { d: `M${BX - 60},${BY - RY - 22} L${BX - 100},${BY - RY - 58}`, stroke: '#9aa0ad' }, svg);
+    label(svg, BX - 104, BY - RY - 78, 'one of her own proteins', { 'text-anchor': 'end', 'font-weight': 650, fill: '#44597f' });
+    small(svg, BX - 104, BY - RY - 60, 'always there, on healthy cells', { 'text-anchor': 'end' });
+    const abOn = swarm(svg, { x: BX - RX - 6, y: BY - RY - 6, w: 2 * RX + 12, h: 2 * RY + 12 }, (g) => antibodyY(g, 1.5));
+    // the stray B-lymphocyte, its receptor on that protein
+    const clone = body().lib.B.find(c => c.stray) || body().lib.B.filter(c => c.self)[0];
+    const c = cleftParams(clone, pt), st = seat(k, c, KW, KH);
+    const g = svgEl('g', { transform: `translate(${BX + RX + st.d + TOP + STEM + R},${BY})` }, svg);
+    for (let j = 0; j < 8; j++) {
+      const ph = Math.PI + j * Math.PI / 4, m = R + STEM + TOP;
+      svgEl('path', { d: `M${(R * Math.cos(ph)).toFixed(1)},${(R * Math.sin(ph)).toFixed(1)} L${((R + STEM + 2) * Math.cos(ph)).toFixed(1)},${((R + STEM + 2) * Math.sin(ph)).toFixed(1)}`, stroke: COL.B, 'stroke-width': 5 }, g);
+      svgEl('path', { d: cleftBlock(c, KW, KH, TOP), transform: `translate(${(m * Math.cos(ph)).toFixed(1)},${(m * Math.sin(ph)).toFixed(1)}) rotate(${(ph * 180 / Math.PI - 90).toFixed(1)})`, fill: '#fff', stroke: COL.B, 'stroke-width': 2, 'stroke-linejoin': 'round' }, g);
+    }
+    const disc = svgEl('circle', { r: R, fill: '#e3f3f1', stroke: COL.B, 'stroke-width': 3 }, g);
+    svgEl('circle', { r: R * 0.55, fill: COL.B, opacity: 0.4 }, g);
+    small(svg, BX + RX + 130, BY + 108, 'a B-lymphocyte whose receptor', { 'text-anchor': 'middle', fill: '#0b5f59', 'font-weight': 600 });
+    small(svg, BX + RX + 130, BY + 126, "fits Priya's own protein", { 'text-anchor': 'middle', fill: '#0b5f59', 'font-weight': 600 });
+    // where the helper T-lymphocyte would be
+    const hx = 760, hy = 180;
+    const empty = svgEl('circle', { cx: hx, cy: hy, r: 34, fill: 'none', stroke: COL.Th, 'stroke-width': 2.5, 'stroke-dasharray': '6 6' }, svg);
+    const helpTitle = label(svg, hx, hy + 60, '', { 'text-anchor': 'middle', fill: COL.Th, 'font-weight': 650, 'font-size': 15.5 });
+    const helpSub = [0, 1].map(i => small(svg, hx, hy + 80 + i * 18, '', { 'text-anchor': 'middle' }));
+    const kids = swarm(svg, { x: 620, y: 300, w: 330, h: 150 }, lymphocyte('B'));
+    const count = label(svg, 785, 486, '', { 'text-anchor': 'middle', 'font-weight': 650, 'font-size': 15.5 });
+    const abText = label(svg, 785, 510, '', { 'text-anchor': 'middle', 'font-size': 15.5 });
+    view.update = (dtReal) => {
+      const b = body(); if (!(b instanceof Immune)) return;
+      const sp = b.specificAt(pt, 'B'), ab = b.antibodyAt(pt), one = !b.p.needHelp;
+      helpTitle.textContent = one ? 'Imagined: no go-ahead needed' : 'No helper T-lymphocyte fits';
+      helpSub[0].textContent = one ? 'the B-lymphocyte may act alone' : "Priya's own protein: those that did";
+      helpSub[1].textContent = one ? '' : 'were removed in the thymus';
+      empty.setAttribute('opacity', one ? 0.25 : 1);
+      kids.set(sp.total < 4 ? 0 : clamp(6 * log10(sp.total), 2, 36), dtReal, { jitter: 40 });
+      abOn.set(clamp(8 * log10(ab + 1), 0, 34), dtReal, { jitter: 25 });
+      own.setAttribute('fill', ab > 5 ? '#f3cfc4' : COL.cell);
+      disc.setAttribute('fill', sp.effector > 5 ? '#bfe6e1' : '#e3f3f1');
+      count.textContent = `B-lymphocytes that fit her own protein: ${fmt(sp.total)}`;
+      abText.textContent = `Antibody against her own protein: ${fmtAb(ab)}${ab >= 0.05 ? ' units' : ''}`;
+      abText.setAttribute('fill', ab > 5 ? '#b0352b' : COL.ink);
+    };
+    view.narrate = () => {
+      const b = body(); if (!(b instanceof Immune)) return null;
+      const sp = b.specificAt(pt, 'B'), ab = b.antibodyAt(pt), d = IM.dayNow();
+      if (b.p.needHelp) return { key: 'two' + (d > 1), html: `<b>Day ${d.toFixed(1)}.</b> The B-lymphocyte has bound Priya's own protein, and is waiting for a go-ahead. No helper T-lymphocyte can give it: none has a receptor for this protein. ${fmt(sp.total)} cells, no antibody.` };
+      if (ab < 1) return { key: 'one0', html: `<b>Day ${d.toFixed(1)}.</b> With no go-ahead needed, binding is enough. The B-lymphocyte has begun to divide: ${fmt(sp.total)} cells.` };
+      return { key: 'one1', html: `<b>Day ${d.toFixed(1)}.</b> A clone of <b>${fmt(sp.total)}</b> B-lymphocytes is making antibody against Priya's own cells (<b>${fmtAb(ab)} units</b>). Her own phagocytes will now attack whatever it coats. This is an autoimmune disease.` };
+    };
+    return view;
+  };
+
+  // =========================================================================
+  // From B-lymphocyte to plasma cell to antibody (scene 8)
+  // =========================================================================
+  views.plasma = function () {
+    const svg = svgEl('svg', { viewBox: '0 0 1000 560', role: 'img', 'aria-label': 'A B-lymphocyte divides into a clone; most of the clone become plasma cells, which release antibody' }, stage);
+    const view = { svg };
+    const P = antigenShape(app.kind, app.strain), k = knobParams(P);
+    const best = app.sim.lib.B.filter(c => c.present).map(c => ({ c, f: app.sim.fit(c, app.kind, app.strain) })).sort((a, b) => b.f - a.f)[0].c;
+    const c = cleftParams(best, P);
+    const W = 11, H = 14, TOP = 20;
+    const defs = svgEl('defs', {}, svg);
+    const mk = svgEl('marker', { id: 'arr-plasma', viewBox: '0 0 10 10', refX: 7, refY: 5, markerWidth: 5, markerHeight: 5, orient: 'auto' }, defs); svgEl('path', { d: 'M0,0 L10,5 L0,10 Z', fill: '#8a90a0' }, mk);
+    const arrow = (x1, x2, y, text) => { svgEl('path', { d: `M${x1},${y} L${x2},${y}`, stroke: '#8a90a0', 'stroke-width': 4, 'marker-end': 'url(#arr-plasma)' }, svg); small(svg, (x1 + x2) / 2, y - 12, text, { 'text-anchor': 'middle' }); };
+    // a B-lymphocyte drawn with its receptors out
+    function bCell(x, y, r, n) {
+      const g = svgEl('g', { transform: `translate(${x},${y})` }, svg);
+      for (let j = 0; j < n; j++) {
+        const ph = -Math.PI / 2 + j * 2 * Math.PI / n, m = r + 8 + TOP * r / 40;
+        const sc = r / 40;
+        svgEl('path', { d: `M${(r * Math.cos(ph)).toFixed(1)},${(r * Math.sin(ph)).toFixed(1)} L${((r + 9 * sc) * Math.cos(ph)).toFixed(1)},${((r + 9 * sc) * Math.sin(ph)).toFixed(1)}`, stroke: COL.B, 'stroke-width': 4.5 * sc }, g);
+        svgEl('path', { d: cleftBlock(c, W, H, TOP), transform: `translate(${((r + (8 + TOP) * sc) * Math.cos(ph)).toFixed(1)},${((r + (8 + TOP) * sc) * Math.sin(ph)).toFixed(1)}) rotate(${(ph * 180 / Math.PI - 90).toFixed(1)}) scale(${sc})`, fill: '#fff', stroke: COL.B, 'stroke-width': 2, 'stroke-linejoin': 'round' }, g);
+        void m;
+      }
+      svgEl('circle', { r, fill: '#e3f3f1', stroke: COL.B, 'stroke-width': 3 * r / 40 + 1 }, g);
+      svgEl('circle', { r: r * 0.58, fill: COL.B, opacity: 0.4 }, g);
+      return g;
+    }
+    // an antibody molecule: a Y whose two tips are the same binding end as the receptor
+    function antibody(parent, x, y, sc, rot, withAntigen) {
+      const g = svgEl('g', { transform: `translate(${x},${y}) rotate(${rot || 0}) scale(${sc})` }, parent);
+      svgEl('path', { d: 'M0,34 L0,6 M0,6 L-17,-12 M0,6 L17,-12', stroke: COL.ab, 'stroke-width': 6, 'stroke-linecap': 'round', fill: 'none' }, g);
+      for (const s of [-1, 1]) {
+        const tr = `translate(${s * 31},${-27}) rotate(${s * 43 + 180})`;
+        // with an antigen in each binding end, drawn in the same place and direction as the cleft
+        if (withAntigen) svgEl('path', { d: knobPath(k, W, H) + ' Z', transform: tr, fill: COL.pathogen, stroke: '#7d1f19' }, g);
+        svgEl('path', { d: cleftBlock(c, W, H, TOP), transform: tr, fill: withAntigen ? 'none' : '#fff', stroke: COL.ab, 'stroke-width': 2.2, 'stroke-linejoin': 'round' }, g);
+      }
+      return g;
+    }
+    label(svg, 500, 30, 'What the go-ahead sets off', { 'text-anchor': 'middle', 'font-weight': 650, 'font-size': 16.5 });
+    // 1. the selected B-lymphocyte
+    bCell(105, 200, 40, 8);
+    label(svg, 105, 300, '1  B-lymphocyte', { 'text-anchor': 'middle', 'font-weight': 650 });
+    small(svg, 105, 320, 'selected by its antigen,', { 'text-anchor': 'middle' }); small(svg, 105, 338, 'given the go-ahead', { 'text-anchor': 'middle' });
+    arrow(190, 262, 200, 'divides');
+    // 2. its clone
+    for (const [x, y] of [[330, 150], [400, 150], [330, 222], [400, 222], [365, 290]]) bCell(x, y, 19, 6);
+    label(svg, 365, 356, '2  A clone', { 'text-anchor': 'middle', 'font-weight': 650 });
+    small(svg, 365, 376, 'thousands of cells with', { 'text-anchor': 'middle' }); small(svg, 365, 394, 'the same receptor', { 'text-anchor': 'middle' });
+    arrow(458, 530, 200, 'most become');
+    // 3. a plasma cell: bigger, packed with protein-making machinery, no receptors on its surface
+    const pc = svgEl('g', { transform: 'translate(640,200)' }, svg);
+    svgEl('ellipse', { rx: 82, ry: 60, fill: '#d9efec', stroke: COL.B, 'stroke-width': 3 }, pc);
+    for (let i = 0; i < 5; i++) svgEl('path', { d: `M${-10 + i * 2},${-40 + i * 19} C${14},${-48 + i * 19} ${44},${-30 + i * 19} ${66 - Math.abs(i - 2) * 8},${-38 + i * 19}`, fill: 'none', stroke: '#5fa8a1', 'stroke-width': 3 }, pc);
+    svgEl('circle', { cx: -42, cy: 4, r: 26, fill: COL.B, opacity: 0.45 }, pc);
+    label(svg, 640, 300, '3  Plasma cell', { 'text-anchor': 'middle', 'font-weight': 650 });
+    small(svg, 640, 320, 'an antibody factory: no longer', { 'text-anchor': 'middle' }); small(svg, 640, 338, 'divides, lives a few days', { 'text-anchor': 'middle' });
+    arrow(734, 800, 200, 'releases');
+    // 4. antibody
+    for (const [x, y, r] of [[850, 120, -20], [915, 160, 25], [860, 215, 10], [935, 255, -30], [870, 300, 35]]) antibody(svg, x, y, 0.62, r);
+    label(svg, 890, 356, '4  Antibody', { 'text-anchor': 'middle', 'font-weight': 650, fill: COL.ab });
+    small(svg, 890, 376, 'thousands of molecules', { 'text-anchor': 'middle' }); small(svg, 890, 394, 'every second', { 'text-anchor': 'middle' });
+    // the point: an antibody is the receptor, set free, with two binding ends
+    svgEl('rect', { x: 150, y: 420, width: 700, height: 122, rx: 12, fill: '#fff', stroke: '#d9d6cc' }, svg);
+    const rg = svgEl('g', { transform: 'translate(250,512)' }, svg);
+    svgEl('path', { d: 'M-60,14 L60,14', stroke: COL.B, 'stroke-width': 5 }, rg); svgEl('path', { d: 'M0,14 L0,-6', stroke: COL.B, 'stroke-width': 6 }, rg);
+    svgEl('path', { d: cleftBlock(c, W, H, TOP), transform: 'translate(0,-26) rotate(180)', fill: '#fff', stroke: COL.B, 'stroke-width': 2.2, 'stroke-linejoin': 'round' }, rg);
+    small(svg, 250, 444, 'receptor: fixed in the', { 'text-anchor': 'middle', fill: '#0b5f59', 'font-weight': 600 }); small(svg, 250, 460, "B-lymphocyte's membrane", { 'text-anchor': 'middle', fill: '#0b5f59', 'font-weight': 600 });
+    antibody(svg, 500, 498, 0.9, 0, true);
+    label(svg, 690, 470, 'antibody: the same binding end,', { 'text-anchor': 'middle', 'font-size': 14.5, fill: COL.ab, 'font-weight': 600 });
+    label(svg, 690, 490, 'twice over, released into the fluid', { 'text-anchor': 'middle', 'font-size': 14.5, fill: COL.ab, 'font-weight': 600 });
+    small(svg, 690, 512, 'each tip fits the same antigen (red)', { 'text-anchor': 'middle' });
     return view;
   };
 
@@ -2119,6 +2503,8 @@ window.IM_ANATOMY = {
     const svg = svgEl('svg', { viewBox: '0 0 1000 560', role: 'img', 'aria-label': 'A row of airway cells, each showing fragments of the proteins it is making' }, stage);
     const view = { svg, onCell: null, patch: null, reveal: false };
     label(svg, 500, 44, 'A row of cells lining the airway, seen from the side', { 'text-anchor': 'middle', 'font-weight': 650, 'font-size': 16.5 });
+    label(svg, 500, 92, 'MHC class I molecules: every cell shows fragments of the proteins it is making', { 'text-anchor': 'middle', fill: '#4a5468', 'font-size': 14.5, 'font-weight': 600 });
+    svgEl('path', { d: 'M500,100 L500,184', stroke: '#9aa0ad' }, svg);
     const lg = svgEl('g', { transform: 'translate(250,470)' }, svg);
     svgEl('rect', { x: 0, y: 0, width: 500, height: 70, rx: 10, fill: '#fff', stroke: '#d9d6cc' }, lg);
     svgEl('circle', { cx: 24, cy: 22, r: 6, fill: '#8a93a6' }, lg); svgEl('rect', { x: 44, y: 16, width: 12, height: 12, fill: '#8a93a6' }, lg);
@@ -2173,12 +2559,12 @@ window.IM_ANATOMY = {
     };
     view.narrate = () => {
       const p = view.patch; if (!p) return null;
-      return { key: 'patch' + p.t + p.infected + p.healthy, html: `<b>${p.t.toFixed(0)} h.</b> ${p.healthy} healthy cells, ${p.infected} infected, ${p.lost} lost. From outside, an infected cell looks like any other: the only sign is the fragment in its window.` };
+      return { key: 'patch' + p.t + p.infected + p.healthy, html: `<b>${p.t.toFixed(0)} h.</b> ${p.healthy} healthy cells, ${p.infected} infected, ${p.lost} lost. From outside, an infected cell looks like any other: the only sign is the fragment in its MHC class I molecule.` };
     };
     return view;
   };
 
-  IM.shapes = { knobParams, cleftParams, knobPath, cleftBlock, dockPicture };
+  IM.shapes = { knobParams, cleftParams, knobPath, cleftBlock, dockPicture, seat };
 })();
 
 </script>
@@ -2235,7 +2621,7 @@ window.IM_ANATOMY = {
   const peakOf = (rows, key) => rows.reduce((m, r) => Math.max(m, r[key] || 0), 0);
   // Start an experiment on the stage. o: {sim, kind, strain, before, hours, speed, schedule, key, after, zero}
   function experiment(c, o) {
-    if (o.sim) setSim(o.sim(), { kind: o.kind || app.kind, strain: o.strain || app.strain, keepGhosts: true });
+    if (o.sim) setSim(o.sim(), { kind: o.kind || app.kind, strain: o.strain || app.strain, keepGhosts: true, sampler: app.sampler });
     if (o.before) o.before(app.sim);
     const d = data(c);
     d.running = true;
@@ -2659,11 +3045,33 @@ window.IM_ANATOMY = {
           waitFor: (c) => data(c).ran, waitHint: 'Follow the first day',
         },
         {
-          view: 'node', viewOpts: { lib: 'B', caption: 'Inside the lymph node in Priya\'s groin.' }, remount: true,
+          view: 'meet', viewOpts: { caption: 'Inside the lymph node in Priya\'s groin, at the scale of single cells.' }, remount: true,
+          title: 'Inside the lymph node: what is a fit?',
+          setup: () => setSim(person(), { kind: 'bacterium' }),
+          enter: (c) => {
+            const v = c.view(), d = data(c);
+            v.onTry = (i, ok) => {
+              if (ok) d.fit = true; else d.other = true;
+              c.status(ok ? `<b>${v.cells[i].name} binds.</b> Its receptor sits snugly on the antigen. ${d.other ? '' : 'Now try one of the others, to see what a poor fit looks like.'}` : `<b>${v.cells[i].name} does not bind.</b> Its receptor is the wrong shape for this antigen, so the cell drifts away. ${d.fit ? '' : 'Try another.'}`, ok);
+            };
+          },
+          text: `<p><b>You are now inside the lymph node</b> in Priya's groin, looking at single cells. Lymph from the wound has carried a bacterium in.</p>
+                 <ul style="margin:0 0 6px 18px;padding:0"><li>The <b>bacterium</b> is covered with copies of one protein. That protein is the <b>antigen</b> you will follow. (A real bacterium has many different antigens; one is enough here.)</li><li>Each <b>B-lymphocyte</b> carries thousands of copies of one <b>receptor</b>, sticking out from its surface. All the receptors on one lymphocyte are the same shape. Lymphocytes A, B and C have three different shapes.</li></ul>
+                 <p>A lymphocyte can recognise this bacterium only if its receptor <b>fits</b> the antigen. <b>Click each lymphocyte</b> to bring it to the bacterium.</p>`,
+          question: { prompt: 'What decides whether a B-lymphocyte can recognise this bacterium?', options: [
+            { t: 'Whether the shape of its receptor fits the shape of the antigen', ok: true, fb: 'One of the three is what Priya needs. The question for the rest of this scene: among her hundreds of millions of lymphocytes, is there one like it, and how is it found?' },
+            { t: 'How many receptors it has', fb: 'All three lymphocytes have the same number of receptors. Bring each to the bacterium and compare where the receptor meets the antigen.' },
+            { t: 'Which lymphocyte reaches the bacterium first', fb: 'You brought each one right up to the bacterium. Two of them still could not hold on. What was different about the third?' },
+          ] },
+          waitFor: (c) => data(c).fit && data(c).other, waitHint: 'Find the lymphocyte that binds, and try one that does not',
+        },
+        {
+          view: 'node', viewOpts: { lib: 'B', caption: 'The same lymph node, zoomed out: about a thousand of its B-lymphocytes.' }, remount: true,
           title: 'How to read this picture',
           setup: () => setSim(person(), { kind: 'bacterium' }),
           enter: (c) => { const v = c.view(); v.setMarks(true); v.reveal(false); v.setSelf(false); v.reset(); },
-          text: `<ol style="margin:0 0 6px 18px;padding:0"><li>Each circle is one <b>lymphocyte</b>. These are <b>B-lymphocytes</b>.</li><li>The red shape is the <b>antigen</b> from Priya's bacterium.</li><li>Above it will be the <b>receptor</b> of whichever lymphocyte you pick. Every receptor on one lymphocyte is the same shape; different lymphocytes have different shapes.</li><li>The <b>fit</b>: how well that receptor's cleft matches the antigen's knob. It binds only if the fit is good.</li></ol>`,
+          text: `<p><b>This is the same lymph node, zoomed out.</b> The lymphocytes are now too small for you to see their receptors, so the picture has two parts.</p>
+                 <ol style="margin:0 0 6px 18px;padding:0"><li><b>The lymph node.</b> Each small circle is one whole <b>B-lymphocyte</b>, like A, B and C in the last picture. Every one has a differently shaped receptor.</li><li><b>The close-up</b> (right), at the bottom: the <b>antigen</b> on the surface of Priya's bacterium.</li><li>At the top of the close-up: one <b>receptor</b> of whichever lymphocyte you pick, brought down onto the antigen.</li><li>The <b>fit</b>: a receptor that fits sits snugly and binds. One that does not fit is held off, and the gap is shaded yellow.</li></ol>`,
           question: guess('Priya has never met this bacterium. Predict: how will her body come to have a lymphocyte whose receptor fits its antigen?', ['One already exists: lymphocytes are made with millions of different receptors before any infection', 'A lymphocyte will examine the antigen and build a receptor to match it', 'The dendritic cell will pass the shape on, and lymphocytes will copy it'], 'Keep your prediction in mind. The next three steps test it.'),
         },
         {
@@ -2683,7 +3091,20 @@ window.IM_ANATOMY = {
           waitFor: (c) => data(c).found, waitHint: 'Release the antigen, then click a marked cell',
         },
         {
-          view: 'node', title: 'A different pathogen',
+          view: 'meet', viewOpts: { caption: 'The lymphocyte the antigen found, at full size.' }, remount: true,
+          title: 'The cell it found',
+          setup: () => { app.strain = 'A'; },
+          enter: (c) => { const v = c.view(); v.onTry = null; v.showFit(); },
+          text: () => `<p>Zoom back in on the cell the antigen marked. It is one of the three you met at the start of this scene: its receptor sits on the antigen, and it holds on to the bacterium.</p>
+                 <p>Of the 1,296 B-lymphocytes in the picture of the node, <b>${fmt(app.sim.lib.B.filter(x => x.present && app.sim.fit(x, 'bacterium', 'A') >= GOOD_FIT).length)}</b> can do this. The other two cells here stand for all the rest.</p>`,
+          question: { prompt: 'The receptor on this lymphocyte fits Priya\'s bacterium. When was that receptor made?', options: [
+            { t: 'We cannot tell yet: test it by changing the bacterium', ok: true, fb: 'So far you have seen that a fitting cell exists. Whether it was there all along, or was made to order, needs an experiment: swap in a different antigen and see what the library does.' },
+            { t: 'After the bacterium arrived, to match it', fb: 'That may be your prediction, but nothing you have seen so far shows it. What experiment would tell you?' },
+            { t: 'Long before the bacterium arrived', fb: 'That may be your prediction, but nothing you have seen so far shows it. What experiment would tell you?' },
+          ] },
+        },
+        {
+          view: 'node', viewOpts: { lib: 'B', caption: 'The lymph node, zoomed out again.' }, remount: true, title: 'A different pathogen',
           setup: () => { app.strain = 'A'; },
           enter: (c) => { const v = c.view(); v.reveal(true); v.reset(); v.onPick = (cl, f) => { if (f >= GOOD_FIT && data(c).swapped) data(c).found = true; }; },
           text: `<p>Now swap in the antigen of a <b>different strain</b>. Nothing else changes: watch the library as you press the button. Then click a cell the new antigen has marked.</p>`,
@@ -2768,68 +3189,114 @@ window.IM_ANATOMY = {
       id: 'help', title: 'Two keys', speed: 12,
       steps: [
         {
-          view: 'handshake', viewOpts: { caption: 'Three cells in the lymph node, about a day after the scrape.' }, remount: true,
+          view: 'handshake', viewOpts: { caption: 'Three kinds of cell in the lymph node, about a day after the scrape.' }, remount: true,
           timeline: TL(10), meters: null,
-          title: 'How to read this picture',
+          title: 'A second opinion',
           setup: () => { setSim(person((b) => b.infect('bacterium')), { kind: 'bacterium' }); skip(30); },
-          enter: (c) => { const v = c.view(); v.setMarks(true); v.quiet = true; v.onTh = null; v.onB = null; },
-          text: `<ol style="margin:0 0 6px 18px;padding:0"><li>The <b>dendritic cell</b> that came from the wound.</li><li>On its surface, <b>holders</b>, each showing a fragment of the bacterium's protein.</li><li>Five <b>helper T-lymphocytes</b>, each with a different receptor.</li><li>A <b>B-lymphocyte</b> whose receptor fits: it has caught a whole bacterium.</li><li>The B-lymphocyte's own holder, showing a fragment of what it caught.</li></ol>
-                 <p>A T-lymphocyte's receptor cannot bind a whole bacterium, or anything floating free. It fits only a <b>fragment held in a holder</b> on another cell.</p>`,
-          question: { prompt: 'The dendritic cell swallowed bacteria at the wound. What is it showing in its holders?', options: [
-            { t: 'Fragments of what it swallowed', ok: true, fb: nameBox('The holder is an <b>MHC class II molecule</b>. Cells that show fragments of what they have swallowed this way are <b>antigen-presenting cells</b>: dendritic cells, macrophages and B-lymphocytes. They divide the work. The <b>dendritic cell</b> carries antigen to the lymph node and is the one that starts a response there. A <b>macrophage</b> mostly stays at the wound; it can show its fragments to helper T-lymphocytes that arrive there later, which spur it on to kill more.') },
-            { t: 'Whole bacteria', fb: 'Look at the size of what is in the holders: small pieces. The dendritic cell digested the bacteria first.' },
+          enter: (c) => { const v = c.view(); v.rebuild(); v.setMarks(true); v.onTh = null; v.onB = null; },
+          text: `<p>In scene 6 the B-lymphocytes that fit took days to get going. Part of the reason is a rule: <b>a B-lymphocyte that has found its antigen still does nothing until a second lymphocyte, which has recognised the same invader for itself, gives it the go-ahead.</b> That second cell is a <b>helper T-lymphocyte</b>.</p>
+                 <p>This scene shows the three steps (a helper is selected, it multiplies, it gives the go-ahead), and then why the body insists on two cells agreeing.</p>
+                 <ol style="margin:0 0 6px 18px;padding:0"><li>The <b>dendritic cell</b> that came from the wound.</li><li>Its <b>MHC class II molecules</b>: protein holders, each showing a fragment of the bacterium. (MHC stands for major histocompatibility complex.)</li><li>Five <b>helper T-lymphocytes</b>, each with a different receptor.</li><li>A <b>B-lymphocyte</b> whose receptor fits: it has caught a whole bacterium.</li><li>The B-lymphocyte's own MHC class II molecule, showing a fragment of what it caught.</li></ol>
+                 <p>A T-lymphocyte's receptor cannot bind a whole bacterium, or anything floating free. It fits only a <b>fragment held in an MHC molecule</b> on another cell.</p>`,
+          question: { prompt: 'The dendritic cell swallowed bacteria at the wound. What is it showing in its MHC class II molecules?', options: [
+            { t: 'Fragments of what it swallowed', ok: true, fb: nameBox('Cells that show fragments of what they have swallowed in <b>MHC class II molecules</b> are <b>antigen-presenting cells</b>: dendritic cells, macrophages and B-lymphocytes. They divide the work. The <b>dendritic cell</b> carries antigen to the lymph node and is the one that starts a response there. A <b>macrophage</b> mostly stays at the wound; it can show its fragments to helper T-lymphocytes that arrive there later, which spur it on to kill more.') },
+            { t: 'Whole bacteria', fb: 'Look at the size of what is in the MHC class II molecules, next to the whole bacterium on the right: small pieces. The dendritic cell digested the bacteria first.' },
             { t: 'Its own receptors', fb: 'The red pieces are the same colour as the bacterium. Where did they come from?' },
           ] },
         },
         {
-          view: 'handshake', title: 'Find the helper that fits',
+          view: 'handshake', title: 'Step 1: the dendritic cell selects a helper',
           setup: () => { setSim(person((b) => b.infect('bacterium')), { kind: 'bacterium' }); skip(30); },
           enter: (c) => {
-            const v = c.view(); v.setMarks(false); v.rebuild(); v.quiet = !data(c).found;
-            v.onTh = (cl, f) => {
-              if (f >= GOOD_FIT) { v.choose(cl); v.quiet = false; data(c).found = true; c.status(`<b>That one fits</b> (${pct(f)}). Its receptor matches the fragment in the holder. It has been selected, exactly as the B-lymphocyte was in scene 5.`, true); c.refresh(); }
-              else c.status(`Fit ${pct(f)}: its receptor does not match the fragment. Try another.`, false);
+            const v = c.view(); v.setMarks(false); v.rebuild({ docked: !!data(c).found || c.stepState().done });
+            v.onTh = (cl, f, i) => {
+              const n = v.candidates[i].name;
+              if (f >= GOOD_FIT) { data(c).found = true; c.status(`<b>Helper ${n} binds.</b> Its receptor fits the fragment in the MHC class II molecule, so it has been <b>selected</b>: the same rule as for the B-lymphocyte in scene 5.`, true); }
+              else c.status(`Helper ${n} does not bind: its receptor is the wrong shape for this fragment, and it drifts away. Try another.`, false);
             };
           },
-          text: `<p>The dendritic cell shows its fragments to every helper T-lymphocyte that passes. <b>Click the helper T-lymphocyte whose receptor fits</b> the fragment (compare the cleft on its left side with the red fragment). Then let two days pass.</p>`,
-          actions: [{ label: 'Let two days pass', cls: 'lym', disabled: (c) => !data(c).found || busy(c) || data(c).ran, run: (c) => experiment(c, { hours: 48, speed: 8, zero: false, after: (b, c) => c.recordValue('helpers', b.helpers) }) }],
-          status: (c) => (data(c).ran ? `<b>${fmt(app.sim.helpers)}</b> helper T-lymphocytes with that receptor now: a clone.` : (data(c).found ? 'Selected. Now let two days pass.' : '')),
-          waitFor: (c) => data(c).ran, waitHint: 'Find the helper that fits, then let two days pass',
+          text: `<p>Helper T-lymphocytes drift past the dendritic cell all the time, and each tries its receptor on the fragment the dendritic cell is holding out.</p>
+                 <p><b>Click a helper T-lymphocyte to bring it to the dendritic cell.</b> Find the one that binds.</p>`,
+          question: { prompt: 'The helper you found has never touched a bacterium. How does it know there is an infection?', options: [
+            { t: 'A dendritic cell from the wound showed it a fragment of the bacterium that its receptor fits', ok: true, fb: 'The dendritic cell is the messenger of scene 5. A helper T-lymphocyte learns of the infection second-hand, from a cell that was there and swallowed the evidence.' },
+            { t: 'It met the bacterium in the lymph node, as the B-lymphocyte did', fb: 'A T-lymphocyte\'s receptor cannot bind a whole bacterium. Look at what your helper is touching.' },
+            { t: 'The B-lymphocyte told it', fb: 'Not yet: so far the helper has only met the dendritic cell. Look at what its receptor is sitting on.' },
+          ] },
+          waitFor: (c) => data(c).found, waitHint: 'Find the helper T-lymphocyte that binds',
         },
         {
-          view: 'handshake', title: 'Can the B-lymphocyte go ahead alone?',
+          view: 'handshake', title: 'Step 2: the selected helper multiplies',
+          setup: () => { setSim(person((b) => b.infect('bacterium')), { kind: 'bacterium' }); skip(30); },
+          enter: (c) => { const v = c.view(); v.rebuild({ docked: true }); v.onTh = null; },
+          text: `<p>Being selected switches the helper on, and it starts to divide. Let two days pass and watch the middle of the picture.</p>`,
+          actions: [{ label: 'Let two days pass', cls: 'lym', disabled: (c) => busy(c) || data(c).ran, run: (c) => experiment(c, { hours: 48, speed: 8, zero: false, after: (b, c) => c.recordValue('helpers', b.helpers) }) }],
+          status: (c) => (data(c).ran ? `<b>${fmt(app.sim.helpers)}</b> helper T-lymphocytes now, all with the receptor of the one the dendritic cell selected.` : ''),
+          question: { prompt: 'Every cell of that clone has the same receptor as the helper the dendritic cell selected. What can each of them do?', options: [
+            { t: 'Recognise the same fragment, wherever another cell shows it in an MHC class II molecule', ok: true, fb: 'Now look at the B-lymphocyte on the right. It swallowed the bacterium it caught, and it is showing a fragment of it in its own MHC class II molecule: the same fragment. One of the new helpers has already found it.' },
+            { t: 'Make antibody against the bacterium', fb: 'T-lymphocytes never make antibody. What does a helper\'s receptor fit, and which other cell in the picture is showing that?' },
+            { t: 'Swallow bacteria in the lymph node', fb: 'Lymphocytes are not phagocytes. What does a helper\'s receptor fit, and which other cell in the picture is showing that?' },
+          ] },
+          waitFor: (c) => data(c).ran, waitHint: 'Let two days pass',
+        },
+        {
+          view: 'handshake', title: 'Step 3: the go-ahead',
           setup: () => { setSim(person((b) => b.infect('bacterium')), { kind: 'bacterium' }); skip(78); cache.day3 = snapshot(); },
-          enter: (c) => { const v = c.view(); v.rebuild(); v.quiet = false; v.onTh = null; },
-          text: `<p>Day 3. The B-lymphocyte bound its antigen days ago, directly, with no holder needed. Run the next five days twice from this moment: once with the helper T-lymphocytes removed, and once with them.</p>`,
+          enter: (c) => { const v = c.view(); v.rebuild({ docked: true }); v.onTh = null; },
+          text: `<p>Day 3. A helper from the clone has docked on the B-lymphocyte's MHC class II molecule. Both cells have now recognised the same bacterium, in different ways: the B-lymphocyte bound the whole bacterium; the helper recognised a fragment of it.</p>
+                 <p>Is the helper's go-ahead really needed? Run the next five days twice from this moment: once with the helper T-lymphocytes taken away, and once with them.</p>`,
           question: predict(guess('Predict: with no helper T-lymphocytes, what will the B-lymphocyte do?', ['Divide and make antibody anyway: it has found its antigen', 'Nothing: it waits', 'Divide, but more slowly'], 'Run both and compare.')),
           actions: [
             { label: '1. Five days without helper T', cls: 'drug', disabled: (c) => afterPrediction(c) || busy(c) || data(c).without, run: (c) => { restore(cache.day3); app.sim.set('helperT', 0); c.view().rebuild(); experiment(c, { hours: 5 * DAY, speed: 12, zero: false, key: 'without', after: (b, c) => { c.recordValue('noHelp', { b: b.specific('bacterium', 'A', 'B').total, ab: b.antibodyTo('bacterium', 'A') }); } }); } },
-            { label: '2. Five days with helper T', cls: 'lym', disabled: (c) => !data(c).without || busy(c) || data(c).withHelp, run: (c) => { keepGhost('without helper T', { keys: ['pathogen', 'lymph', 'ab'] }); const g = app.ghosts.slice(); restore(cache.day3); app.ghosts = g; c.view().rebuild(); experiment(c, { hours: 5 * DAY, speed: 12, zero: false, key: 'withHelp', after: (b, c) => { c.recordValue('withHelp', { b: b.specific('bacterium', 'A', 'B').total, ab: b.antibodyTo('bacterium', 'A') }); } }); } },
+            { label: '2. Five days with helper T', cls: 'lym', disabled: (c) => !data(c).without || busy(c) || data(c).withHelp, run: (c) => { keepGhost('without helper T', { keys: ['pathogen', 'lymph', 'ab'] }); const g = app.ghosts.slice(); restore(cache.day3); app.ghosts = g; c.view().rebuild({ docked: true }); experiment(c, { hours: 5 * DAY, speed: 12, zero: false, key: 'withHelp', after: (b, c) => { c.recordValue('withHelp', { b: b.specific('bacterium', 'A', 'B').total, ab: b.antibodyTo('bacterium', 'A') }); } }); } },
           ],
           status: (c) => { const v = c.record.values, d = data(c); return (d.without && v.noHelp ? `Without helper T, day 8: <b>${fmt(v.noHelp.b)}</b> B-lymphocytes that fit, antibody ${fmtAb(v.noHelp.ab)}.` : '') + (d.withHelp && v.withHelp ? `<br>With helper T, day 8: <b>${fmt(v.withHelp.b)}</b> B-lymphocytes, antibody <b>${fmtAb(v.withHelp.ab)}</b> units.` : ''); },
           waitFor: (c) => data(c).without && data(c).withHelp, waitHint: 'Predict, then run both',
         },
         {
-          view: 'handshake', title: 'Why two keys?',
-          text: `<p>The B-lymphocyte had found its antigen, yet it did nothing until a helper T-lymphocyte that recognised a fragment of the <b>same</b> antigen gave it the go-ahead. Then it divided, and its clone turned into <b>plasma cells</b>, which make antibody.</p>`,
-          question: { prompt: 'Why might it be safer for the body to require two different cells to recognise the same invader before antibody is made?', options: [
-            { t: 'If one cell makes a mistake (say, a B-lymphocyte that binds one of the body\'s own molecules), nothing happens unless a second cell agrees', ok: true, fb: nameBox('<b>Helper T-lymphocytes</b> (also called CD4 cells, after a protein on their surface) do not kill anything and make no antibody. They give the go-ahead. Antibody is a soluble copy of the B-lymphocyte\'s receptor, released by <b>plasma cells</b>.') },
-            { t: 'It makes the response faster', fb: 'Waiting for a second cell makes it slower, as you saw. What does a second opinion protect against?' },
-            { t: 'The helper T-lymphocytes make the antibody; the B-lymphocytes only carry it', fb: 'In your runs, antibody appeared only once the <i>B-lymphocyte</i> clone had expanded. What did the helpers contribute?' },
+          view: 'stray', viewOpts: { caption: 'Priya, healthy, with no infection. One B-lymphocyte has a receptor that fits one of her own proteins.' }, remount: true,
+          timeline: TL(10, ['lymph', 'ab']), title: 'Why insist on two cells?',
+          meters: () => (app.sim instanceof Immune && cache.selfPt ? [['B-lymphocytes that fit her own protein', fmt(app.sim.specificAt(cache.selfPt, 'B').total)], ['Antibody against her own protein', fmtAb(app.sim.antibodyAt(cache.selfPt))]] : []),
+          setup: () => { const b = person(); cache.selfPt = b.selfAntigen(0, { stray: true }); const pt = cache.selfPt; setSim(b, { kind: 'bacterium', sampler: (x) => ({ t: x.t, lymph: x.specificAt(pt, 'B').total, ab: x.antibodyAt(pt) }) }); },
+          text: `<p>Waiting for a second cell costs days. What does it buy? Remember from scene 5 that receptors are made at random, and that lymphocytes whose receptors fit the body's own molecules are removed. That screening is good but not perfect: a few such B-lymphocytes always get through.</p>
+                 <p>Here is one of them in Priya, with no infection anywhere. Its receptor fits a protein on her own healthy cells, and that protein is everywhere, all the time. Run ten days under the real rule, then ten days in an imagined body where a B-lymphocyte needs no go-ahead.</p>`,
+          actions: [
+            { label: '1. The real rule: two keys', cls: 'lym', disabled: (c) => busy(c) || data(c).two, run: (c) => experiment(c, { hours: 10 * DAY, speed: 30, key: 'two', after: (b, c) => c.recordValue('twoKeys', { b: b.specificAt(cache.selfPt, 'B').total, ab: b.antibodyAt(cache.selfPt) }) }) },
+            { label: '2. Imagine one key were enough', cls: 'drug', disabled: (c) => !data(c).two || busy(c) || data(c).one, run: (c) => { keepGhost('two keys', { keys: ['lymph', 'ab'] }); const pt = cache.selfPt; experiment(c, { sim: () => { const b = person(); b.selfAntigen(0, { stray: true }); b.set('needHelp', 0); return b; }, hours: 10 * DAY, speed: 30, key: 'one', after: (b, c) => c.recordValue('oneKey', { b: b.specificAt(pt, 'B').total, ab: b.antibodyAt(pt) }) }); } },
+          ],
+          status: (c) => { const v = c.record.values, d = data(c); return (d.two && v.twoKeys ? `Two keys, day 10: <b>${fmt(v.twoKeys.b)}</b> B-lymphocytes that fit her own protein, antibody against it <b>${fmtAb(v.twoKeys.ab)}</b>.` : '') + (d.one && v.oneKey ? `<br>One key, day 10: <b>${fmt(v.oneKey.b)}</b> B-lymphocytes, antibody against her own cells <b>${fmtAb(v.oneKey.ab)} units</b>.` : ''); },
+          question: { prompt: 'So what does the body gain by making a B-lymphocyte wait for a helper T-lymphocyte?', options: [
+            { t: 'A second, independent check: a B-lymphocyte that binds one of the body\'s own molecules finds no helper that agrees, so it never acts', ok: true, fb: 'For an attack on Priya\'s own cells, two different lymphocytes, screened separately, would both have to be wrong about the same molecule. One mistake is not enough. (There is a second benefit: a helper is only switched on by a dendritic cell that has come from real trouble, so antibody is made against things that arrive with an alarm, not against harmless material.)' + nameBox('<b>Helper T-lymphocytes</b> (also called CD4 cells, after a protein on their surface) kill nothing and make no antibody. They give the go-ahead. When this safeguard fails, the result is an <b>autoimmune disease</b>.') },
+            { t: 'Speed: two cells respond faster than one', fb: 'Waiting for a second cell made the response slower, as you saw in step 3. Compare your two runs here: what happened to Priya\'s own cells when one key was enough?' },
+            { t: 'More antibody: the helper T-lymphocytes make some too', fb: 'T-lymphocytes never make antibody. Compare your two runs here: what happened when one key was enough?' },
           ] },
+          waitFor: (c) => data(c).two && data(c).one, waitHint: 'Run both',
         },
       ],
     },
-    // ------------------------------------------------------------- 8. antibodies tag, phagocytes kill
+    // ------------------------------------------------------------- 8. what antibody does
     {
-      id: 'antibody', title: 'Antibodies tag, phagocytes kill', speed: 1,
+      id: 'antibody', title: 'What antibody does', speed: 1,
       steps: [
+        {
+          view: 'plasma', viewOpts: { caption: 'What happens to a B-lymphocyte once a helper T-lymphocyte has given it the go-ahead.' }, remount: true,
+          timeline: { window: 1, traces: [], note: 'The timeline returns with the next experiment.' }, meters: null,
+          title: 'From B-lymphocyte to plasma cell',
+          setup: () => setSim(person(), { kind: 'bacterium' }),
+          text: `<p>In scene 7 the B-lymphocyte got its go-ahead and antibody appeared. Here is what happened in between.</p>
+                 <ol style="margin:0 0 6px 18px;padding:0"><li>The selected <b>B-lymphocyte</b>, with its receptors fixed in its membrane.</li><li>It divides into a <b>clone</b>, every cell with the same receptor.</li><li>Most cells of the clone change into <b>plasma cells</b>. A plasma cell is a factory: it stops dividing, fills with protein-making machinery, and lives only a few days. (The rest of the clone become memory cells: scene 9.)</li><li>What the factory makes is <b>antibody</b>: the B-lymphocyte's receptor, released into the fluid instead of fixed in the membrane. An antibody is Y-shaped, and both tips of the Y are the same binding end as the receptor.</li></ol>
+                 <p>Antibody travels in the lymph and the blood. It is also called <b>immunoglobulin</b>.</p>`,
+          question: { prompt: 'The tips of this antibody are the same shape as the receptor of the B-lymphocyte the plasma cells came from. What will the antibody bind?', options: [
+            { t: 'The same antigen that selected that B-lymphocyte, and nothing else', ok: true, fb: 'So the whole chain is specific from end to end: one antigen selects one clone, whose plasma cells make antibody against that one antigen. Next: what that antibody actually does when it gets there.' },
+            { t: 'Any bacterium', fb: 'Compare the binding ends of the antibody with the receptor in the box at the bottom of the picture. Which antigen did that receptor fit?' },
+            { t: 'The B-lymphocyte that made it', fb: 'Look at what the antibody\'s tips are holding in the box at the bottom of the picture.' },
+          ] },
+        },
         {
           view: 'dish', viewOpts: { caption: 'A laboratory dish: no body, no cells except the ones you add.' }, remount: true,
           timeline: TL(0.3, ['pathogen']), meters: null,
-          title: 'What does antibody do?',
+          title: 'What does antibody do to bacteria?',
           setup: () => { setSim(new Dish({ bacteria: 1e5 }), { kind: 'bacterium' }); cache.dish = {}; },
-          text: `<p>Antibody molecules are Y-shaped proteins. The two tips of the Y are the binding sites, the same shape as the receptor of the B-lymphocyte that the plasma cell came from.</p><p>To see what antibody does by itself, take it out of the body: a dish of 100,000 bacteria in warm broth.</p>`,
+          text: `<p>Plasma cells have released antibody that fits Priya's bacterium. To see what antibody does by itself, take it out of the body: a dish of 100,000 bacteria in warm broth, with no cells and no blood.</p>`,
           question: guess('Predict: antibody against this bacterium is added to the dish. Six hours later, the bacteria are…', ['Dead: antibody kills them', 'Coated with antibody, but alive and still dividing', 'Unchanged: antibody does nothing outside the body'], 'Test it: run all four dishes.'),
         },
         {
@@ -2853,8 +3320,8 @@ window.IM_ANATOMY = {
         {
           view: 'dish', title: 'What antibody does',
           text: `<p>Look at your table. With antibody alone, the bacteria grew as if nothing had been added. With phagocytes alone, they still grew. Together, they were wiped out.</p>`,
-          question: { prompt: 'So what does antibody do to a bacterium?', options: [
-            { t: 'It coats it, which lets phagocytes grip and swallow it', ok: true, fb: 'Antibody is a <b>tag</b>, not a weapon. Phagocytes have receptors for the stem of the Y, so a coated bacterium is easy to seize. Your textbook calls this <b>opsonization</b>. (Antibody can also block a toxin or a virus from attaching to a cell, called neutralization: more on that in Part B.)' },
+          question: { prompt: 'In these dishes, what did antibody do to the bacteria?', options: [
+            { t: 'It coats it, which lets phagocytes grip and swallow it', ok: true, fb: 'Antibody did not kill these bacteria: they went on dividing until phagocytes were added. Phagocytes have receptors for the stem of the Y, so a coated bacterium is easy to seize. Your textbook calls this <b>opsonization</b>.' + nameBox('<b>Antibody works in three ways.</b> It <b>marks</b> a target for destruction by other things (opsonization for phagocytes; it can also set off complement, a set of blood proteins). It <b>neutralizes</b>: by covering the working part of a toxin or the attachment site of a virus, it stops them acting (you will see this in Part B). And it <b>agglutinates</b>: each antibody has two binding ends, so it links microbes into clumps that cannot spread and are easier to swallow. Neutralizing and clumping disarm a target; they do not, by themselves, kill a bacterium.') },
             { t: 'It kills it directly', fb: 'Look at the dish with antibody and no phagocytes: how many bacteria were there after six hours?' },
             { t: 'It stops it dividing', fb: 'Look at the dish with antibody and no phagocytes: did the number stop rising?' },
           ] },
@@ -3132,11 +3599,11 @@ window.IM_ANATOMY = {
           title: 'How to read this picture',
           setup: () => { setSim(person(), { kind: 'virus' }); cache.patch = new Patch({ n: 12, infected: [[3, 2], [8, 0.3]] }); },
           enter: (c) => { const v = c.view(); v.setPatch(cache.patch); v.setMarks(true); v.onCell = null; },
-          text: `<ol style="margin:0 0 6px 18px;padding:0"><li>One <b>cell</b>, with its nucleus.</li><li>On its surface, <b>holders</b>. Every cell with a nucleus constantly chops up samples of the proteins it is making and displays the fragments in these holders, like goods in a shop window.</li><li>The key: grey shapes are fragments of the cell's own proteins.</li></ol>`,
-          question: { prompt: 'A cell was infected an hour ago and has started making viral proteins. What will appear in its windows?', options: [
-            { t: 'Fragments of viral protein, alongside fragments of its own', ok: true, fb: nameBox('These holders are <b>MHC class I molecules</b>. Nearly every cell in the body has them. They show the outside world what the cell is making <i>inside</i>, so an infected cell cannot help giving itself away.') },
+          text: `<ol style="margin:0 0 6px 18px;padding:0"><li>One <b>cell</b>, with its nucleus.</li><li>On its surface, <b>MHC class I molecules</b>: protein holders like the ones in scene 7, but a different class. Every cell with a nucleus constantly chops up samples of the proteins it is making and displays the fragments in them, like goods in a shop window.</li><li>The key: grey shapes are fragments of the cell's own proteins.</li></ol>`,
+          question: { prompt: 'A cell was infected an hour ago and has started making viral proteins. What will appear in its MHC class I molecules?', options: [
+            { t: 'Fragments of viral protein, alongside fragments of its own', ok: true, fb: nameBox('Nearly every cell in the body has <b>MHC class I molecules</b> (only antigen-presenting cells also have class II). They show the outside world what the cell is making <i>inside</i>, so an infected cell cannot help giving itself away.') },
             { t: 'Nothing different: the virus is hidden inside', fb: 'The cell samples <i>whatever</i> proteins it is making. If it is making viral proteins, what will be among the samples?' },
-            { t: 'Whole virus particles', fb: 'The holders carry short fragments of protein, not whole particles. Which proteins is this cell now making?' },
+            { t: 'Whole virus particles', fb: 'MHC molecules carry short fragments of protein, not whole particles. Which proteins is this cell now making?' },
           ] },
         },
         {
@@ -3147,12 +3614,12 @@ window.IM_ANATOMY = {
             v.onCell = (i) => {
               const p = cache.patch, shown = p.shows(i), was = p.kill(i);
               if (!was) return;
-              c.status(was === 'healthy' ? '<b>That cell was healthy.</b> Its windows showed only its own proteins. A killer that does not read the window destroys healthy tissue.' : shown ? '<b>Infected cell destroyed</b> before it could release more virus.' : '<b>That cell was infected</b>, but its window did not show it yet. You could not have known: a lucky hit.', was !== 'healthy');
+              c.status(was === 'healthy' ? '<b>That cell was healthy.</b> Its MHC class I molecules showed only its own proteins. A killer that does not read them destroys healthy tissue.' : shown ? '<b>Infected cell destroyed</b> before it could release more virus.' : '<b>That cell was infected</b>, but its MHC class I molecules did not show it yet. You could not have known: a lucky hit.', was !== 'healthy');
               c.recordValue('byHand', { hours: p.t, healthyKilled: p.killedHealthy, healthyLeft: p.healthy, lost: p.lost });
             };
           },
           text: `<p>Two of these twelve cells are infected. An infected cell starts to release virus about 6 hours after it was infected, and its neighbours are infected soon after.</p>
-                 <p><b>Read the windows. Click a cell to kill it.</b> Then let time pass and read them again. Stop the infection while losing as few cells as you can.</p>`,
+                 <p><b>Read each cell's MHC class I molecules. Click a cell to kill it.</b> Then let time pass and read them again. Stop the infection while losing as few cells as you can.</p>`,
           actions: [
             { label: 'Let 2 hours pass', cls: 'germ', run: (c) => { cache.patch.advance(2); c.recordValue('byHand', { hours: cache.patch.t, healthyKilled: cache.patch.killedHealthy, healthyLeft: cache.patch.healthy, lost: cache.patch.lost }); } },
             { label: 'Start again', run: (c) => { cache.patch = new Patch({ n: 12, infected: [[3, 2], [8, 0.3]] }); c.view().setPatch(cache.patch); c.status('', false); } },
@@ -3164,9 +3631,9 @@ window.IM_ANATOMY = {
           view: 'windows', title: 'What did you destroy?',
           text: () => `<p>You stopped the infection with <b>${cache.patch ? cache.patch.healthy : '—'}</b> of 12 cells still healthy${cache.patch && cache.patch.killedHealthy ? ` (and ${cache.patch.killedHealthy} healthy cell${cache.patch.killedHealthy > 1 ? 's' : ''} killed by mistake)` : ''}.</p>`,
           question: { prompt: 'What exactly did you destroy?', options: [
-            { t: 'Elena\'s own cells: the ones whose windows showed a viral fragment', ok: true, fb: nameBox('That is the job of a <b>cytotoxic T-lymphocyte</b> (a CD8 cell). Its receptor fits one viral fragment held in an MHC class I molecule. When it finds that, it makes the cell destroy itself. It never touches free virus.') },
+            { t: 'Elena\'s own cells: the ones whose MHC class I molecules showed a viral fragment', ok: true, fb: nameBox('That is the job of a <b>cytotoxic T-lymphocyte</b> (a CD8 cell). Its receptor fits one viral fragment held in an MHC class I molecule. When it finds that, it makes the cell destroy itself. It never touches free virus.') },
             { t: 'Virus particles', fb: 'You clicked on cells. The free virus particles above them were never your target.' },
-            { t: 'Any cell near the infection', fb: 'If you killed a cell without the red fragment in its window, the sim told you it was healthy. What marked the cells that needed to die?' },
+            { t: 'Any cell near the infection', fb: 'If you killed a cell without the red fragment in an MHC class I molecule, the sim told you it was healthy. What marked the cells that needed to die?' },
           ] },
         },
         {
@@ -3185,8 +3652,8 @@ window.IM_ANATOMY = {
           waitFor: (c) => data(c).ran, waitHint: 'Predict, then run the infection',
         },
         {
-          view: 'places', title: 'Two windows',
-          text: `<p>You have now met two kinds of holder. Fill in the table (scene 7 for one column, this scene for the other).</p>`,
+          view: 'places', title: 'MHC class I and class II',
+          text: `<p>You have now met both classes of MHC molecule. Fill in the table (scene 7 for one column, this scene for the other).</p>`,
           extra: (el, c) => selectTable(el, c, {
             key: 'mhc', head: ['', 'MHC class I', 'MHC class II'],
             rows: [
@@ -3195,7 +3662,7 @@ window.IM_ANATOMY = {
               { label: 'Read by', cells: [{ options: ['helper T-lymphocytes', 'cytotoxic T-lymphocytes'], answer: 'cytotoxic T-lymphocytes' }, { options: ['helper T-lymphocytes', 'cytotoxic T-lymphocytes'], answer: 'helper T-lymphocytes' }] },
               { label: 'What follows', cells: [{ options: ['the go-ahead for other lymphocytes', 'the cell is killed'], answer: 'the cell is killed' }, { options: ['the go-ahead for other lymphocytes', 'the cell is killed'], answer: 'the go-ahead for other lymphocytes' }] },
             ],
-            done: 'Class I says "this is what I am making": if it is viral, kill me. Class II says "this is what I found": if you recognise it, help. B-lymphocytes need no window at all: their receptors, and antibody, bind whole antigen directly.',
+            done: 'Class I says "this is what I am making": if it is viral, kill me. Class II says "this is what I found": if you recognise it, help. B-lymphocytes need no MHC molecule to recognise antigen: their receptors, and antibody, bind whole antigen directly.',
           }),
           waitFor: () => false, waitHint: 'Complete the table',
         },
@@ -3402,7 +3869,9 @@ window.IM_ANATOMY = {
     L.push('Scene 7 · Two keys');
     if (v.noHelp) L.push(`  Day 8 without helper T: ${fmt(v.noHelp.b)} B-lymphocytes that fit, antibody ${fmtAb(v.noHelp.ab)}`);
     if (v.withHelp) L.push(`  Day 8 with helper T: ${fmt(v.withHelp.b)} B-lymphocytes that fit, antibody ${fmtAb(v.withHelp.ab)} units`);
-    L.push('Scene 8 · Antibodies tag, phagocytes kill');
+    if (v.twoKeys) L.push(`  A B-lymphocyte that fits Priya's own protein, day 10, two keys needed: ${fmt(v.twoKeys.b)} cells, antibody ${fmtAb(v.twoKeys.ab)}`);
+    if (v.oneKey) L.push(`  The same if one key were enough: ${fmt(v.oneKey.b)} cells, antibody against her own cells ${fmtAb(v.oneKey.ab)} units`);
+    L.push('Scene 8 · What antibody does');
     if (v.dish) L.push(`  Dish after 6 h (start 100 thousand): alone ${fmt(v.dish.plain)}; + antibody ${fmt(v.dish.ab)}; + phagocytes ${fmt(v.dish.phag)}; + both ${fmt(v.dish.both)}`);
     if (v.first) L.push(`  Priya's first infection: first antibody day ${d1(v.first.firstAb)}; cleared day ${d1(v.first.cleared)}; most bacteria ${fmt(v.first.peak)}; antibody on day 3: ${fmtAb(v.first.abDay3)}`);
     L.push('Scene 9 · The second time');

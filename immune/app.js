@@ -64,6 +64,7 @@
   function setSim(sim, o) {
     o = o || {};
     app.sim = sim; app.run = null;
+    app.sampler = o.sampler || null;      // a step may graph something other than the pathogen (e.g. a self protein)
     if (o.kind) app.kind = o.kind;
     if (o.strain) app.strain = o.strain; else if (o.kind) app.strain = 'A';
     if (!o.keepGhosts) app.ghosts = [];
@@ -81,6 +82,7 @@
   }
   function sample() {
     const b = app.sim;
+    if (app.sampler) return app.sampler(b);
     return b instanceof Immune ? sampleOf(b, app.kind, app.strain) : { t: b.t, pathogen: b.bacteria };
   }
   // Put a saved moment back on screen: the person, and the history that led to it.

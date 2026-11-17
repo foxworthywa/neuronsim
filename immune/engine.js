@@ -108,6 +108,7 @@
       abRate: 4e-4, abHalf: 21 * DAY, memAntibody: 4, // antibody units per plasma cell per hour; half-life 3 weeks
       // the person
       neutrophils: 1, macrophages: 1, alarm: 1, helperT: 1, bcells: 1, tcells: 1, adaptive: 1, selfScreen: 1,
+      needHelp: 1,                    // 0: imagine B- and cytotoxic T-lymphocytes could act without a helper's go-ahead
       manualAlarm: null,              // 0..1 while the student holds the alarm by hand
       ANC0: 4000, CD40: 1000,
     };
@@ -139,7 +140,7 @@
       this.lib.Th.forEach((c, i) => { c.present = order[i] < p.helperT; });
       this.lib.B.forEach(c => { c.present = p.bcells > 0; });
       this.lib.Tc.forEach(c => { c.present = p.tcells > 0; });
-      if (p.selfScreen) for (const k of ['B', 'Th', 'Tc']) for (const c of this.lib[k]) if (c.self) c.present = false;
+      if (p.selfScreen) for (const k of ['B', 'Th', 'Tc']) for (const c of this.lib[k]) if (c.self && !c.stray) c.present = false;
       this._resp = null;
     }
 
@@ -168,6 +169,30 @@
       this.antigen(kind, o.strain || 'A').depot += o.dose == null ? 1 : o.dose;
       this.events.push({ type: 'vaccine', kind, strain: o.strain || 'A', t: this.t });
     }
+    // One of the body's own proteins, treated as an antigen: it is there all the time, in quantity.
+    // With `stray`, the B-lymphocyte clone that fits it best is taken to have escaped screening
+    // (as a few always do). No helper T-lymphocyte fits it: those were removed in the thymus.
+    selfAntigen(i, o) {
+      const [x, y] = SELF[i || 0], key = 'self:' + (i || 0);
+      const pt = { x, y, key, kind: 'self', strain: String(i || 0) };
+      if (!this.antigens[key]) { this.antigens[key] = { pt, depot: 0, d1: 1, A: 1, i1: 0, inside: 0, constant: true }; this._resp = null; }
+      if (o && o.stray) {
+        const best = this.lib.B.filter(c => c.self).reduce((a, c) => (dist(c.x, c.y, x, y) < dist(a.x, a.y, x, y) ? c : a));
+        best.stray = true; this.applyKnockouts();
+      }
+      return pt;
+    }
+    // Antibody, and lymphocytes, that fit any given shape (antigenShape is for pathogens only).
+    antibodyAt(pt) { let a = 0; for (const c of this.lib.B) if (c.ab > 0) a += c.ab * fitAt(dist(c.x, c.y, pt.x, pt.y)); return a; }
+    specificAt(pt, lib) {
+      const out = { resting: 0, effector: 0, memory: 0, total: 0, clones: 0 };
+      for (const k of (lib ? [lib] : ['B', 'Th', 'Tc'])) for (const c of this.lib[k]) {
+        if (!c.present || fitAt(dist(c.x, c.y, pt.x, pt.y)) < GOOD_FIT) continue;
+        out.clones++; out.resting += c.R; out.effector += c.E; out.memory += c.mem;
+      }
+      out.total = out.resting + out.effector;
+      return out;
+    }
     // Ready-made antibody from someone else: it acts at once and leaves the library unchanged.
     giveAntibody(kind, o) {
       o = o || {};
@@ -189,7 +214,9 @@
         let fits = null;
         for (const key in this.antigens) {
           const pt = this.antigens[key].pt, f = fitAt(dist(c.x, c.y, pt.x, pt.y));
-          if (f >= 0.02) (fits || (fits = {}))[key] = f;
+          // a receptor has to fit reasonably well to be triggered at all; anything that fits one of the
+          // body's own shapes this well was removed when the library was screened
+          if (f >= 0.3) (fits || (fits = {}))[key] = f;
         }
         if (fits) out.push({ c, fits });
       }
@@ -335,6 +362,7 @@
       // ---- dendritic cells carry antigen to the node
       for (const key in this.antigens) {
         const a = this.antigens[key];
+        if (a.constant) continue;           // one of the body's own proteins: always there
         let load = a.depot > 0 ? sat(a.depot, 0.25) : 0;
         if (a.pt.kind === 'bacterium' && s.bStrain === a.pt.strain) load = Math.max(load, sat(s.bacteria, p.loadB));
         if (a.pt.kind === 'virus' && s.vStrain === a.pt.strain) load = Math.max(load, sat(nInf, p.loadV));
@@ -365,7 +393,7 @@
             if (A > 0) stim += r.fits[key] * A / (A + (experienced ? p.KA / p.memGain : p.KA));
           }
           stim = Math.min(1, stim);
-          const drive = stim * (c.kind === 'Th' ? 1 : help);
+          const drive = stim * (c.kind === 'Th' || !p.needHelp ? 1 : help);
           if (experienced && drive > 0.2 && c.E < c.mem) c.boosted = true;   // this response starts from memory cells
           const start = (experienced ? p.recruitMem : p.recruitNaive) * drive * c.R;
           const grow = p.divide * drive * c.E * Math.max(0, 1 - tot[c.kind] / p.Emax);

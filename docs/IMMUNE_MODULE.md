@@ -140,7 +140,7 @@ Every wrong option gets its own feedback (`PEDAGOGY.md` §5).
 The sim names a term only after the student has seen what the thing does. It names these and no
 more:
 
-phagocyte (macrophage, neutrophil) · PAMPs, pattern recognition receptors and toll-like receptors
+phagocyte (macrophage, neutrophil) · opsonization, neutralization and agglutination (scene 8) · PAMPs, pattern recognition receptors and toll-like receptors
 (added at instructor review; named once, in scene 3, after the student has said what such receptors
 allow) · inflammation · dendritic cell · antigen · lymph node ·
 lymphocyte · receptor · B cell · plasma cell · antibody · helper T cell (CD4) · cytotoxic T cell
@@ -427,7 +427,7 @@ Each milestone is usable in a course on its own.
 
 ## As built (differences from the plan above)
 
-- **Thirteen scenes, 66 steps.** The scene list is as planned. Changes inside scenes:
+- **Thirteen scenes, 70 steps.** The scene list is as planned. Changes inside scenes:
   - *Scene 1* opens with anatomy beside function (instructor review, Nov 2026): the whole-body
     screen shows an anatomical figure of the lymphatic system ("Anatomy of the Lymphatic System",
     OpenStax College, CC BY 3.0; `immune/img/CREDITS.md`) on the left and the lab's simplified
@@ -446,6 +446,13 @@ Each milestone is usable in a course on its own.
     from the blue macrophages; the lymph vessel; the lymph node with its three kinds of
     lymphocyte; the blood; and the two new curves on the timeline. The same purple star travels
     along the lymph vessel and appears, large, in scene 7.
+    Before the library, a whole-cell picture (view `meet`) shows the goal: a bacterium covered with
+    one surface protein (the antigen) and three B-lymphocytes with receptors of different shapes;
+    the student brings each to the bacterium and sees one bind and the others drift away. The
+    library step then says outright that it is the same lymph node zoomed out. Its close-up now
+    draws the lymphocyte's membrane and receptor above and the bacterium's surface and antigen
+    below, lowers the receptor until it touches, and shades any gap. After the antigen has found
+    the fitting cell, the whole-cell picture returns with that cell bound.
     A second step sets the macrophage beside the dendritic cell in a three-row table (both swallow
     bacteria; one stays to kill and raise the alarm, the other carries antigen to the node) and
     names the antigen-presenting cell. Scene 7's name box keeps the textbook's list of
@@ -453,7 +460,23 @@ Each milestone is usable in a course on its own.
     divide the work.
   - *Scene 6* asks about the lag as "about a week" (the B-lymphocyte clone reaches a thousand
     cells around day 7, because it waits for helper T-lymphocytes, which scene 7 then explains).
-  - *Scene 7* has one self-tolerance sentence in a feedback, not a separate experiment.
+  - *Scene 7* was restaged after instructor review (Nov 2026). It opens by stating the rule and the
+    question (why make a B-lymphocyte wait for a second cell?), names the MHC class II molecules
+    in the text and in the picture, then runs three steps: the student brings helper
+    T-lymphocytes to the dendritic cell until one binds the fragment (selected); the selected
+    helper's clone appears; a helper from the clone docks on the B-lymphocyte's MHC class II
+    molecule and gives the go-ahead (the with/without experiment). It ends with an experiment on
+    the reason: a B-lymphocyte that fits one of Priya's own proteins does nothing under the real
+    rule, because no helper T-lymphocyte fits self, and makes antibody against her own cells if
+    one key were enough (`needHelp: 0` in the engine). In the picture, every molecule (antigen,
+    receptor end, MHC fragment) is drawn to one scale, far smaller than the bacterium or the
+    cells, and receptors are attached by a stalk with the cleft facing outward.
+  - *Scene 8* is retitled "What antibody does" and opens with a picture of B-lymphocyte → clone →
+    plasma cell → antibody, so plasma cells are introduced before they are used. The dish result
+    is stated as "antibody did not kill these bacteria", and a name box gives antibody's three
+    jobs: marking for destruction (opsonization, complement), neutralization and agglutination.
+  - *Scene 11* names the MHC class I molecules in the text and the picture, and its table is
+    headed "MHC class I and class II".
   - *Scene 12* is a 4 × 2 table (neutrophils, B-lymphocytes, cytotoxic T-lymphocytes, helper
     T-lymphocytes × bacteria, virus); the planned "second exposure" column was dropped. The
     wiring exercise is a second small table (who needs the go-ahead from whom; which pathogens
@@ -462,7 +485,8 @@ Each milestone is usable in a course on its own.
     antibody, not memory.
 - **Files.** `immune/engine.js` (the model), `immune/app.js` (state, clock, the timeline),
   `immune/anatomy.js` (the anatomical figure as a data URI, generated by
-  `node immune/img/embed.js`), `immune/views.js` (six views: `body`, `places`, `node`, `handshake`, `dish`, `windows`),
+  `node immune/img/embed.js`), `immune/views.js` (nine views: `body`, `places`, `meet`, `node`, `handshake`, `stray`, `plasma`, `dish`,
+  `windows`),
   `immune/lesson-a.js` and `immune/lesson-b.js` (the two Parts, results and completion code).
 - **Lymphocyte clones are continuous numbers, not whole cells dividing by chance.** A run is
   therefore exactly repeatable. Variety between groups comes from the seed instead: each group

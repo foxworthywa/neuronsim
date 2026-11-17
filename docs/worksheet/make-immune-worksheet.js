@@ -79,7 +79,7 @@ const student = [
 
   part('A · Before you open the sim', 'what you think now; there are no wrong answers here (4 points)'),
   q('Bacteria get into a scrape on your knee. Draw what you think happens over the next two weeks, and where in the body it happens. Label any cells or structures you know.', false, 2),
-  box(3000, 'your drawing'),
+  box(2100, 'your drawing'),
   q('If you have had chickenpox (or the vaccine), you will probably never have it again. What do you think your body kept, and where?', true, 2),
   ...lines(2),
 
@@ -111,16 +111,18 @@ const student = [
   q('Our prediction (circle one): a lymphocyte that fits   already exists  /  will be built to match  /  will be copied from the dendritic cell'),
   q('By hand we tested ______ of 1,296; best fit ______ %.   B-lymphocytes whose receptor fits: ______ of 1,296.   For the other strain: ______  (the same cells / different cells).'),
   q('Did the library change when the pathogen changed? What does that tell you about where a fitting receptor comes from?', true),
-  ...lines(2),
+  ...lines(1),
 
   scene(6, 'One cell is not enough', 'Watch the clone grow · The lump in her groin', 1),
   q('B-lymphocytes that fit:  day 2 ________   day 4 ________   day 6 ________.     The lump in Priya’s groin is ____________________________.'),
 
-  scene(7, 'Two keys', 'Find the helper that fits · Can the B-lymphocyte go ahead alone?', 1),
+  scene(7, 'Two keys', 'Steps 1 to 3 · Why insist on two cells?', 1),
   q('A T-lymphocyte’s receptor fits only a ______________ of antigen held in an ______________ molecule on another cell.'),
   q('Day 8 without helper T-lymphocytes: ________ B-lymphocytes that fit, antibody ________.    With them: ________ B-lymphocytes, antibody ________ units.'),
+  q('A B-lymphocyte that fits Priya’s OWN protein, day 10. Two keys needed: ______ cells, antibody ______.   If one key were enough: ______ cells, antibody ______.'),
 
-  scene(8, 'Antibodies tag, phagocytes kill', 'Four dishes · Back at the wound', 2),
+  scene(8, 'What antibody does', 'From B-lymphocyte to plasma cell · Four dishes · Back at the wound', 2),
+  q('Cells that make antibody: ______________ cells. Besides marking microbes for phagocytes, antibody can ______________ toxins and viruses and ______________ (clump) microbes.'),
   table([3600, 3600, 3600], [
     ['Bacteria after 6 hours (start: 100 thousand)', 'No phagocytes', 'With phagocytes'],
     blankRow([3600, 3600, 3600], 'No antibody'),
@@ -140,7 +142,7 @@ const student = [
   scene(10, 'Hiding inside', 'Try antibody · Antibody first', 1),
   q('Antibody given on day 3:  free virus ________ → ________;  infected cells ________ → ________.     Antibody given first: most cells infected ________.'),
 
-  scene(11, 'Every cell shows what it is making', 'You are the cytotoxic T-lymphocyte · Where do they come from? · Two windows', 2),
+  scene(11, 'Every cell shows what it is making', 'You are the cytotoxic T-lymphocyte · Where do they come from? · MHC class I and class II', 2),
   q('By hand: ______ of 12 cells still healthy; healthy cells killed by mistake ______.    Elena: cytotoxic T-lymphocytes arrive on day ______; virus cleared on day ______.'),
   table([2800, 4000, 4000], [
     ['Copy from the sim', 'MHC class I', 'MHC class II'],
@@ -168,22 +170,22 @@ const student = [
 
   part('C · After the sim', 'full sentences, your own numbers; explain why, not just what (28 points)'),
   q('1. Priya’s knee. What made her knee red, warm and swollen: the bacteria, or Priya? Explain what each sign is and what it achieves. Use your prednisone result as evidence.', false, 3),
-  ...lines(5),
+  ...lines(4),
   q('2. Selection, not instruction. A classmate says: “The immune system studies a new germ and then builds an antibody to fit it.” Use what you did in scene 5 (the hunt, letting the antigen find the cells, and swapping the strain) to explain what really happens. Use the term clonal selection.', true, 5),
-  ...lines(6),
+  ...lines(5),
   q('3. The lump and the lag. What was the lump in Priya’s groin, and why did it appear on day 3 and not on day 1? Using your counts for days 2, 4 and 6, explain why she was ill for more than a week before the bacteria were cleared, and what held them in check until then.', false, 4),
-  ...lines(5),
+  ...lines(4),
   q('4. The second time. Compare Priya’s first and second infections using your table from scene 9. Was she infected the second time? What had the first infection left behind, and why did it not help against the different strain?', false, 3),
-  ...lines(5),
+  ...lines(4),
   q('5. Elena’s flu. Why could antibody not clear Elena’s infection once it was established, although it prevented infection when it was there first? What does a cytotoxic T-lymphocyte destroy, and how does it tell which cells to destroy?', false, 4),
-  ...lines(5),
+  ...lines(4),
   q('6. Two patients. (a) Mr. Hall’s wound showed little redness or swelling and no pus. Why is that not reassuring? (b) Ms. Adeyemi has lost most of one kind of cell. Explain why that one loss left her unable to make antibody AND unable to clear a virus. Use your scene 12 table.', true, 4),
-  ...lines(6),
+  ...lines(5),
   q('7. Transfer: two things people say. “I had my flu shot yesterday, so I’m covered for the party tonight.” “The flu shot gave me the flu.” Respond to each, using your scene 13 results. Then explain why a newborn is protected for a few months without ever having been vaccinated, and why that protection does not last.', true, 3),
-  ...lines(6),
+  ...lines(5),
   q('Now redraw your Part A picture as a timeline. Sketch four curves for a FIRST infection (bacteria, neutrophils at the site, lymphocytes that fit, antibody), from day 0 to day 12. Then add, in another colour or as dashed lines, the bacteria and antibody for a SECOND infection with the same strain. Label three events. Under it, write one thing in your Part A drawing that you would now change.', false, 2),
-  box(3100, 'your timeline: how many (up the page) against time in days (across)'),
-  ...lines(1),
+  box(2300, 'your timeline: how many (up the page) against time in days (across)'),
+  ...lines(2),
 ];
 
 const doc = new Document({

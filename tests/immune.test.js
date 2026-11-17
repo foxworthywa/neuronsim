@@ -300,3 +300,17 @@ test('a row of airway cells: untouched, the virus spreads; killing the infected 
   late.advance(2); late.kill(2); late.kill(8); late.advance(48);
   assert.ok(late.healthy < 10, 'killing them after they have released virus is too late for the neighbours');
 });
+
+// ------------------------------------------------------------------ why two keys
+test('a self-reactive B-lymphocyte that escaped screening does nothing, because no helper T-lymphocyte fits self', () => {
+  const run = (needHelp) => { const b = person(); const pt = b.selfAntigen(0, { stray: true }); b.set('needHelp', needHelp); b.advance(10 * DAY); return { b: b.specificAt(pt, 'B'), th: b.specificAt(pt, 'Th').total, ab: b.antibodyAt(pt) }; };
+  const real = run(1), oneKey = run(0);
+  assert.equal(real.th, 0, 'no helper T-lymphocyte fits the self protein');
+  assert.ok(real.b.total >= 1 && real.b.total < 5, `the stray B-lymphocyte is there (${real.b.total.toFixed(1)} cells) but has not expanded`);
+  assert.ok(real.ab < 0.01, 'no antibody against self');
+  assert.ok(oneKey.b.total > 1000 && oneKey.ab > 10, `if one key were enough: ${oneKey.b.total.toFixed(0)} cells and ${oneKey.ab.toFixed(0)} units of antibody against self`);
+  // the same person still answers a real infection normally
+  const c = person(b => { b.selfAntigen(0, { stray: true }); b.infect('bacterium'); });
+  const r = follow(c, 14);
+  between(r.when('cleared'), 7, 11.5, 'bacterial infection cleared (day)');
+});

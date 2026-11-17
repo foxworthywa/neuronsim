@@ -56,6 +56,13 @@ const URL = (arg ? (arg.includes('://') ? arg : 'file://' + path.resolve(arg)) :
         await page.evaluate(() => { const a = window.__immunesim.app; a.sim.set('manualAlarm', 1); a.clock = 'free'; a.speed = 12; });
         await waitContinue(30000);
         await page.evaluate(() => { window.__immunesim.app.clock = 'idle'; });
+      } else if (st.title === 'Inside the lymph node: what is a fit?') {
+        // bring a lymphocyte that does not fit, wait for it to drift away, then the one that does
+        const idx = await page.evaluate(() => { const v = window.__immunesim.app.view; return { no: v.cells.findIndex((c, i) => !v.fits(i)), yes: v.cells.findIndex((c, i) => v.fits(i)) }; });
+        await page.evaluate((i) => window.__immunesim.app.view.tryCell(i), idx.no);
+        await page.waitForFunction(() => { const v = window.__immunesim.app.view; return v.cells.every(c => !c.busy) && v.cells.some(c => c.arrived); }, null, { timeout: 15000 });
+        await page.evaluate((i) => window.__immunesim.app.view.tryCell(i), idx.yes);
+        await page.waitForFunction(() => window.__immunesim.app.view.docked != null, null, { timeout: 15000 });
       } else if (st.title === 'Hunt by hand') {
         for (let i = 0; i < 8; i++) { await page.locator('.actions button').first().click(); await page.waitForTimeout(40); }
       } else if (st.title === 'Let the antigen find it' || st.title === 'A different pathogen') {
@@ -63,10 +70,13 @@ const URL = (arg ? (arg.includes('://') ? arg : 'file://' + path.resolve(arg)) :
         await page.waitForTimeout(150);
         const n = await page.evaluate(() => { const v = window.__immunesim.app.view; const f = v.fitting(); v.pick(f[0]); return f.length; });
         if (st.num) { await page.fill('.numrow input', String(n + 1)); await page.click('.numrow button'); await page.fill('.numrow input', String(n)); await page.click('.numrow button'); }
-      } else if (st.title === 'Find the helper that fits') {
-        await page.evaluate(() => { const v = window.__immunesim.app.view; const c = v.candidates.slice().sort((a, b) => a.f - b.f); v.onTh(c[0].c, c[0].f); v.onTh(c[c.length - 1].c, c[c.length - 1].f); });
-        await page.waitForTimeout(150);
-        await page.locator('.actions button').first().click(); await page.waitForTimeout(120); await finishRuns();
+      } else if (st.title === 'Step 1: the dendritic cell selects a helper') {
+        // bring a helper that does not fit, wait for it to drift away, then the one that does
+        const idx = await page.evaluate(() => { const v = window.__immunesim.app.view; const c = v.candidates; return { no: c.findIndex(t => t.f < 0.5), yes: c.findIndex(t => t.f >= 0.5) }; });
+        await page.evaluate((i) => window.__immunesim.app.view.tryTh(i), idx.no);
+        await page.waitForFunction(() => { const c = window.__immunesim.app.view.candidates; return c.every(t => !t.busy) && c.some(t => t.arrived); }, null, { timeout: 15000 });
+        await page.evaluate((i) => window.__immunesim.app.view.tryTh(i), idx.yes);
+        await page.waitForFunction(() => window.__immunesim.app.view.chosen != null, null, { timeout: 15000 });
       } else if (st.title === 'You are the cytotoxic T-lymphocyte') {
         await page.evaluate(() => { window.__immunesim.app.view.onCell(5); });      // a healthy cell, by mistake
         await page.locator('.actions button', { hasText: 'Start again' }).click();

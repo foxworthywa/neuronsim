@@ -161,11 +161,11 @@
           title: 'How to read this picture',
           setup: () => { setSim(person(), { kind: 'virus' }); cache.patch = new Patch({ n: 12, infected: [[3, 2], [8, 0.3]] }); },
           enter: (c) => { const v = c.view(); v.setPatch(cache.patch); v.setMarks(true); v.onCell = null; },
-          text: `<ol style="margin:0 0 6px 18px;padding:0"><li>One <b>cell</b>, with its nucleus.</li><li>On its surface, <b>holders</b>. Every cell with a nucleus constantly chops up samples of the proteins it is making and displays the fragments in these holders, like goods in a shop window.</li><li>The key: grey shapes are fragments of the cell's own proteins.</li></ol>`,
-          question: { prompt: 'A cell was infected an hour ago and has started making viral proteins. What will appear in its windows?', options: [
-            { t: 'Fragments of viral protein, alongside fragments of its own', ok: true, fb: nameBox('These holders are <b>MHC class I molecules</b>. Nearly every cell in the body has them. They show the outside world what the cell is making <i>inside</i>, so an infected cell cannot help giving itself away.') },
+          text: `<ol style="margin:0 0 6px 18px;padding:0"><li>One <b>cell</b>, with its nucleus.</li><li>On its surface, <b>MHC class I molecules</b>: protein holders like the ones in scene 7, but a different class. Every cell with a nucleus constantly chops up samples of the proteins it is making and displays the fragments in them, like goods in a shop window.</li><li>The key: grey shapes are fragments of the cell's own proteins.</li></ol>`,
+          question: { prompt: 'A cell was infected an hour ago and has started making viral proteins. What will appear in its MHC class I molecules?', options: [
+            { t: 'Fragments of viral protein, alongside fragments of its own', ok: true, fb: nameBox('Nearly every cell in the body has <b>MHC class I molecules</b> (only antigen-presenting cells also have class II). They show the outside world what the cell is making <i>inside</i>, so an infected cell cannot help giving itself away.') },
             { t: 'Nothing different: the virus is hidden inside', fb: 'The cell samples <i>whatever</i> proteins it is making. If it is making viral proteins, what will be among the samples?' },
-            { t: 'Whole virus particles', fb: 'The holders carry short fragments of protein, not whole particles. Which proteins is this cell now making?' },
+            { t: 'Whole virus particles', fb: 'MHC molecules carry short fragments of protein, not whole particles. Which proteins is this cell now making?' },
           ] },
         },
         {
@@ -176,12 +176,12 @@
             v.onCell = (i) => {
               const p = cache.patch, shown = p.shows(i), was = p.kill(i);
               if (!was) return;
-              c.status(was === 'healthy' ? '<b>That cell was healthy.</b> Its windows showed only its own proteins. A killer that does not read the window destroys healthy tissue.' : shown ? '<b>Infected cell destroyed</b> before it could release more virus.' : '<b>That cell was infected</b>, but its window did not show it yet. You could not have known: a lucky hit.', was !== 'healthy');
+              c.status(was === 'healthy' ? '<b>That cell was healthy.</b> Its MHC class I molecules showed only its own proteins. A killer that does not read them destroys healthy tissue.' : shown ? '<b>Infected cell destroyed</b> before it could release more virus.' : '<b>That cell was infected</b>, but its MHC class I molecules did not show it yet. You could not have known: a lucky hit.', was !== 'healthy');
               c.recordValue('byHand', { hours: p.t, healthyKilled: p.killedHealthy, healthyLeft: p.healthy, lost: p.lost });
             };
           },
           text: `<p>Two of these twelve cells are infected. An infected cell starts to release virus about 6 hours after it was infected, and its neighbours are infected soon after.</p>
-                 <p><b>Read the windows. Click a cell to kill it.</b> Then let time pass and read them again. Stop the infection while losing as few cells as you can.</p>`,
+                 <p><b>Read each cell's MHC class I molecules. Click a cell to kill it.</b> Then let time pass and read them again. Stop the infection while losing as few cells as you can.</p>`,
           actions: [
             { label: 'Let 2 hours pass', cls: 'germ', run: (c) => { cache.patch.advance(2); c.recordValue('byHand', { hours: cache.patch.t, healthyKilled: cache.patch.killedHealthy, healthyLeft: cache.patch.healthy, lost: cache.patch.lost }); } },
             { label: 'Start again', run: (c) => { cache.patch = new Patch({ n: 12, infected: [[3, 2], [8, 0.3]] }); c.view().setPatch(cache.patch); c.status('', false); } },
@@ -193,9 +193,9 @@
           view: 'windows', title: 'What did you destroy?',
           text: () => `<p>You stopped the infection with <b>${cache.patch ? cache.patch.healthy : '—'}</b> of 12 cells still healthy${cache.patch && cache.patch.killedHealthy ? ` (and ${cache.patch.killedHealthy} healthy cell${cache.patch.killedHealthy > 1 ? 's' : ''} killed by mistake)` : ''}.</p>`,
           question: { prompt: 'What exactly did you destroy?', options: [
-            { t: 'Elena\'s own cells: the ones whose windows showed a viral fragment', ok: true, fb: nameBox('That is the job of a <b>cytotoxic T-lymphocyte</b> (a CD8 cell). Its receptor fits one viral fragment held in an MHC class I molecule. When it finds that, it makes the cell destroy itself. It never touches free virus.') },
+            { t: 'Elena\'s own cells: the ones whose MHC class I molecules showed a viral fragment', ok: true, fb: nameBox('That is the job of a <b>cytotoxic T-lymphocyte</b> (a CD8 cell). Its receptor fits one viral fragment held in an MHC class I molecule. When it finds that, it makes the cell destroy itself. It never touches free virus.') },
             { t: 'Virus particles', fb: 'You clicked on cells. The free virus particles above them were never your target.' },
-            { t: 'Any cell near the infection', fb: 'If you killed a cell without the red fragment in its window, the sim told you it was healthy. What marked the cells that needed to die?' },
+            { t: 'Any cell near the infection', fb: 'If you killed a cell without the red fragment in an MHC class I molecule, the sim told you it was healthy. What marked the cells that needed to die?' },
           ] },
         },
         {
@@ -214,8 +214,8 @@
           waitFor: (c) => data(c).ran, waitHint: 'Predict, then run the infection',
         },
         {
-          view: 'places', title: 'Two windows',
-          text: `<p>You have now met two kinds of holder. Fill in the table (scene 7 for one column, this scene for the other).</p>`,
+          view: 'places', title: 'MHC class I and class II',
+          text: `<p>You have now met both classes of MHC molecule. Fill in the table (scene 7 for one column, this scene for the other).</p>`,
           extra: (el, c) => selectTable(el, c, {
             key: 'mhc', head: ['', 'MHC class I', 'MHC class II'],
             rows: [
@@ -224,7 +224,7 @@
               { label: 'Read by', cells: [{ options: ['helper T-lymphocytes', 'cytotoxic T-lymphocytes'], answer: 'cytotoxic T-lymphocytes' }, { options: ['helper T-lymphocytes', 'cytotoxic T-lymphocytes'], answer: 'helper T-lymphocytes' }] },
               { label: 'What follows', cells: [{ options: ['the go-ahead for other lymphocytes', 'the cell is killed'], answer: 'the cell is killed' }, { options: ['the go-ahead for other lymphocytes', 'the cell is killed'], answer: 'the go-ahead for other lymphocytes' }] },
             ],
-            done: 'Class I says "this is what I am making": if it is viral, kill me. Class II says "this is what I found": if you recognise it, help. B-lymphocytes need no window at all: their receptors, and antibody, bind whole antigen directly.',
+            done: 'Class I says "this is what I am making": if it is viral, kill me. Class II says "this is what I found": if you recognise it, help. B-lymphocytes need no MHC molecule to recognise antigen: their receptors, and antibody, bind whole antigen directly.',
           }),
           waitFor: () => false, waitHint: 'Complete the table',
         },
@@ -431,7 +431,9 @@
     L.push('Scene 7 · Two keys');
     if (v.noHelp) L.push(`  Day 8 without helper T: ${fmt(v.noHelp.b)} B-lymphocytes that fit, antibody ${fmtAb(v.noHelp.ab)}`);
     if (v.withHelp) L.push(`  Day 8 with helper T: ${fmt(v.withHelp.b)} B-lymphocytes that fit, antibody ${fmtAb(v.withHelp.ab)} units`);
-    L.push('Scene 8 · Antibodies tag, phagocytes kill');
+    if (v.twoKeys) L.push(`  A B-lymphocyte that fits Priya's own protein, day 10, two keys needed: ${fmt(v.twoKeys.b)} cells, antibody ${fmtAb(v.twoKeys.ab)}`);
+    if (v.oneKey) L.push(`  The same if one key were enough: ${fmt(v.oneKey.b)} cells, antibody against her own cells ${fmtAb(v.oneKey.ab)} units`);
+    L.push('Scene 8 · What antibody does');
     if (v.dish) L.push(`  Dish after 6 h (start 100 thousand): alone ${fmt(v.dish.plain)}; + antibody ${fmt(v.dish.ab)}; + phagocytes ${fmt(v.dish.phag)}; + both ${fmt(v.dish.both)}`);
     if (v.first) L.push(`  Priya's first infection: first antibody day ${d1(v.first.firstAb)}; cleared day ${d1(v.first.cleared)}; most bacteria ${fmt(v.first.peak)}; antibody on day 3: ${fmtAb(v.first.abDay3)}`);
     L.push('Scene 9 · The second time');

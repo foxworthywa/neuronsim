@@ -2564,11 +2564,12 @@ window.IM_ANATOMY = {
       id: 'same', title: 'The same every time', speed: 12,
       steps: [
         {
-          view: 'places', viewOpts: { node: false, kind: 'bacterium', caption: 'The site. In this scene the model has macrophages and neutrophils, and nothing else.' }, remount: true,
+          view: 'places', viewOpts: { node: false, kind: 'bacterium', caption: 'The site. In this scene the lymphocytes are switched off: macrophages and neutrophils only.' }, remount: true,
           timeline: TL(4, ['pathogen', 'phago']), meters: METERS.innate,
           title: 'If this were all you had',
           setup: () => setSim(innateOnly(), { kind: 'bacterium' }),
-          text: `<p>So far you have followed two days. In this scene the model has <b>only</b> what you have met so far: skin, macrophages, inflammation and neutrophils.</p>`,
+          text: `<p>So far you have followed two days. In this scene the model has <b>only</b> what you have met so far: skin, macrophages, inflammation and neutrophils.</p>
+                 <p>A real person also has <b>lymphocytes</b> (B-lymphocytes and T-lymphocytes), which join in after a few days. They are <b>switched off</b> here so that you can see what the first defenses do alone. You will meet them in scene 5.</p>`,
           question: predict({ prompt: 'Predict the bacteria over four days with only these defenses.', options: [
             { t: 'Held roughly level, but not cleared', ok: true, fb: 'Run it and see. This particular bacterium (<i>Streptococcus pyogenes</i>) has a coat that makes it hard for a phagocyte to grip.' },
             { t: 'Cleared by about day 2', fb: 'In scene 3 the neutrophils stopped the rise. Did the count go on falling to zero while you watched?' },
@@ -2581,7 +2582,7 @@ window.IM_ANATOMY = {
         {
           view: 'places', title: 'The second time',
           setup: () => { setSim(innateOnly(), { kind: 'bacterium' }); if (!cache.innate1) cache.innate1 = track(innateOnly((b) => b.infect('bacterium')), 96, 'bacterium', 'A'); app.ghosts = [{ label: 'first time', zero: cache.innate1[0].t, rows: cache.innate1, keys: ['pathogen', 'phago'] }]; },
-          text: `<p>Suppose an antibiotic clears the infection, and a month later the same bacterium gets into the same knee. The grey curves are the first time.</p>`,
+          text: `<p>Suppose an antibiotic clears the infection, and a month later the same bacterium gets into the same knee. The lymphocytes are still switched off. The grey curves are the first time.</p>`,
           question: predict({ prompt: 'Predict: with only these defenses, how will the second response compare with the first?', options: [
             { t: 'The same', ok: true, fb: 'Run it and compare the new curves with the grey ones.' },
             { t: 'Faster and stronger: the cells have had practice', fb: 'That is what most people expect. Ask what would have to have <i>changed</i> in the macrophages or neutrophils for that to be true. Their receptors are built in, and these neutrophils are new ones: a neutrophil lives only a day or so.' },
@@ -2594,7 +2595,7 @@ window.IM_ANATOMY = {
         {
           view: 'places', title: 'A bacterium she has never met',
           setup: () => { setSim(innateOnly(), { kind: 'bacterium', strain: 'C' }); if (!cache.innate1) cache.innate1 = track(innateOnly((b) => b.infect('bacterium')), 96, 'bacterium', 'A'); app.ghosts = [{ label: 'the first bacterium', zero: cache.innate1[0].t, rows: cache.innate1, keys: ['pathogen', 'phago'] }]; },
-          text: `<p>Now a <b>different strain</b> of the bacterium, with different proteins on its surface, which Priya has never met.</p>`,
+          text: `<p>Now a <b>different strain</b> of the bacterium, with different proteins on its surface, which Priya has never met. (Lymphocytes still switched off.)</p>`,
           actions: [{ label: 'Run the new strain', cls: 'germ', disabled: (c) => busy(c) || data(c).ran, run: (c) => experiment(c, { before: (b) => b.infect('bacterium', { strain: 'C' }), hours: 96, speed: 12 }) }],
           question: { prompt: 'The response to a strain she had never met was the same as to one she had met twice. Why?', options: [
             { t: 'These cells recognise features that nearly all bacteria share, and an infection does not change them', ok: true, fb: nameBox('<b>Innate immunity.</b> Barriers, phagocytes and inflammation: <b>fast</b> (hours), <b>nonspecific</b> (pattern recognition receptors fit the PAMPs that any bacterium carries) and with <b>no memory</b> (the same every time). You are born with it.') + '<p style="margin:6px 0 0">It held Priya\'s infection but could not clear it. To finish the job she needs something that can pick out <i>this</i> bacterium exactly.</p>' },

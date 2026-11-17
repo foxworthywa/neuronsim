@@ -437,7 +437,8 @@ Each milestone is usable in a course on its own.
     when clicked. The copy used is the 2013 release on Wikimedia Commons, because OpenStax now
     licenses the images on its own site CC BY-NC-SA.
   - *Scene 4* compares a first exposure, a second exposure a month later and a different strain,
-    all with innate defenses only. The planned "twice the dose" run was dropped: in the model, as
+    all with innate defenses only. The first step says outright that a real person also has
+    B- and T-lymphocytes and that they are switched off here (instructor review, Nov 2026). The planned "twice the dose" run was dropped: in the model, as
     in the published experiments, what decides the outcome is the number of neutrophils at the
     site, not the dose.
   - *Scene 6* asks about the lag as "about a week" (the B-lymphocyte clone reaches a thousand

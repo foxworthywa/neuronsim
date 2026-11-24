@@ -252,17 +252,20 @@
     };
     const parts = {};
     // the second set of capillaries, wrapped round the tubule (drawn first, behind it)
-    parts.ret = svgEl('path', { d: 'M96,128 C60,150 70,200 120,196 C170,192 150,110 210,104 C262,100 250,170 300,176 C342,180 332,120 372,150 C388,170 350,196 352,230 L352,430 C352,470 300,470 300,430 L300,250 C300,222 322,210 344,196 C380,176 392,120 432,120 C452,122 458,150 470,170', fill: 'none', stroke: SEG.ret, 'stroke-width': 4.5, 'stroke-linecap': 'round', 'stroke-dasharray': o.plain ? null : '1 0' }, g);
+    parts.ret = svgEl('path', { d: 'M96,197 C104,197 112,196 120,196 C170,192 150,110 210,104 C262,100 250,170 300,176 C342,180 332,120 372,150 C388,170 350,196 352,230 L352,430 C352,470 300,470 300,430 L300,250 C300,222 322,210 344,196 C380,176 392,120 432,120 C452,122 458,150 470,170', fill: 'none', stroke: SEG.ret, 'stroke-width': 4.5, 'stroke-linecap': 'round', 'stroke-dasharray': o.plain ? null : '1 0' }, g);
     parts.vein = svgEl('path', { d: 'M470,170 Q500,200 520,150', fill: 'none', stroke: '#b98a94', 'stroke-width': 6, 'stroke-linecap': 'round' }, g);
     // the tubule
     parts.first = tube('M150,104 C190,60 220,150 250,112 C280,74 300,160 322,150 C340,142 326,196 326,220', SEG.first, 'first');
     parts.loop = tube('M326,220 L326,440 C326,472 378,472 378,440 L378,250', SEG.loop, 'loop');
     parts.last = tube('M378,250 C378,214 410,214 410,186 C410,150 446,146 452,176 L452,470', SEG.last, 'last');
-    // the filter: a knot of capillaries inside a cup
+    // the filter: a knot of capillaries inside a cup. Blood comes in by one arteriole and leaves
+    // the knot by another, side by side; the second leads on to the capillaries round the tubule.
     parts.filter = svgEl('g', {}, g);
-    svgEl('path', { d: 'M96,60 A48,48 0 1,0 150,104', fill: '#fff7df', stroke: SEG.filter, 'stroke-width': 6, 'stroke-linecap': 'round' }, parts.filter);
-    svgEl('path', { d: 'M40,40 L82,74 C60,96 84,128 104,112 C124,96 96,78 112,66 C132,54 150,84 128,106 C112,124 92,130 96,128', fill: 'none', stroke: COL.bloodDark, 'stroke-width': 6, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, parts.filter);
-    parts.artery = svgEl('path', { d: 'M12,18 L40,40', fill: 'none', stroke: COL.bloodDark, 'stroke-width': 8, 'stroke-linecap': 'round' }, g);
+    svgEl('circle', { cx: 100, cy: 104, r: 48, fill: '#fff7df', stroke: SEG.filter, 'stroke-width': 6 }, parts.filter);
+    svgEl('path', { d: 'M60,88 C84,62 126,66 130,90 C132,108 104,98 100,112 C96,128 134,122 126,142 C116,156 78,146 62,122', fill: 'none', stroke: COL.bloodDark, 'stroke-width': 6, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, parts.filter);
+    parts.afferent = svgEl('path', { d: 'M30,6 C36,40 44,70 60,88', fill: 'none', stroke: COL.bloodDark, 'stroke-width': 9, 'stroke-linecap': 'round' }, g);
+    parts.efferent = svgEl('path', { d: 'M62,122 C46,140 40,160 52,178 C60,190 76,196 96,197', fill: 'none', stroke: COL.bloodDark, 'stroke-width': 6.5, 'stroke-linecap': 'round' }, g);
+    parts.artery = parts.afferent;
     g.parts = parts;
     return g;
   }
@@ -376,10 +379,13 @@
       const n = nephronShape(g, { x: NX, y: NY, scale: S }), P = n.parts;
       view.neph = P;
       for (const [id, el, name] of [['filter', P.filter, 'A knot of capillaries inside a cup'], ['first', P.first, 'The first, coiled stretch of the tube'], ['loop', P.loop, 'A hairpin that dips into the inner part'], ['last', P.last, 'The last stretch of the tube'], ['ret', P.ret, 'Capillaries wrapped round the tube']]) part(g, id, name, el);
+      part(g, 'afferent', 'The arteriole that brings blood into the knot of capillaries', P.afferent); part(g, 'efferent', 'The arteriole that carries blood out of the knot of capillaries', P.efferent);
       const lead = (x1, y1, p) => svgEl('path', { d: `M${x1},${y1} L${p[0]},${p[1]}`, stroke: COL.muted, 'stroke-width': 1 }, g);
-      label(g, 478, 78, 'blood in', { 'font-size': 14.5 });
-      label(g, 408, 232, 'a knot of capillaries', { 'font-size': 14.5 }); label(g, 408, 249, 'inside a cup', { 'font-size': 14.5 }); lead(470, 218, T(80, 150));
-      label(g, 408, 330, 'a second set of', { 'font-size': 14.5, fill: '#9e3a33' }); label(g, 408, 347, 'capillaries, wrapped', { 'font-size': 14.5, fill: '#9e3a33' }); label(g, 408, 364, 'round the tube', { 'font-size': 14.5, fill: '#9e3a33' }); lead(540, 350, T(300, 360));
+      const two = (x, y, plain, term) => { const t = label(g, x, y, plain, { 'font-size': 14.5 }); svgEl('tspan', { text: term, 'font-weight': 700, fill: '#8f2620' }, t); return t; };
+      two(478, 70, 'blood in: ', 'afferent arteriole');
+      label(g, 548, 98, 'a knot of capillaries inside a cup', { 'font-size': 14.5 }); lead(574, 102, T(96, 62));
+      label(g, 408, 250, 'blood leaves the knot:', { 'font-size': 14.5 }); two(408, 267, '', 'efferent arteriole'); lead(470, 236, T(44, 166));
+      label(g, 408, 340, 'a second set of', { 'font-size': 14.5, fill: '#9e3a33' }); label(g, 408, 357, 'capillaries, wrapped', { 'font-size': 14.5, fill: '#9e3a33' }); label(g, 408, 374, 'round the tube', { 'font-size': 14.5, fill: '#9e3a33' }); lead(540, 360, T(300, 370));
       label(g, 884, 176, 'blood back', { 'font-size': 14.5 }); label(g, 884, 193, 'to the body', { 'font-size': 14.5 });
       label(g, 846, 312, 'a long tube,', { 'font-size': 14.5 }); label(g, 846, 329, 'in three stretches', { 'font-size': 14.5 }); lead(842, 316, T(452, 300));
       label(g, 846, 440, 'to the hollow of', { 'font-size': 14.5 }); label(g, 846, 457, 'the kidney: urine', { 'font-size': 14.5 });

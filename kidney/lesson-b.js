@@ -187,7 +187,8 @@
           view: 'strip', title: 'The sum',
           setup: () => setSim(rest().set('drugHold', 500)),
           enter: (c) => { const v = c.view(); v.show(['glucose', 'cr', 'drug']); for (const k of ['water', 'alb', 'glucose', 'cr', 'drug']) v.reveal(k); },
-          text: `<p>The ledger is complete. Read across any row: the last column is the first, minus the second, plus the third.</p>`,
+          text: `<p>The ledger is complete. Read across any row: the last column is the first, minus the second, plus the third.</p>
+                 <p>The three kinds of thing from scene 1 are three patterns here. <b>Glucose</b>, to be kept: all taken back. <b>Creatinine</b> and the drug, of no use: none taken back. <b>Water</b>, needed in the right amount: nearly all taken back, and how nearly is what scene 9 is about.</p>`,
           question: { prompt: 'A new substance is small, is not taken back, and is not pushed in. How much of it will be in the urine each day?', options: [
             { t: 'Exactly as much as is filtered', ok: true, fb: `Like creatinine. You answered without knowing what the substance is: that is what the three questions are for.${nameBox('<b>Excreted = filtered − reabsorbed + secreted.</b> Your textbook lists, for each stretch of the tubule, which substances are reabsorbed and secreted there. Every item on those lists is an answer to question 2 or question 3.')}` },
             { t: 'None: the kidney only excretes wastes it recognises', fb: 'Think of design 2 in scene 4. What happens to anything small that nothing takes back?' },
@@ -581,10 +582,10 @@
     [3, 'urine store · its exit tube', 'urinary bladder · urethra'],
     [3, 'outer part · inner part · hollow', 'renal cortex · renal medulla · renal pelvis'],
     [3, 'one filter with its tubule', 'nephron'],
+    [3, 'arteriole into · out of the filter', 'afferent arteriole · efferent arteriole'],
     [5, 'the filter (capillaries in a cup)', 'glomerulus + glomerular capsule = renal corpuscle'],
     [5, 'what comes through the filter', 'filtrate (the process: glomerular filtration)'],
     [5, 'how fast the kidneys filter', 'glomerular filtration rate (GFR): about 125 mL/min'],
-    [5, 'arteriole into · out of the filter', 'afferent arteriole · efferent arteriole'],
     [5, 'holding filtering steady', 'autoregulation'],
     [6, 'taking back', 'tubular reabsorption'],
     [6, 'the first stretch of the tubule', 'proximal convoluted tubule'],

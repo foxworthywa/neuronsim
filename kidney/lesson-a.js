@@ -66,7 +66,7 @@
       const block = spec.stack ? htmlEl('td', {}, `<b>${r.label}</b>`) : null;
       r.cells.forEach((cell, ci) => {
         const td = htmlEl(spec.stack ? 'div' : 'td', spec.stack ? { class: 'cell' } : {});
-        const sel = htmlEl('select', { 'aria-label': `${r.label}: ${spec.head[ci + 1]}` });
+        const sel = htmlEl('select', { 'aria-label': `${r.aria || r.label}: ${spec.head[ci + 1]}` });
         sel.appendChild(htmlEl('option', { value: '' }, 'choose…'));
         cell.options.forEach((o) => sel.appendChild(htmlEl('option', { value: o }, o)));
         const k = `${ri}.${ci}`;
@@ -243,6 +243,21 @@
             { t: 'His body made too much potassium and salt', fb: 'The body makes neither: both came from his food. The question is why they did not leave again.' },
           ] },
         },
+        {
+          view: 'person', title: 'What should leave, and what should stay?',
+          setup: () => { if (!isHerreraWed()) herreraWednesday(); },
+          enter: (c) => c.view().setMarks(false),
+          text: `<p>Before looking at how a kidney works, decide what you would want one to do. Here are six things carried in the blood. Read what each is for, then choose what an ideal exit should do with it.</p>`,
+          extra: (el, c) => selectTable(el, c, {
+            key: 'kinds', stack: true, head: ['', 'The exit should'], rows: KINDS,
+            done: `<b>Three kinds of thing, for three reasons.</b>
+              <ul><li><b>Fuel and building blocks</b> (glucose, and the amino acids that proteins are made of): the body worked to get them and none is spare, so none should be lost.</li>
+              <li><b>The body's own fluid</b> (water, salt, potassium): needed in exact amounts, but arriving in whatever amounts were eaten and drunk. The extra has to leave, and only the extra.</li>
+              <li><b>Things with no use</b> (urea and other end products, drugs, poisons): they do harm as they build up, so all of it should leave.</li></ul>
+              Mr. Herrera's weight, potassium and urea rose because the second and third kinds had no way out. Nothing here is simply "waste" or "useful": the job is to hold each thing at its own right level.`,
+          }),
+          waitFor: () => false, waitHint: 'Choose what should happen to each',
+        },
       ],
     },
     // ------------------------------------------------------------- 2. you are the exit
@@ -333,7 +348,7 @@
           view: 'anatomy', title: 'One nephron',
           enter: (c) => { const v = c.view(); v.show(2); v.names(c.stepState().answered); v.highlight(null); v.onPart = null; },
           text: `<p>One nephron, again as an anatomy text draws it and as this lab draws it. It has two parts. First, a <b>knot of capillaries inside a cup</b>. Second, a <b>long tube</b> leading away from the cup: it coils, dips down into the inner part of the kidney and back, coils again, and ends in a duct that many nephrons share.</p>
-                 <p>Blood that leaves the knot of capillaries does not go straight back to the body. It first runs through a <b>second set of capillaries</b>, wrapped round the tube along its whole length. Find them in both pictures: thin red vessels in the figure, a pink line in the lab's drawing.</p>`,
+                 <p>Follow the blood. It comes into the knot by one small artery, the <b>afferent arteriole</b>, and leaves the knot by another, the <b>efferent arteriole</b>. ("Afferent" means carrying toward, "efferent" carrying away.) So the blood leaving the knot is not in a vein, and does not go straight back to the body. The efferent arteriole leads to a <b>second set of capillaries</b>, wrapped round the tube along its whole length. Find all three in both pictures.</p>`,
           question: Object.assign(guess('A guess, before you find out: why would the tube be wrapped in a second set of capillaries?', ['To bring oxygen to the cells of the tube', 'To carry away whatever the tube takes out of the fluid inside it', 'To filter the blood a second time'], 'Keep your guess. Scene 6 shows what those capillaries carry. The key under the lab\'s drawing now gives each part its name; the anatomical figure uses the same names.'), { onCorrect: (c) => c.view().names(true) }),
         },
       ],
@@ -348,7 +363,7 @@
           title: 'Your job: build it',
           setup: () => setSim(benchWith(1, [])),
           enter: (c) => slots(c, TRAY1),
-          text: `<p>Before looking inside a nephron, try to design one. Her blood carries things that must <b>leave</b> (urea, extra potassium, acid) mixed in with things that must <b>stay</b> (water, salt, glucose).</p>
+          text: `<p>Before looking inside a nephron, try to design one. Remember the three kinds of thing from scene 1. Her blood carries things that must <b>leave</b> (urea and acid, which the body has no use for, and whatever potassium is extra today) mixed in with things that must <b>stay</b> (glucose, and nearly all of the water and salt).</p>
                  <p><b>Design 1</b> is the obvious one: a pump for each waste. Each pump recognises one substance and moves only that. <b>Click the three empty slots</b> to fit the pumps, then run two days.</p>`,
           actions: [
             { label: 'Run two days', cls: 'go', disabled: (c) => busy(c) || data(c).ran, run: (c) => experiment(c, { minutes: 2 * DAY, speed: 360, after: (b, c) => { const d = data(c); d.high = TRAY1.filter(w => b.level[w] > 1.25); d.ok = !d.high.length; c.recordValue('design1', { pumps: b.pumps.size, urea: b.level.urea, potassium: b.level.potassium, acid: b.level.acid }); } }) },
@@ -412,9 +427,9 @@
           setup: () => setSim(new Kidney()),
           enter: (c) => c.view().setMarks(true),
           text: `<p>Your kidneys are built like design 2. This picture stays on screen for the rest of the lab: one nephron, with its tube pulled out straight.</p>
-                 <ol><li><b>The filter:</b> the knot of capillaries in its cup. Everything small is pushed out of the blood here.</li>
+                 <ol><li><b>The filter:</b> the knot of capillaries in its cup. Blood comes in by the afferent arteriole, and everything small is pushed out of it here.</li>
                  <li><b>The tubule:</b> the long tube, lined with take-back pumps. <b>Its width in this picture is the flow:</b> watch it narrow.</li>
-                 <li><b>The return line:</b> the second set of capillaries. Whatever is taken back goes into it, and back to the body.</li>
+                 <li><b>The return line:</b> the blood leaves the knot by the efferent arteriole, which leads into the second set of capillaries, drawn here as one wide vessel running beside the tubule. Whatever is taken back goes into it, and back to the body.</li>
                  <li><b>The urine:</b> whatever was not taken back.</li></ol>
                  <p>The price of this design: your kidneys filter about <b>180 litres</b> a day and take nearly all of it back. They are half a percent of your weight and use nearly a tenth of your resting energy doing it.</p>`,
           question: { prompt: 'In this design, which part decides what ends up in the urine?', options: [
@@ -430,12 +445,12 @@
       id: 'filter', title: 'The filter', speed: 8,
       steps: [
         {
-          view: 'filter', viewOpts: { caption: 'The filter of one nephron, close up. Blood flows from left to right.' }, remount: true,
+          view: 'filter', viewOpts: { caption: 'The filter you saw at the left of the nephron, enlarged. The small picture shows which part this is.' }, remount: true,
           graph: NO_GRAPH, meters: NO_METERS,
           title: 'What gets through?',
           setup: () => setSim(new Kidney()),
           enter: (c) => { const v = c.view(); v.setOpen(c.stepState().done); v.showChart(false); v.showArteriole = false; v.showDay = false; },
-          text: `<p>Zoom in on the filter: capillaries carrying blood under pressure, a wall with pores, and the cup that catches whatever comes through. Six things in her blood are drawn, in order of size.</p>
+          text: `<p>This is the filter from the left-hand end of the nephron picture, enlarged (the small picture at the top shows which part). Blood comes in by the afferent arteriole, runs through the knot of capillaries, and leaves by the efferent arteriole. The capillaries have <b>pores in their walls</b>, and the cup catches whatever comes through them. Six things in her blood are drawn, in order of size.</p>
                  <p>Predict what will happen to each when the filter is opened.</p>`,
           extra: (el, c) => predictTable(el, c, {
             key: 'sieve', head: ['In her blood', 'Your prediction'], rows: SIEVE, runLabel: 'Open the filter', ran: (c) => c.stepState().done,
@@ -447,7 +462,7 @@
         {
           view: 'filter', title: 'The rule',
           enter: (c) => { const v = c.view(); v.setOpen(true); v.showChart(false); v.showArteriole = false; v.showDay = false; },
-          text: `<p>Glucose is a fuel her body needs. Urea is a waste. Watch a green glucose and a brown urea as they pass along the capillary.</p>`,
+          text: `<p>Glucose is a fuel her body needs. Urea is a waste. Watch a green glucose and a brown urea as they pass along the capillaries.</p>`,
           question: { prompt: 'Which of the two did the filter let through more readily?', options: [
             { t: 'Neither: both passed as freely as water. The filter sorts by size and does not know what is waste', ok: true, fb: `So the fluid in the cup is blood plasma without its proteins, with glucose, salts and wastes all in it at the same concentrations as in the blood.${nameBox('The knot of capillaries: the <b>glomerulus</b>. The cup: the <b>glomerular capsule</b> (Bowman\'s capsule). Together: a <b>renal corpuscle</b>. The fluid that comes through: <b>filtrate</b>. The process: <b>glomerular filtration</b>. (Your textbook describes the three layers of the wall, the <b>filtration membrane</b>.)')}` },
             { t: 'Urea: the filter takes out wastes', fb: 'Count them: glucose comes through as often as urea does. The filter has no way to tell a waste from a fuel.' },
@@ -468,9 +483,9 @@
           setup: () => setSim(new Kidney().set('autoreg', 0)),
           enter: (c) => { const v = c.view(); v.setOpen(true); v.showChart(true); v.showArteriole = true; v.showDay = true; v.plot(); },
           text: `<p>Nothing here is pumped. <b>Blood pressure</b> pushes the fluid through the pores. Her blood pressure is 120/80; averaged over a heartbeat, the <b>mean pressure</b>, that is about 93 mmHg. The dial sets the mean.</p>
-                 <p>For this step the small artery that feeds the filter is held at a <b>fixed width</b>. Move her mean pressure up to <b>120</b> or more (hard exercise) and down to <b>80</b> or less (a dip on standing up). Each setting is plotted on the chart.</p>`,
+                 <p>For this step the <b>afferent arteriole</b>, which feeds the filter (scene 3), is held at a <b>fixed width</b>. Move her mean pressure up to <b>120</b> or more (hard exercise) and down to <b>80</b> or less (a dip on standing up). Each setting is plotted on the chart.</p>`,
           extra: (el, c) => pressureDial(el, c, 'fixed'),
-          question: { prompt: 'With a fixed arteriole, what would an ordinary day of standing, sitting and climbing stairs do to her filtering?', options: [
+          question: { prompt: 'With a fixed afferent arteriole, what would an ordinary day of standing, sitting and climbing stairs do to her filtering?', options: [
             { t: 'Swing it between a trickle and a flood', ok: true, fb: 'And the tubule would have to cope with a load that kept changing several-fold. The next step shows what a real kidney does about it.' },
             { t: 'Nothing much: filtering hardly depends on pressure', fb: 'Look at the grey curve you just drew. How does filtering at 120 mmHg compare with filtering at 80?' },
             { t: 'Raise it steadily through the day', fb: 'Blood pressure goes down as well as up. Look at what happened to filtering at 80 mmHg.' },
@@ -481,11 +496,11 @@
           view: 'filter', title: 'Holding it steady', meters: METERS.filter,
           setup: () => setSim(new Kidney()),
           enter: (c) => { const v = c.view(); v.setOpen(true); v.showChart(true); v.showArteriole = true; v.showDay = true; if (!v.points.fixed.length) for (const m of [70, 80, 93, 105, 120, 135]) { app.sim.set('autoreg', 0).set('map', m); v.plot(); } app.sim.set('autoreg', 1).set('map', null); v.plot(); },
-          text: `<p>Now the arteriole is free to <b>adjust itself</b>: when her blood pressure rises it narrows, and when the pressure falls it widens. Watch its width as you move the pressure.</p>
+          text: `<p>Now the afferent arteriole is free to <b>adjust itself</b>: when her blood pressure rises it narrows, and when the pressure falls it widens. Watch its width as you move the pressure.</p>
                  <p>Try a mean pressure of <b>150</b> or more, then go down to <b>60</b> or less. The new points are plotted in blue.</p>`,
           extra: (el, c) => pressureDial(el, c, 'auto'),
           question: { prompt: 'The blue line is nearly flat between 80 and 180 mmHg, and falls steeply below 80. What does that mean for a patient whose mean pressure falls to 60 and stays there?', options: [
-            { t: 'Filtering falls to a fraction of normal and urine nearly stops, so wastes, water and potassium build up as they did in Mr. Herrera', ok: true, fb: `This is one common way for kidneys to fail suddenly: after heavy bleeding, in shock, or in severe dehydration. It is called <b>acute kidney injury</b>, and falling urine output is the early warning.${nameBox('The small artery feeding the glomerulus is the <b>afferent arteriole</b>; the one leaving it is the <b>efferent arteriole</b>. The kidney\'s ability to hold its own filtering steady is <b>autoregulation</b>. (Your textbook breaks the push through the filter into three pressures, the <b>net filtration pressure</b>.)')}` },
+            { t: 'Filtering falls to a fraction of normal and urine nearly stops, so wastes, water and potassium build up as they did in Mr. Herrera', ok: true, fb: `This is one common way for kidneys to fail suddenly: after heavy bleeding, in shock, or in severe dehydration. It is called <b>acute kidney injury</b>, and falling urine output is the early warning.${nameBox('The <b>afferent arteriole</b> does the adjusting, by changing its own width. The kidney\'s ability to hold its own filtering steady is <b>autoregulation</b>. (Your textbook breaks the push through the filter into three pressures, the <b>net filtration pressure</b>.)')}` },
             { t: 'Nothing: the arteriole keeps filtering steady at any pressure', fb: 'Look at the blue points below a mean of 80 mmHg. Once the arteriole is fully open, there is nothing more it can do.' },
             { t: 'Filtering rises, to make up for the low pressure', fb: 'Pressure is what does the filtering. Look at the blue points below 80 mmHg.' },
           ] },
@@ -494,6 +509,20 @@
       ],
     },
   ];
+
+  // Scene 1: what an ideal exit would do with six things in the blood, and why.
+  var KINDS = (function () {
+    const O = ['keep all of it', 'keep what is needed, lose the extra', 'get rid of all of it'];
+    const row = (name, what, answer) => ({ aria: name, label: `${name}</b><span class="was">${what}</span><b>`, cells: [{ options: O, answer }] });
+    return [
+      row('Glucose', 'Fuel for every cell, won from food. The body can store what it does not burn today.', O[0]),
+      row('Water', 'Most of the body. Drunk in amounts that have little to do with need.', O[1]),
+      row('Salt', 'Holds water in the blood and around the cells. Eaten in amounts that have little to do with need.', O[1]),
+      row('Potassium', 'Nerve and muscle cells need its level outside them low and steady. It is in nearly all food.', O[1]),
+      row('Urea', 'What is left of protein once the body has used it. No use, cannot be stored, harmful as it builds up.', O[2]),
+      row('A drug', 'A molecule from outside the body, taken for a few days.', O[2]),
+    ];
+  })();
 
   // Scene 5's sorting table (also used for the results).
   const PASS = 'gets through', HELD = 'held back';

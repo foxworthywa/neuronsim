@@ -455,7 +455,27 @@ Each milestone is usable in a course on its own.
 
 ## As built (differences from the plan above)
 
-- **Ten scenes, 55 steps.** The scene list is as planned. Changes inside scenes:
+- **Ten scenes, 56 steps.** The scene list is as planned. Changes inside scenes:
+  - *Scene 1* ends with a step added at instructor review (Nov 2026): **why** some things must
+    leave the blood and others must stay. The student decides what an ideal exit would do with
+    six things (glucose, water, salt, potassium, urea, a drug), each described by what it is for,
+    and arrives at three kinds with three reasons: fuel and building blocks (none is spare, keep
+    all); the body's own fluid (needed in exact amounts, arriving in arbitrary ones, so lose only
+    the extra); things with no use (harmful as they build up, lose all). Scene 4's design problem
+    and scene 7's ledger refer back to the three kinds.
+  - *Scene 3*: the lab's drawing of the nephron shows blood entering the knot of capillaries by
+    the **afferent arteriole** and leaving it by the **efferent arteriole**, which leads on to
+    the capillaries round the tubule; both are labelled from scene 3 on (instructor review, Nov
+    2026), in the nephron drawing, the filter close-up and the strip. In the cut kidney, the
+    enlarged nephron lies wholly inside the kidney, its filter in the cortex.
+  - *Scenes 4 to 10, the strip*: the blood is drawn as one continuous vessel: in by the afferent
+    arteriole, through the knot of capillaries in the cup, out by the efferent arteriole, which
+    widens into the return line (instructor review: the three had not looked connected).
+  - *Scene 5, the close-up*: drawn from the same geometry as the strip's filter, enlarged two and
+    a half times, with a small picture of the strip framing the part enlarged (instructor
+    review: the first close-up, a straight vessel over a box, did not look like the same thing).
+    The pores are in the walls of the capillaries, and what passes them crosses the cup and
+    runs away down the tubule.
   - *Scene 2* has **two** hand dials, water out and salt out; potassium and urea are looked after
     for the student that day and the text says so. (Over one day potassium barely leaves its
     range even with no kidney, so a third dial taught nothing.) The gauges show water and salt

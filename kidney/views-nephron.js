@@ -42,43 +42,96 @@
   }
   KD.KIND = KIND; KD.kindMark = mark;
 
+  // ---- the filter's shape, shared by the strip and by the close-up, so that they are one picture
+  // at two scales. Coordinates are the strip's.
+  const G = {
+    TY: 206, RY: 62, FULL: 46, X0: 140, CX: 104.7, CY: 206,
+    AFF: 'M4,96 C40,96 52,150 70,178',
+    TUFT: 'M70,178 C52,196 62,226 84,222 C104,218 92,196 104,190 C120,184 128,212 112,228 C98,242 76,236 80,214 C82,198 100,196 108,176',
+    EP: [[108, 176], [116, 120], [130, 62], [190, 62]],
+    CUP: 'M140,155 A62,62 0 1,0 140,257',
+  };
+  const mapPath = (d, f) => d.replace(/(-?\d+\.?\d*),(-?\d+\.?\d*)/g, (m, x, y) => { const q = f(+x, +y); return `${q[0].toFixed(1)},${q[1].toFixed(1)}`; });
+  const bezAt = (P, t) => { const u = 1 - t, f = [u * u * u, 3 * u * u * t, 3 * u * t * t, t * t * t]; return [0, 1].map(i => P.reduce((a, pt, j) => a + f[j] * pt[i], 0)); };
+  // The efferent arteriole as a ribbon that widens from an arteriole to the full return line.
+  function efferentRibbon(P, extra, k) {
+    const L = [], R = [];
+    for (let i = 0; i <= 24; i++) {
+      const t = i / 24, p0 = bezAt(P, Math.max(0, t - 0.01)), p1 = bezAt(P, Math.min(1, t + 0.01)), q = bezAt(P, t);
+      const dx = p1[0] - p0[0], dy = p1[1] - p0[1], n = Math.hypot(dx, dy) || 1, w = (5.5 + 7.5 * t * t * (3 - 2 * t)) * (k || 1) + extra;
+      L.push(`${(q[0] - dy / n * w).toFixed(1)},${(q[1] + dx / n * w).toFixed(1)}`); R.push(`${(q[0] + dy / n * w).toFixed(1)},${(q[1] - dx / n * w).toFixed(1)}`);
+    }
+    return `M${L.join(' L')} L${R.reverse().join(' L')} Z`;
+  }
+  // Blood in, the knot of capillaries in its cup, blood out: drawn as one continuous vessel.
+  function drawFilter(svg) {
+    svgEl('path', { d: G.CUP, fill: COL.tubule, stroke: SEG.filter, 'stroke-width': 5, 'stroke-linecap': 'round' }, svg);
+    const tube = (d, w, col) => svgEl('path', { d, fill: 'none', stroke: col, 'stroke-width': w, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, svg);
+    // outlines first, then the blood inside, so that the joins between the parts do not show
+    tube(G.AFF, 17, COL.bloodLine); tube(G.TUFT, 14, COL.bloodLine);
+    svgEl('path', { d: efferentRibbon(G.EP, 2.5), fill: COL.bloodLine }, svg);
+    tube(G.AFF, 12, COL.blood); tube(G.TUFT, 9, COL.blood);
+    svgEl('path', { d: efferentRibbon(G.EP, 0), fill: COL.blood }, svg);
+  }
+
   // =========================================================================
-  // The filter (scene 5)
+  // The filter (scene 5): the strip's filter, enlarged
   // =========================================================================
   views.filter = function (opts) {
-    const svg = svgEl('svg', { viewBox: '0 0 1000 560', role: 'img', 'aria-label': 'The filter of one nephron: blood under pressure in a capillary, a wall with pores, and the cup that catches what comes through' }, stage);
+    const svg = svgEl('svg', { viewBox: '0 0 1000 560', role: 'img', 'aria-label': 'The filter of one nephron, enlarged: blood comes in by the afferent arteriole, runs through a knot of capillaries inside a cup, and leaves by the efferent arteriole; what passes through the capillary walls collects in the cup and runs on into the tubule' }, stage);
     const view = { svg, open: false, points: { fixed: [], auto: [] }, shown: opts.kinds || ['rbc', 'alb', 'glucose', 'urea', 'na', 'water'] };
     const body = () => app.sim;
-    const CY = 150, X0 = 20, XA = 232, XB = 600, XE = 760;      // arteriole in, capillary, arteriole out
-    // the cup and the start of the tubule
-    svgEl('path', { d: `M214,${CY + 40} L214,330 Q214,392 276,392 L560,392 Q616,392 616,350 L760,350 L760,286 L616,286 L616,${CY + 40}`, fill: COL.tubule, stroke: COL.tubuleLine, 'stroke-width': 4, 'stroke-linejoin': 'round' }, svg);
-    label(svg, 690, 324, 'into the tubule →', { 'font-size': 13.5, 'text-anchor': 'middle', fill: '#7a5a10' });
-    label(svg, 232, 378, 'the cup: what comes through collects here', { 'font-size': 13.5, fill: '#7a5a10' });
-    // the vessel
-    const artIn = svgEl('path', { fill: COL.blood, stroke: COL.bloodLine, 'stroke-width': 3 }, svg);
-    svgEl('rect', { x: XA, y: CY - 62, width: XB - XA, height: 124, rx: 26, fill: COL.blood, stroke: COL.bloodLine, 'stroke-width': 3 }, svg);
-    svgEl('path', { d: `M${XB - 6},${CY - 13} L${XE},${CY - 13} L${XE},${CY + 13} L${XB - 6},${CY + 13}`, fill: COL.blood, stroke: COL.bloodLine, 'stroke-width': 3 }, svg);
-    svgEl('rect', { x: XB - 10, y: CY - 11.5, width: 14, height: 23, fill: COL.blood }, svg);
-    const inMask = svgEl('rect', { x: XA - 4, width: 14, fill: COL.blood }, svg);
-    label(svg, 30, 84, 'blood in', { 'font-size': 14, fill: '#8f2620' }); label(svg, 690, 122, 'blood out', { 'font-size': 14, fill: '#8f2620', 'text-anchor': 'middle' });
-    const artNote = small(svg, 30, CY + 62, '', { 'font-size': 13 }), artNote2 = small(svg, 30, CY + 79, '', { 'font-size': 13 });
-    // the wall of the filter, with its pores
-    const wallShut = svgEl('path', { d: `M${XA + 22},${CY + 62} L${XB - 22},${CY + 62}`, stroke: '#7d1f19', 'stroke-width': 7, 'stroke-linecap': 'butt' }, svg);
-    const wallOpen = svgEl('path', { d: `M${XA + 22},${CY + 62} L${XB - 22},${CY + 62}`, stroke: '#7d1f19', 'stroke-width': 7, 'stroke-dasharray': '17 9', opacity: 0 }, svg);
-    const wallNote = small(svg, 416, CY + 86, '', { 'font-size': 13, 'text-anchor': 'middle', fill: '#7d1f19' });
+    const K = 2.5, CX = 285, CY = 262;
+    const M = (x, y) => [CX + K * (x - G.CX), CY + K * (y - G.CY)];
+    // ---- the cup, and the start of the tubule leading away to the right
+    const mouth = M(G.X0, 0)[0], top = M(0, 155)[1], bot = M(0, 257)[1];
+    svgEl('path', { d: `M${mouth},${top} L760,${CY - 68} L760,${CY + 68} L${mouth},${bot} Z`, fill: COL.tubule }, svg);
+    svgEl('path', { d: `M${mouth},${top} L760,${CY - 68} M${mouth},${bot} L760,${CY + 68}`, fill: 'none', stroke: COL.tubuleLine, 'stroke-width': 4, 'stroke-linecap': 'round' }, svg);
+    svgEl('path', { d: `M${mouth},${top} A${62 * K},${62 * K} 0 1,0 ${mouth},${bot}`, fill: COL.tubule, stroke: SEG.filter, 'stroke-width': 7, 'stroke-linecap': 'round' }, svg);
+    label(svg, 640, CY + 5, 'into the tubule →', { 'font-size': 14.5, 'text-anchor': 'middle', fill: '#7a5a10', 'font-weight': 600 });
+    label(svg, CX, CY + 122, 'the cup: what comes', { 'font-size': 13.5, fill: '#7a5a10', 'text-anchor': 'middle' }); label(svg, CX, CY + 138, 'through collects here', { 'font-size': 13.5, fill: '#7a5a10', 'text-anchor': 'middle' });
+    // ---- the blood: afferent arteriole, the knot of capillaries, efferent arteriole
+    const AFF = mapPath(G.AFF, M), TUFT = mapPath(G.TUFT, M), EP = G.EP.map(p => M(p[0], p[1]));
+    const tube = (d, w, col, o) => svgEl('path', Object.assign({ d, fill: 'none', stroke: col, 'stroke-width': w, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, o || {}), svg);
+    const affOut = tube(AFF, 36, COL.bloodLine); tube(TUFT, 36, COL.bloodLine);
+    svgEl('path', { d: efferentRibbon(EP, 4, K * 0.86), fill: COL.bloodLine }, svg);
+    // pores: gaps in the capillary wall, drawn when the filter is open
+    const pores = tube(TUFT, 38, COL.tubule, { 'stroke-dasharray': '5 19', 'stroke-linecap': 'butt', opacity: 0 });
+    const affIn = tube(AFF, 29, COL.blood); tube(TUFT, 29, COL.blood);
+    svgEl('path', { d: efferentRibbon(EP, 0, K * 0.86), fill: COL.blood }, svg);
     const holes = svgEl('g', { opacity: 0 }, svg);
-    for (const x of [330, 470]) svgEl('rect', { x: x - 18, y: CY + 56, width: 36, height: 12, fill: COL.blood }, holes);
-    // pressures
-    const pArt = label(svg, 30, CY - 34, '', { 'font-size': 14, 'font-weight': 650 });
-    const pCap = label(svg, 416, CY - 72, '', { 'font-size': 14.5, 'font-weight': 650, 'text-anchor': 'middle' });
-    // the things in the blood
+    for (const [x, y] of [M(122, 200), M(116, 234), M(66, 208)]) svgEl('path', { d: 'M-9,-9 L9,9 M-9,9 L9,-9', stroke: '#b0352b', 'stroke-width': 4, 'stroke-linecap': 'round', transform: `translate(${x},${y})` }, holes);
+    // the path the blood follows, for the particles
+    const guide = svgEl('path', { d: `${AFF} ${TUFT.replace(/^M[^C]*/, '')} C${EP[1]} ${EP[2]} ${EP[3]}`, fill: 'none', stroke: 'none' }, svg);
+    const lenAff = svgEl('path', { d: AFF, fill: 'none', stroke: 'none' }, svg).getTotalLength(), lenTuft = svgEl('path', { d: TUFT, fill: 'none', stroke: 'none' }, svg).getTotalLength();
+    const lenAll = Math.min(guide.getTotalLength(), lenAff + lenTuft + 230);        // the vessel leaves the picture at the top
+    // ---- labels
+    label(svg, 14, 92, 'blood in:', { 'font-size': 14, fill: '#8f2620' }); label(svg, 14, 109, 'afferent arteriole', { 'font-size': 14, fill: '#8f2620', 'font-weight': 700 });
+    const pArt = [label(svg, 14, 134, 'mean pressure in', { 'font-size': 13.5 }), label(svg, 14, 150, 'her arteries:', { 'font-size': 13.5 }), label(svg, 14, 169, '', { 'font-size': 15.5, 'font-weight': 700 })];
+    const artNote = small(svg, 14, 192, '', { 'font-size': 13 }), artNote2 = label(svg, 14, 208, '', { 'font-size': 13, 'font-weight': 650 });
+    label(svg, 348, 36, 'blood out:', { 'font-size': 14, fill: '#8f2620' }); label(svg, 418, 36, 'efferent arteriole', { 'font-size': 14, fill: '#8f2620', 'font-weight': 700 });
+    label(svg, 348, 62, "pressure in the filter's", { 'font-size': 13.5 }); const pCap = label(svg, 348, 79, '', { 'font-size': 13.5 });
+    label(svg, 14, 330, 'the walls of the', { 'font-size': 13.5, fill: '#7d1f19' }); const wallNote = label(svg, 14, 346, '', { 'font-size': 13.5, fill: '#7d1f19' });
+    svgEl('path', { d: `M118,334 L${M(60, 214)[0] - 18},${M(60, 214)[1]}`, stroke: '#7d1f19', 'stroke-width': 1 }, svg);
+    void pArt;
+    // ---- where this is: the strip's filter, with a frame round what is enlarged here
+    {
+      const box = svgEl('g', {}, svg);
+      svgEl('rect', { x: 588, y: 10, width: 176, height: 124, rx: 8, fill: '#fff', stroke: '#d9d6cc' }, box);
+      const mini = svgEl('svg', { x: 592, y: 14, width: 168, height: 100, viewBox: '0 40 420 250' }, box);
+      svgEl('path', { d: `M140,155 L420,186 L420,226 L140,257 Z`, fill: '#cfe3f6', stroke: COL.tubuleLine, 'stroke-width': 3 }, mini);
+      svgEl('path', { d: `M186,${G.RY} L420,${G.RY}`, stroke: COL.bloodLine, 'stroke-width': 31 }, mini); svgEl('path', { d: `M186,${G.RY} L420,${G.RY}`, stroke: COL.blood, 'stroke-width': 26 }, mini);
+      drawFilter(mini);
+      svgEl('rect', { x: 14, y: 110, width: 160, height: 172, rx: 10, fill: 'none', stroke: '#2f6fd6', 'stroke-width': 5, 'stroke-dasharray': '12 8' }, mini);
+      small(box, 676, 128, 'the framed part, enlarged', { 'font-size': 12, 'text-anchor': 'middle', fill: '#2f6fd6' });
+    }
+    // ---- the things in the blood
     const pg = svgEl('g', { 'pointer-events': 'none' }, svg);
-    const COUNT = { rbc: 8, alb: 9, glucose: 9, urea: 9, na: 26, water: 54 };
+    const COUNT = { rbc: 7, alb: 8, glucose: 9, urea: 9, na: 24, water: 50 }, SIZE = { rbc: 10, alb: 7 };
     const parts = [];
-    for (const k of view.shown) for (let i = 0; i < COUNT[k]; i++) { const e = svgEl('g', {}, pg); mark(e, k); parts.push({ k, e, x: X0 + Math.random() * (XE - X0), lane: Math.random() * 2 - 1, st: 'blood', y: 0, vy: 0 }); }
-    const half = (x, wIn) => { if (x < XA - 10) return wIn; if (x < XA + 30) return wIn + (48 - wIn) * (x - XA + 10) / 40; if (x < XB - 30) return 48; if (x < XB + 10) return 48 + (9 - 48) * (x - XB + 30) / 40; return 9; };
+    for (const k of view.shown) for (let i = 0; i < COUNT[k]; i++) { const e = svgEl('g', {}, pg); mark(e, k, k === 'rbc' ? 0.85 : 1); parts.push({ k, e, s: Math.random() * lenAll, lane: Math.random() * 2 - 1, v: 0.85 + Math.random() * 0.3, st: 'blood', x: 0, y: 0, t: 0 }); }
     // legend
-    const lg = svgEl('g', { transform: 'translate(30,446)' }, svg);
+    const lg = svgEl('g', { transform: 'translate(30,452)' }, svg);
     small(lg, 0, 0, 'In her blood, in order of size (the drawing is not to scale):', { 'font-size': 13 });
     view.shown.forEach((k, i) => { const g = svgEl('g', { transform: `translate(${14 + i * 122},26)` }, lg); mark(g, k); small(g, 18, 5, KIND[k].name.replace('blood protein (albumin)', 'blood protein').replace('red blood cell', 'red cell'), { 'font-size': 13 }); });
     // the meter and the chart
@@ -91,7 +144,7 @@
     svgEl('rect', { x: PX(80), y: 0, width: PX(180) - PX(80), height: CH, fill: 'rgba(47,158,91,0.10)' }, ch);
     for (const g of [0, 125, 250, 375]) { svgEl('path', { d: `M0,${PY(g)} L${CW},${PY(g)}`, stroke: '#e6e3da' }, ch); small(ch, -5, PY(g) + 4, String(g), { 'font-size': 11.5, 'text-anchor': 'end' }); }
     for (const m of [40, 80, 120, 160, 200]) small(ch, PX(m), CH + 14, String(m), { 'font-size': 11.5, 'text-anchor': 'middle' });
-    small(ch, CW / 2, CH + 30, 'pressure in her arteries (mmHg)', { 'font-size': 11.5, 'text-anchor': 'middle' });
+    small(ch, CW / 2, CH + 30, 'mean arterial pressure (mmHg)', { 'font-size': 11.5, 'text-anchor': 'middle' });
     small(ch, -34, -8, 'filtered (mL/min)', { 'font-size': 11.5 });
     const curveF = svgEl('path', { fill: 'none', stroke: '#9aa0ad', 'stroke-width': 2 }, ch), curveA = svgEl('path', { fill: 'none', stroke: '#2f6fd6', 'stroke-width': 2.4 }, ch);
     const dotsF = svgEl('g', {}, ch), dotsA = svgEl('g', {}, ch);
@@ -113,38 +166,39 @@
       draw(view.points.fixed, curveF, dotsF, '#9aa0ad'); draw(view.points.auto, curveA, dotsA, '#2f6fd6');
       setText(lgF, view.points.fixed.length ? '● grey: arteriole fixed' : ''); setText(lgA, view.points.auto.length ? '● blue: arteriole adjusts itself' : '');
     };
-    view.counts = { passed: {}, tried: {} };
     view.update = (dtReal) => {
       const b = body(); if (!(b instanceof Kidney)) return;
       const f = b.f, k = Math.min(0.05, dtReal / 1000);
-      const wIn = clamp(13 * Math.pow(f.arteriole, 1.4), 5, 30);
-      artIn.setAttribute('d', `M${X0},${CY - wIn} L${XA + 6},${CY - wIn} L${XA + 6},${CY + wIn} L${X0},${CY + wIn}`);
-      setAttrs(inMask, { y: CY - wIn + 1.5, height: 2 * wIn - 3 });
-      setText(pArt, `in her arteries: ${fx(f.map, 0)} mmHg`); setText(pCap, `pressure in the filter's capillaries: ${fx(f.pgc, 0)} mmHg`);
-      const adj = !b.s.autoreg ? ['the arteriole feeding the filter:', 'fixed width'] : f.arteriole < 0.94 ? ['the arteriole feeding the filter:', 'has narrowed itself'] : f.arteriole > 1.06 ? ['the arteriole feeding the filter:', 'has widened itself'] : ['the arteriole feeding the filter:', 'adjusts itself'];
+      // the afferent arteriole is drawn as wide as the model has it
+      const wide = clamp(Math.pow(f.arteriole, 1.4), 0.42, 1.45);
+      affOut.setAttribute('stroke-width', 7 + 29 * wide); affIn.setAttribute('stroke-width', 29 * wide);
+      setText(pArt[2], `${fx(f.map, 0)} mmHg`); setText(pCap, `capillaries: ${fx(f.pgc, 0)} mmHg`); pCap.setAttribute('font-weight', 700);
+      const adj = !b.s.autoreg ? ['the afferent arteriole is', 'held at a fixed width'] : f.arteriole < 0.94 ? ['the afferent arteriole', 'has narrowed itself'] : f.arteriole > 1.06 ? ['the afferent arteriole', 'has widened itself'] : ['the afferent arteriole', 'adjusts its own width'];
       setText(artNote, view.showArteriole ? adj[0] : ''); setText(artNote2, view.showArteriole ? adj[1] : '');
-      wallShut.setAttribute('opacity', view.open ? 0 : 1); wallOpen.setAttribute('opacity', view.open ? 1 : 0);
-      setText(wallNote, view.open ? 'the wall of the filter: pores' : 'the wall of the filter (closed for now)');
+      pores.setAttribute('opacity', view.open ? 1 : 0);
+      setText(wallNote, view.open ? 'capillaries: pores' : 'capillaries (closed)');
       holes.setAttribute('opacity', b.s.filterDamage > 0 ? 1 : 0);
-      const g = f.gfr / 125, haz = view.open ? -Math.log(1 - clamp(0.2 * g, 0, 0.9)) / 7 : 0;
+      const g = f.gfr / 125, haz = view.open ? -Math.log(1 - clamp(0.2 * g, 0, 0.9)) / (lenTuft / 62) : 0;
       for (const p of parts) {
         if (p.st === 'blood') {
-          p.x += 46 * k * (0.85 + 0.3 * (p.lane * p.lane));
-          if (p.x > XE) { p.x = X0; p.lane = Math.random() * 2 - 1; }
-          const hw = half(p.x, wIn) - (p.k === 'rbc' ? 9 : 4);
-          p.y = CY + p.lane * Math.max(0, hw);
-          if (p.x > XA + 30 && p.x < XB - 30) {
-            view.counts.tried[p.k] = (view.counts.tried[p.k] || 0) + k;
+          p.s += 62 * p.v * k;
+          if (p.s >= lenAll) { p.s = 0; p.lane = Math.random() * 2 - 1; }
+          const q = guide.getPointAtLength(p.s), q2 = guide.getPointAtLength(Math.min(lenAll, p.s + 2)), dx = q2.x - q.x, dy = q2.y - q.y, n = Math.hypot(dx, dy) || 1;
+          const inTuft = p.s > lenAff && p.s < lenAff + lenTuft, half = (p.s <= lenAff ? 14.5 * wide : 14.5) - (SIZE[p.k] || 3);
+          p.nx = -dy / n; p.ny = dx / n;
+          p.x = q.x + p.nx * p.lane * Math.max(0, half); p.y = q.y + p.ny * p.lane * Math.max(0, half);
+          if (inTuft) {
             const pass = KIND[p.k].small ? 1 : b.s.filterDamage * (p.k === 'alb' ? 0.12 : 0.05);
-            if (pass > 0 && Math.random() < haz * pass * k * (KIND[p.k].small ? 1 : 1)) { p.st = 'through'; p.vy = 30 + Math.random() * 20; view.counts.passed[p.k] = (view.counts.passed[p.k] || 0) + 1; }
+            if (pass > 0 && Math.random() < haz * pass * k) { p.st = 'out'; p.t = 0; p.dir = p.lane >= 0 ? 1 : -1; p.aim = CY + (Math.random() * 2 - 1) * 50; }
           }
+        } else if (p.st === 'out') {
+          // through the capillary wall and into the cup
+          p.t += k; p.x += p.nx * p.dir * 70 * k; p.y += p.ny * p.dir * 70 * k;
+          if (p.t > 0.45) p.st = 'cup';
         } else {
-          // through the wall, across the cup, and away down the tubule
-          if (p.y < CY + 250 - 20 * Math.random() && p.x < 600) p.y += p.vy * k * (p.y < CY + 70 ? 1.6 : 1);
-          p.x += (p.y > CY + 80 ? 44 : 6) * k;
-          if (p.x > 610) p.y += (318 - p.y) * Math.min(1, 3 * k);
-          p.y = Math.min(p.y, 380 - 6);
-          if (p.x > XE) { p.st = 'blood'; p.x = X0 + Math.random() * 60; p.lane = Math.random() * 2 - 1; }
+          // across the cup and away down the tubule
+          p.x += 34 * k; p.y += (p.aim - p.y) * Math.min(1, 0.9 * k);
+          if (p.x > 762) { p.st = 'blood'; p.s = Math.random() * lenAff * 0.5; p.lane = Math.random() * 2 - 1; }
         }
         p.e.setAttribute('transform', `translate(${p.x.toFixed(1)},${p.y.toFixed(1)})`);
       }
@@ -154,9 +208,9 @@
     view.narrate = () => {
       const b = body(); if (!(b instanceof Kidney)) return null;
       const f = b.f;
-      if (!view.open) return { key: 'shut', html: 'Blood is flowing through the capillaries of the filter. The wall is closed for now.' };
-      const how = !view.showArteriole ? '' : !b.s.autoreg ? ' The arteriole feeding the filter is held at a fixed width, so the pressure in the filter follows the pressure in her arteries.' : f.map < 80 ? ' The arteriole is as wide as it can go and the pressure in the filter still cannot be held.' : ' The arteriole feeding the filter has adjusted its width, so the pressure in the filter has hardly moved.';
-      return { key: 'f' + Math.round(f.map) + b.s.autoreg + b.s.filterDamage, html: `Blood pressure pushes fluid through the pores. Water, salt, glucose and urea pass; red cells and protein are too large${b.s.filterDamage ? ' (but this filter is damaged, and some are getting through)' : ''}. Filtered: <b>${fx(f.gfr, 0)} mL a minute</b>.${how}` };
+      if (!view.open) return { key: 'shut', html: 'Blood comes in by the afferent arteriole, runs through the knot of capillaries inside the cup, and leaves by the efferent arteriole. The capillary walls are closed for now.' };
+      const how = !view.showArteriole ? '' : !b.s.autoreg ? ' The afferent arteriole is held at a fixed width, so the pressure in the capillaries follows the pressure in her arteries.' : f.map < 80 ? ' The afferent arteriole is as wide as it can go and the pressure in the capillaries still cannot be held.' : ' The afferent arteriole has adjusted its width, so the pressure in the capillaries has hardly moved.';
+      return { key: 'f' + Math.round(f.map) + b.s.autoreg + b.s.filterDamage, html: `Blood pressure pushes fluid out through the pores in the capillary walls and into the cup. Water, salt, glucose and urea pass; red cells and protein are too large${b.s.filterDamage ? ' (but this filter is damaged, and some are getting through)' : ''}. Filtered: <b>${fx(f.gfr, 0)} mL a minute</b>.${how}` };
     };
     return view;
   };
@@ -185,18 +239,21 @@
     const body = () => app.sim;
     const TY = 206, GX = 92, X = [140, 440, 600, 860], RY = 62;         // tubule centre line; filter; segment ends; return line
     const FULL = 46;                                                    // half-height of the stream at 125 mL/min
-    // ---- blood: in, the filter's capillaries, out along the return line
-    svgEl('path', { d: `M4,96 C40,96 52,150 70,178`, fill: 'none', stroke: COL.bloodLine, 'stroke-width': 19, 'stroke-linecap': 'round' }, svg);
-    svgEl('path', { d: `M4,96 C40,96 52,150 70,178`, fill: 'none', stroke: COL.blood, 'stroke-width': 14, 'stroke-linecap': 'round' }, svg);
-    svgEl('path', { d: `M108,176 C116,120 130,${RY} 190,${RY} L944,${RY}`, fill: 'none', stroke: COL.bloodLine, 'stroke-width': 31, 'stroke-linecap': 'butt' }, svg);
-    const retLine = svgEl('path', { d: `M108,176 C116,120 130,${RY} 190,${RY} L944,${RY}`, fill: 'none', stroke: COL.blood, 'stroke-width': 26, 'stroke-linecap': 'butt' }, svg);
+    // ---- blood: one continuous vessel. In by the afferent arteriole, through the knot of
+    // capillaries inside the cup, out by the efferent arteriole, which widens into the return line.
+    svgEl('path', { d: `M188,${RY} L944,${RY}`, fill: 'none', stroke: COL.bloodLine, 'stroke-width': 31 }, svg);
+    svgEl('path', { d: `M186,${RY} L944,${RY}`, fill: 'none', stroke: COL.blood, 'stroke-width': 26 }, svg);
+    drawFilter(svg);
+    svgEl('path', { d: `M186,${RY} L200,${RY}`, fill: 'none', stroke: COL.blood, 'stroke-width': 26 }, svg);
     svgEl('path', { d: `M944,${RY - 22} L972,${RY} L944,${RY + 22} Z`, fill: COL.bloodLine }, svg);
-    label(svg, 8, 80, 'blood in', { 'font-size': 13.5, fill: '#8f2620' });
+    const AFF = G.AFF, TUFT = G.TUFT;
+    // unseen guides that the particles follow
+    const affPath = svgEl('path', { d: AFF, fill: 'none', stroke: 'none' }, svg), tuft = svgEl('path', { d: TUFT, fill: 'none', stroke: 'none' }, svg);
+    const retLine = svgEl('path', { d: `M108,176 C116,120 130,${RY} 190,${RY} L944,${RY}`, fill: 'none', stroke: 'none' }, svg);
+    label(svg, 6, 62, 'blood in:', { 'font-size': 13.5, fill: '#8f2620' }); label(svg, 6, 78, 'afferent arteriole', { 'font-size': 13, fill: '#8f2620', 'font-weight': 650 });
+    label(svg, 138, 142, 'efferent arteriole', { 'font-size': 13, fill: '#8f2620', 'font-weight': 650 });
     const retName = label(svg, 560, RY - 22, 'the return line: back to the body', { 'font-size': 13.5, fill: '#8f2620', 'text-anchor': 'middle' });
     // ---- the filter
-    const cup = svgEl('path', { d: `M${X[0]},${TY - FULL - 5} A62,62 0 1,0 ${X[0]},${TY + FULL + 5}`, fill: COL.tubule, stroke: SEG.filter, 'stroke-width': 5, 'stroke-linecap': 'round' }, svg);
-    void cup;
-    const tuft = svgEl('path', { d: `M70,178 C52,196 62,226 84,222 C104,218 92,196 104,190 C120,184 128,212 112,228 C98,242 76,236 80,214 C82,198 100,196 108,176`, fill: 'none', stroke: COL.bloodDark, 'stroke-width': 9, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, svg);
     const damageG = svgEl('g', { opacity: 0 }, svg);
     for (const [x, y] of [[124, 196], [118, 236]]) svgEl('path', { d: 'M-7,-7 L7,7 M-7,7 L7,-7', stroke: '#b0352b', 'stroke-width': 3, 'stroke-linecap': 'round', transform: `translate(${x},${y})` }, damageG);
     const filtName = label(svg, 78, 296, 'the filter', { 'font-size': 13.5, 'font-weight': 650, fill: '#8f3a2c', 'text-anchor': 'middle' }), filtTerm = small(svg, 78, 313, '', { 'font-size': 12.5, 'text-anchor': 'middle', fill: '#8f3a2c' });
@@ -359,7 +416,7 @@
         const p = parts[i], fr = f.frac[p.k] || f.frac.water, sp = 62;
         if (p.st === 'in') {                    // arriving in the blood, then through the filter's capillaries
           p.u += k * 0.9;
-          const len = tuft.getTotalLength(), q = p.u < 0.35 ? { x: 4 + (70 - 4) * (p.u / 0.35), y: 96 + (178 - 96) * Math.pow(p.u / 0.35, 1.5) } : tuft.getPointAtLength(clamp((p.u - 0.35) / 0.65, 0, 1) * len);
+          const len = tuft.getTotalLength(), q = p.u < 0.35 ? affPath.getPointAtLength(p.u / 0.35 * affPath.getTotalLength()) : tuft.getPointAtLength(clamp((p.u - 0.35) / 0.65, 0, 1) * len);
           p.x = q.x; p.y = q.y + p.lane * 3;
           if (p.u >= 1) {
             // question 1: did it get through the filter?
@@ -388,7 +445,7 @@
         } else if (p.st === 'down') {           // pushed from the return line into the tubule
           p.y += 90 * k; if (p.y >= TY + p.lane * 6) { p.st = 'tube'; p.leave = null; }
         } else {                                // in the return line
-          if (p.u < 1) { p.u += k * 1.4; const len = retLine.getTotalLength(), q = retLine.getPointAtLength(clamp(p.u, 0, 1) * 150 / len * len); p.x = q.x; p.y = q.y + p.lane * 8; if (p.u >= 1) p.x = Math.max(p.x, 190); }
+          if (p.u < 1) { p.u += k * 1.4; const q = retLine.getPointAtLength(clamp(p.u, 0, 1) * 150); p.x = q.x + p.lane * 3; p.y = q.y + p.lane * (2 + 6 * p.u * p.u); if (p.u >= 1) p.x = Math.max(p.x, 190); }
           else { p.x += sp * 1.25 * k; p.y = RY + p.lane * 8; }
           if (p.drop != null && p.x >= p.drop) { p.st = 'down'; p.drop = null; }
           if (p.x > 944) p.dead = true;

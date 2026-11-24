@@ -103,8 +103,8 @@ const box = (height, label, setup) => new Table({
 const W2 = [5400, 5400], W4 = [3000, 2600, 2600, 2600], W5 = [2400, 2100, 2100, 2100, 2100];
 const TERMS = [
   ['2', 'keeping the body’s fluid steady'], ['2', 'removal in the urine'],
-  ['3', 'blood in · blood out · urine out'], ['3', 'urine store · its exit tube'], ['3', 'outer part · inner part · hollow'], ['3', 'one filter with its tubule'],
-  ['5', 'the filter (capillaries in a cup)'], ['5', 'what comes through the filter'], ['5', 'how fast the kidneys filter'], ['5', 'arteriole into · out of the filter'], ['5', 'holding filtering steady'],
+  ['3', 'blood in · blood out · urine out'], ['3', 'urine store · its exit tube'], ['3', 'outer part · inner part · hollow'], ['3', 'one filter with its tubule'], ['3', 'arteriole into · out of the filter'],
+  ['5', 'the filter (capillaries in a cup)'], ['5', 'what comes through the filter'], ['5', 'how fast the kidneys filter'], ['5', 'holding filtering steady'],
   ['6', 'taking back'], ['6', 'the first stretch of the tubule'], ['6', 'the return line'],
   ['7', 'pushing extra in'], ['7', 'waste that measures filtering'],
   ['8', 'protein · blood · glucose in urine'], ['8', 'the most a carrier can take back'], ['8', 'a large volume of urine'], ['8', 'drug that increases urine volume'],
@@ -129,16 +129,17 @@ const sheet = () => [
 
   part('A · Before you open the sim', 'what you think now; there are no wrong answers here (4 points)'),
   q('You drink a litre of water and eat a bag of salted chips. Draw what you think happens between your mouth and the toilet, and say what your kidneys did. Label anything you know.', false, 2),
-  box(1700, 'your drawing', 'draw one large empty rectangle (about the width of the page and a third of its height)'),
+  box(1500, 'your drawing', 'draw one large empty rectangle (about the width of the page and a third of its height)'),
   q('A person whose kidneys have stopped working is kept alive by a dialysis machine, three times a week. What do you think the machine has to do?', true, 2),
   ...lines(2),
 
   part('B · Working through the sim', 'keyed to the scene numbers (16 points, plus 2 for your results and completion code)'),
 
-  scene(1, 'Two days without kidneys', 'Monday noon to Wednesday morning', 1),
+  scene(1, 'Two days without kidneys', 'Monday noon to Wednesday morning · What should leave, and what should stay?', 1),
   q(v('Our prediction (circle one):   all three will rise   /   only urea will rise   /   nothing much will change', 'Our prediction (keep one, delete the others):   all three will rise   /   only urea will rise   /   nothing much will change')),
   q('Mr. Herrera, Monday noon → Wednesday 8 am:   weight 82.0 → ________ kg     potassium 4.0 → ________ mmol/L     urea (BUN) 25 → ________ mg/dL'),
   q('In those 44 hours he took in ________ L of water and ________ g of salt. Was any of it unusual?  yes / no'),
+  q('Three kinds of thing in the blood, with one example of each and the reason:   keep all of it: ______________ because ____________________________;   keep what is needed and lose the extra: ______________ because ____________________________;   get rid of all of it: ______________ because ____________________________.'),
 
   scene(2, 'You are the exit', 'Hold her steady for a day · Read your own day', 2),
   q('By hand: water and salt both in range ________ % of the day. We let out ________ L of urine carrying ________ g of salt.'),
@@ -233,7 +234,7 @@ const sheet = () => [
   q('6. Low blood pressure. After his bleed, Tom Bradley passed almost no urine. Explain why, starting from what pushes fluid through the filter. Why is hourly urine output charted in seriously ill patients?', true, 3),
   ...lines(3),
   q('7. Now redraw your Part A picture: a litre of water and a bag of salted chips, from mouth to toilet. Show the filter, what is taken back, and what is left. Under it, write one thing in your Part A drawing that you would now change.', false, 2),
-  box(2300, 'your drawing', 'draw one large empty rectangle (about the width of the page and a third of its height)'),
+  box(1800, 'your drawing', 'draw one large empty rectangle (about the width of the page and a third of its height)'),
   ...lines(2),
 ];
 

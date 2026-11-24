@@ -60,7 +60,7 @@ const URL = (arg ? (arg.includes('://') ? arg : 'file://' + path.resolve(arg)) :
       if (id === 'design') await page.evaluate(() => { const v = window.__kidneysim.app.view; if (v && v.onSlot) for (const k of ['urea', 'potassium', 'acid', 'water', 'salt', 'glucose']) v.onSlot(k); });
       // predictions in a table: choose the last option everywhere, then run
       const nPred = await page.locator('.extra .ptable select').count();
-      const isMatch = ['Whose urine?', 'Four patients, four charts', 'Four events'].includes(st.title);
+      const isMatch = ['Whose urine?', 'Four patients, four charts', 'Four events', 'What should leave, and what should stay?'].includes(st.title);
       if (nPred && !isMatch) {
         for (let i = 0; i < nPred; i++) { const sel = page.locator('.extra .ptable select').nth(i); const opts = await sel.locator('option').allTextContents(); await sel.selectOption({ label: opts[opts.length - 1] }); }
         await page.locator('.extra button.go').click(); await page.waitForTimeout(150);

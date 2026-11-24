@@ -345,11 +345,12 @@
       svgEl('path', { d: `M${cx + 300},${cy - 22} L${sinus[0] + 66},${cy - 16}`, stroke: '#8e5a78', 'stroke-width': 13, 'stroke-linecap': 'round' }, sh);
       // one nephron, drawn far larger than life: its filter in the outer part, its loop dipping into a cone
       const neph = svgEl('g', {}, sh);
-      const ND = 'M236,112 C262,100 270,128 288,118 C306,108 308,134 300,150 L300,208 C300,222 316,222 316,208 L316,158 C316,140 338,140 338,160 L352,236';
+      // (its filter and coils lie in the outer part, well inside the kidney's edge; its loop runs into the cone and back; its duct ends at the cone's tip)
+      const ND = 'M233,236 C242,220 254,232 246,244 C240,254 250,260 258,254 L310,255 C324,255 324,269 310,269 L270,268 C256,268 254,282 268,282 L336,272';
       svgEl('path', { d: ND, fill: 'none', stroke: '#fff', 'stroke-width': 10, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, neph);
       svgEl('path', { d: ND, fill: 'none', stroke: '#2f4f86', 'stroke-width': 5, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, neph);
-      svgEl('circle', { cx: 228, cy: 112, r: 12, fill: '#fff', stroke: '#2f4f86', 'stroke-width': 4.5 }, neph); svgEl('circle', { cx: 228, cy: 112, r: 5.5, fill: COL.bloodDark }, neph);
-      const hit = svgEl('rect', { x: 200, y: 86, width: 172, height: 162, rx: 14, fill: 'transparent' }, neph);
+      svgEl('circle', { cx: 225, cy: 240, r: 12, fill: '#fff', stroke: '#2f4f86', 'stroke-width': 4.5 }, neph); svgEl('circle', { cx: 225, cy: 240, r: 5.5, fill: COL.bloodDark }, neph);
+      const hit = svgEl('rect', { x: 204, y: 212, width: 142, height: 84, rx: 14, fill: 'transparent' }, neph);
       part(g, 'nephron', 'A tiny structure that starts in the outer part and dips into a cone of the inner part', hit); hi.nephron.push(neph);
       part(g, 'cortex', 'The outer part of the kidney', svgEl('circle', { cx: 196, cy: 330, r: 26, fill: 'transparent' }, sh));
       part(g, 'medulla', 'A cone of the inner part of the kidney', svgEl('circle', { cx: 290, cy: 350, r: 32, fill: 'transparent' }, sh));

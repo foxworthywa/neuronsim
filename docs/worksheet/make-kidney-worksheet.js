@@ -60,7 +60,7 @@ const scene = (n, title, step, points, newPage) => new Paragraph({
 const BLANK = (n) => run('[' + '\u00a0'.repeat(n || 10) + ']', { highlight: 'yellow' });
 // On paper a blank is about an inch for a number and more for a word, and it stays on the same line as
 // the unit after it and the arrow before it.
-const WIDE = (t) => t.replace(/_{3,}/g, (m) => '_'.repeat(Math.round(m.length * 1.75))).replace(/(_{3,}) (?=[^\s_])/g, '$1\u00a0').replace(/→ (?=_)/g, '→\u00a0');
+const WIDE = (t) => t.replace(/_{3,}/g, (m) => '_'.repeat(Math.round(m.length * 1.75))).replace(/(_{3,}) (?=[^\s_])/g, '$1\u00a0').replace(/→ (?=_)/g, '→\u00a0').replace(/\/(?=\w)/g, '/\u2060');   // and mL/min is not broken at its slash
 function rich(t, o) {
   if (!TYPE) return [run(WIDE(t), o)];
   const parts = t.split(/_{3,}/), out = [];
@@ -227,6 +227,7 @@ const sheet = () => [
   ], false, 580),
   spacer(40),
   q('In words: what is left in the urine = what is ______________ − what is ______________ + what is ______________.'),
+  spacer(40),      // a paragraph that is not "keep with next": Google Docs otherwise carries the line above onto a page of its own
 
   scene(8, 'Break a step, read the urine', 'Damage the filter · Too much to take back · A drug that blocks a salt carrier', 2, true),
   table([3600, 3600, 3600], [
@@ -251,6 +252,7 @@ const sheet = () => [
   ], false, 900),
   spacer(40),
   q('Her whole day: urine flow from ________ to ________ mL/min; concentration of her blood only from ________ to ________ mOsm/L.     Tom Bradley, 30 minutes after his bleed: BP ________; filtering ________ mL/min; urine ________ mL an hour.'),
+  spacer(40),
 
   scene(10, 'Back to the patients', 'Wednesday, 8 am · Losing nephrons slowly · Four patients, four charts', 1, true),
   q('Dialysis session:  weight ________ → ________ kg;  potassium ________ → ________;  urea (BUN) ________ → ________.'),

@@ -592,13 +592,13 @@
   }
   KD.urineHTML = urineHTML; KD.labHTML = labHTML;
   views.cards = function (opts) {
-    const wrap = htmlEl('div', { class: 'cards' + (opts.four ? ' four' : '') });
+    const wrap = htmlEl('div', { class: 'cards' + (opts.four ? ' four' : '') + (opts.three ? ' three' : '') });
     stage.appendChild(wrap);
     const view = { wrap, cards: [] };
     view.set = (list) => {
       wrap.innerHTML = ''; view.cards = [];
       for (const c of list) {
-        const el = htmlEl('div', { class: 'card' + (c.right ? ' right' : '') }, `<h3>${c.title}<span>${c.sub || ''}</span></h3>${c.html}`);
+        const el = htmlEl('div', { class: 'card' + (c.right ? ' right' : '') + (c.ref ? ' ref' : '') }, `<h3>${c.title}<span>${c.sub || ''}</span></h3>${c.html}`);
         wrap.appendChild(el); view.cards.push(el);
       }
     };

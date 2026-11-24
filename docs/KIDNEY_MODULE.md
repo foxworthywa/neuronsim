@@ -512,7 +512,9 @@ Each milestone is usable in a course on its own.
     front of the student as a step is broken. Blood glucose is raised with a slider and the
     student finds the highest value with a negative test (170 mg/dL); Sam Reyes's glucose is
     400 mg/dL. The diuretic is a timed run of eight hours on Dana Brooks (2.4 L of urine,
-    76.0 → 74.0 kg, filtering unchanged). Blood in the urine is said to need explaining wherever
+    76.0 → 74.0 kg, filtering unchanged). In the matching step a fifth report, the healthy
+    student's own and labelled as such, stands beside the four to be matched, so that each can
+    be compared with it line by line (instructor review, Nov 2026). Blood in the urine is said to need explaining wherever
     it is found, since it usually comes from below the kidney.
   - *Scene 9* does not repeat scene 2's day by hand. The student first works out what 1 % less
     take-back would do (1.8 L), then tries the two dials of the last stretch until they have made

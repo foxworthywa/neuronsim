@@ -42,6 +42,11 @@
     }
     return cache.faults;
   }
+  // The healthy student's own report, shown beside them for comparison (it is not one to match).
+  function healthyCard() {
+    if (!cache.healthy) { const b = rest(); cache.healthy = { ref: true, title: 'Healthy', sub: 'for comparison', html: urineHTML(b.urineReport(), { title: 'Urine', bloodGlucose: b.glucose }) }; }
+    return cache.healthy;
+  }
   // Four patients for scene 10, each a body from the model.
   const WHO = [
     ['runner', 'Maya, after a half-marathon in the heat', () => { const b = rest(); b.steady = false; b.lose({ sweat: 2200, over: 120 }); b.advance(150); return b; }],
@@ -59,11 +64,12 @@
     }
     return cache.patients;
   }
-  function matchTable(el, c, key, cards, done) {
+  // offset: how many cards on the stage come before the ones to be matched (a reference card)
+  function matchTable(el, c, key, cards, done, offset) {
     const names = cards.map(x => x.answer).slice().sort();
     selectTable(el, c, {
       key, head: ['', 'Whose is it?'], rows: cards.map((x) => ({ label: x.title, cells: [{ options: names, answer: x.answer }] })), done,
-      onChange: (st) => { const v = c.view(); if (v && v.mark) cards.forEach((x, i) => v.mark(i, st[`${i}.0`] === x.answer)); },
+      onChange: (st) => { const v = c.view(); if (v && v.mark) cards.forEach((x, i) => v.mark(i + (offset || 0), st[`${i}.0`] === x.answer)); },
     });
   }
 
@@ -294,12 +300,13 @@
           ] },
         },
         {
-          view: 'cards', viewOpts: { cards: () => faultCards(), caption: 'Four urine reports. Each came from the model with one thing changed.' }, remount: true,
+          view: 'cards', viewOpts: { three: true, cards: () => [healthyCard()].concat(faultCards()), caption: 'A healthy urine report for comparison, and four more. Each of the four came from the model with one thing changed.' }, remount: true,
           graph: NO_GRAPH,
           title: 'Whose urine?',
           setup: () => setSim(rest()),
-          text: `<p>Four reports, A to D, each from the model with one step broken or blocked. Match each to its cause. The line at the bottom of each report gives the blood glucose.</p>`,
-          extra: (el, c) => matchTable(el, c, 'faults', faultCards(), '<b>All four matched.</b> Notice which line of the report you used for each: protein (with or without blood) for the filter; glucose, read together with the blood glucose, for the carriers; volume for the salt carrier.'),
+          text: `<p>Four reports, A to D, each from the model with one step broken or blocked. Match each to its cause. The line at the bottom of each report gives the blood glucose.</p>
+                 <p>The first report, marked <b>Healthy</b>, is the healthy student's own, for comparison. Go down it line by line against each of the others and ask what is different.</p>`,
+          extra: (el, c) => matchTable(el, c, 'faults', faultCards(), '<b>All four matched.</b> Notice which line of the report you used for each: protein (with or without blood) for the filter; glucose, read together with the blood glucose, for the carriers; volume for the salt carrier.', 1),
           waitFor: () => false, waitHint: 'Match all four reports',
         },
       ],

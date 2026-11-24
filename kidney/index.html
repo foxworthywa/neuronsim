@@ -104,6 +104,16 @@
   .card h3 span { font-size: 12.5px; font-weight: 400; color: var(--muted); }
   .card .labrep { margin: 4px 0 0; }
   .card.right { border-color: var(--good); box-shadow: 0 0 0 2px #cfead8; }
+  .card.ref { border-color: #9db8e6; background: #f3f7fe; }
+  .card.ref h3 { color: #1f4f9e; }
+  .cards.three { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; padding: 12px; }
+  .cards.three .labrep { font-size: 12.5px; }
+  .cards.three .labrep td, .cards.three .labrep th { padding: 3px 5px; }
+  .cards.three .labrep td:first-child { white-space: nowrap; }
+  .cards.three .labrep td.f { width: 14px; }
+  .cards.three .labrep td.v { white-space: nowrap; }
+  .cards.three .labrep td.r { font-size: 11.5px; white-space: nowrap; }
+  @media (max-width: 1150px) { .cards.three { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 </style>
 </head>
 <body>

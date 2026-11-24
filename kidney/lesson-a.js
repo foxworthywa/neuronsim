@@ -229,7 +229,7 @@
             const b = app.sim, c = b.cum;
             const made = b.p.metabolic * 44 * 60 / 1000;
             return `<p>In 44 hours he took in <b>${fx(c.waterIn / 1000 - made, 1)} L</b> of water (his body made another ${fx(made, 1)} L), <b>${fx(c.naIn / SALT, 0)} g</b> of salt and <b>${big(c.kIn)} mmol</b> of potassium, and his body made its usual urea. Lungs, skin and gut lost <b>${fx(c.waterOut / 1000, 1)} L</b> of the water and almost none of the rest.</p>
-                    <p>Each one matters. The extra salt and water raise his blood pressure and can flood his lungs. Potassium at this level disturbs the heartbeat: in MuscleSim you saw raised K⁺ depolarize a muscle fibre's membrane. Urea and the other wastes cause nausea and confusion.</p>`;
+                    <p>Each one matters. The extra salt and water raise his blood pressure and can flood his lungs. Potassium is the most dangerous: not far above this level it disturbs the heartbeat (in MuscleSim you saw raised K⁺ depolarize a muscle fibre's membrane). Urea and the other wastes cause nausea and confusion.</p>`;
           },
           question: { prompt: 'He ate and drank ordinary things. Why did his blood change?', options: [
             { t: 'What goes in each day has to come out, and the one way out that can be adjusted to match is gone', ok: true, fb: 'Hold on to that. It is a statement about <b>balance</b>, and it applies to water, salt and potassium as much as to wastes.' },
@@ -267,7 +267,7 @@
           text: `<p>Press <b>Start her day</b>, then work the dials. Watch the two gauges and the graph, and read <b>Coming up</b> so that you are ready.</p>
                  <p>The day runs from 7 am to 11 pm in about two minutes. You can pause it (P), or slow it with the Speed menu.</p>`,
           extra: (el, c) => handDials(el, c),
-          waitFor: (c) => data(c).ok, waitHint: 'Keep water and salt in range for most of the day',
+          waitFor: (c) => data(c).ok, waitHint: 'Keep water and salt in range for 80 % of the day',
         },
         {
           view: 'person', title: 'Read your own day',
@@ -410,7 +410,7 @@
                  <li><b>The tubule:</b> the long tube, lined with take-back pumps. <b>Its width in this picture is the flow:</b> watch it narrow.</li>
                  <li><b>The return line:</b> the second set of capillaries. Whatever is taken back goes into it, and back to the body.</li>
                  <li><b>The urine:</b> whatever was not taken back.</li></ol>
-                 <p>The price of this design: your kidneys filter about <b>180 litres</b> a day and take nearly all of it back. They are half a percent of your weight and use about a tenth of your resting energy doing it.</p>`,
+                 <p>The price of this design: your kidneys filter about <b>180 litres</b> a day and take nearly all of it back. They are half a percent of your weight and use nearly a tenth of your resting energy doing it.</p>`,
           question: { prompt: 'In this design, which part decides what ends up in the urine?', options: [
             { t: 'The tubule, by what it takes back and what it leaves', ok: true, fb: 'The filter makes no choices. Scene 5 looks at the filter; scenes 6 to 9 at the tubule.' },
             { t: 'The filter, by what it lets through', fb: 'The filter lets through everything small, wanted or not. Where were the choices made in design 2?' },
@@ -517,7 +517,7 @@
       d.attempts = (d.attempts || 0) + 1; d.running = true; c.refresh();
       startRun({ duration: 16 * HOUR, speed: 8, onDone: () => {
         const R = app.range, pct = R && R.T > 0 ? 100 * R.inT / R.T : 0, x = app.sim;
-        d.running = false; d.ran = true; d.pct = pct; d.ok = pct >= 70 || d.attempts >= 2;
+        d.running = false; d.ran = true; d.pct = pct; d.ok = pct >= 80 || d.attempts >= 2;
         x.tag = 'handDone';
         c.recordValue('hand', { pct, urine: x.cum.urine / 1000, salt: x.cum.urineNa / SALT, attempts: d.attempts });
         c.refresh();
@@ -532,8 +532,8 @@
       if (meter.isConnected) setTimeout(paint, 400);
     };
     setTimeout(paint, 0);
-    if (d.ran && !d.running) el.appendChild(htmlEl('div', { class: 'feedback ' + (d.pct >= 70 ? 'good' : 'note'), style: 'margin-top:8px' },
-      d.pct >= 70 ? `<b>${Math.round(d.pct)} % of the day in range.</b> You passed ${fx(c.record.values.hand.urine, 1)} L of urine carrying ${fx(c.record.values.hand.salt, 1)} g of salt, and no two hours of it were the same.`
+    if (d.ran && !d.running) el.appendChild(htmlEl('div', { class: 'feedback ' + (d.pct >= 80 ? 'good' : 'note'), style: 'margin-top:8px' },
+      d.pct >= 80 ? `<b>${Math.round(d.pct)} % of the day in range.</b> You passed ${fx(c.record.values.hand.urine, 1)} L of urine carrying ${fx(c.record.values.hand.salt, 1)} g of salt, and no two hours of it were the same.`
         : d.ok ? `<b>${Math.round(d.pct)} % of the day in range.</b> It is a relentless job, and real kidneys do it for dozens of substances at once. You have seen the problem; carry on.`
           : `<b>${Math.round(d.pct)} % of the day in range.</b> Try once more. Read <b>Coming up</b>, and move the dial as soon as a gauge starts to drift: turn water out <b>up</b> after a drink, and <b>right down</b> while she is sweating.`));
   }

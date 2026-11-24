@@ -181,7 +181,7 @@
         },
         substance('alb', 'A blood protein', `<p><b>Albumin</b> is the commonest protein in her blood: about 4 g in every 100 mL. It is far larger than anything that passed the filter in scene 5.</p>`, 'It never left the blood. A healthy person\'s urine contains almost no protein.'),
         substance('glucose', 'Glucose', `<p>Her blood glucose is 90 mg/dL, and glucose is small. The first stretch of the tubule is lined with carriers that fit it.</p>`, 'About 160 g of glucose is filtered every day, and every gram is carried back. None is wasted.'),
-        substance('cr', 'Creatinine', `<p><b>Creatinine</b> is a waste her muscles make at a steady rate, about 1.6 g a day. It is small. The tubule has no carrier for it.</p>`, `Everything filtered leaves, and nothing else does. So the rate at which creatinine leaves <i>is</i> the rate of filtering.${nameBox('That is why <b>creatinine</b> is on every blood panel: it is how filtering (GFR) is estimated without measuring it directly. You will use it in scene 10.')}`),
+        substance('cr', 'Creatinine', `<p><b>Creatinine</b> is a waste her muscles make at a steady rate, about 1.6 g a day. It is small, and the tubule does not take it back.</p>`, `Everything filtered leaves, and almost nothing else does. So the rate at which creatinine leaves <i>is</i> the rate of filtering.${nameBox('That is why <b>creatinine</b> is on every blood panel: it is how filtering (GFR) is estimated without measuring it directly. You will use it in scene 10.')}`),
         substance('drug', 'A drug', `<p><b>Penicillin</b> is small. The tubule has no carrier to take it back. But its cells do have carriers that pick up certain molecules from the <b>return line</b> and push them into the tubule.</p>`, `More leaves than was ever filtered, because it is pushed in as well. Half of a dose of penicillin is gone in about half an hour, which is why it is given several times a day.${nameBox('Moving a substance from the blood of the return line into the tubule: <b>tubular secretion</b>. Many drugs, and some of the body\'s own wastes and potassium, leave partly this way.')}`, ['drug']),
         {
           view: 'strip', title: 'The sum',
@@ -206,7 +206,8 @@
           title: 'A urine report',
           setup: () => setSim(rest()),
           enter: (c) => c.view().show(['alb', 'glucose', 'water']),
-          text: `<p>Urine is easy to collect, and it is evidence of what the nephron did. Under the picture is the healthy student's urine as a <b>test strip</b> (protein, glucose, blood) and a measuring jug would report it. Her blood contains 90 mg/dL of glucose and 4 g/dL of protein; her urine has neither.</p>`,
+          text: `<p>Urine is easy to collect, and it is evidence of what the nephron did. Under the picture is the healthy student's urine as a <b>test strip</b> (protein, glucose, blood) and a measuring jug would report it. Her blood contains 90 mg/dL of glucose and 4 g/dL of protein; her urine has neither.</p>
+                 <p><b>Concentration</b> is how much is dissolved in each litre. On this scale blood is about 290, and urine can be anywhere from 50 (nearly water) to 1,200.</p>`,
           question: { prompt: 'Is glucose missing from her urine for the same reason that protein is?', options: [
             { t: 'No: protein never got through the filter; glucose got through and was all taken back', ok: true, fb: 'Two different steps. So each can fail by itself, and the urine will show which one did.' },
             { t: 'Yes: the filter holds both back', fb: 'In scene 5 glucose passed the filter as freely as water. What happened to it afterwards?' },
@@ -402,10 +403,10 @@
           view: 'strip', title: 'Four events',
           graph: NO_GRAPH, meters: NO_METERS,
           setup: () => setSim(rest()),
-          text: `<p>Fill in the table from your four runs.</p>`,
+          text: `<p>Fill in the table from your four runs. For each event, compare the urine afterwards with the urine just before.</p>`,
           extra: (el, c) => selectTable(el, c, {
-            key: 'events', head: ['', 'Urine volume', 'Urine concentration', 'Mainly because'], rows: EVENTS,
-            done: `<b>Complete.</b> In every row the urine changed so that the blood would not.${nameBox('The last stretch is the <b>distal convoluted tubule</b> and the <b>collecting duct</b>. Between it and the first stretch is the hairpin called the <b>nephron loop</b> (loop of Henle). How the loop lets urine become <i>more</i> concentrated than blood is a story for another lab; here, note only that the last stretch does the adjusting.')}`,
+            key: 'events', head: ['', 'Urine volume', 'Urine concentration', 'The kidney is…'], rows: EVENTS,
+            done: `<b>Complete.</b> In every row the urine changed so that the blood would not. ADH fell after the water and rose in the other three. Aldosterone fell after the salt and rose after the sweat and the bleed.${nameBox('The last stretch is the <b>distal convoluted tubule</b> and the <b>collecting duct</b>. Between it and the first stretch is the hairpin called the <b>nephron loop</b> (loop of Henle). How the loop lets urine become <i>more</i> concentrated than blood is a story for another lab; here, note only that the last stretch does the adjusting.')}`,
           }),
           waitFor: () => false, waitHint: 'Complete the table',
         },
@@ -507,11 +508,11 @@
   // Scene 9's table.
   var EVENTS = (function () {
     const V = ['up', 'down'], C = ['more dilute', 'more concentrated'];
-    const W = ['less ADH: less water taken back', 'more ADH: more water taken back', 'less aldosterone: less salt taken back', 'low blood pressure: little is filtered'];
+    const W = ['getting rid of water', 'getting rid of salt while keeping water', 'keeping water and salt', 'barely filtering at all'];
     return [
       ['A big bottle of water', 'up', 'more dilute', W[0]],
-      ['A salty lunch', 'down', 'more concentrated', W[2]],
-      ['An hour of sweating', 'down', 'more concentrated', W[1]],
+      ['A salty lunch', 'down', 'more concentrated', W[1]],
+      ['An hour of sweating', 'down', 'more concentrated', W[2]],
       ['A heavy bleed', 'down', 'more concentrated', W[3]],
     ].map(([label, v, cn, why]) => ({ label, cells: [{ options: V, answer: v }, { options: C, answer: cn }, { options: W, answer: why }] }));
   })();

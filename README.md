@@ -115,7 +115,10 @@ HeartSim (furosemide), and three short ones. The completion code comes from the 
 work is a handout in two versions with the same questions: a print version
 (`docs/worksheet/KidneySim-handout.pdf`) and a type-in version for Google Docs
 (`docs/worksheet/KidneySim-handout-typed.docx`), both built by
-`node docs/worksheet/make-kidney-worksheet.js` (Canvas page `assignments/kidney.md`). Design and
+`node docs/worksheet/make-kidney-worksheet.js` (Canvas page `assignments/kidney.md`). The two
+anatomical figures in scene 3 are "The Kidney" and "Blood Flow in the Nephron" by OpenStax
+College, CC BY 3.0, which are not covered by this repository's own licence
+(`kidney/img/CREDITS.md`). Design and
 model, including what is left for a Part B (how urine is concentrated; volume against
 concentration): `docs/KIDNEY_MODULE.md`. Tests: `tests/kidney.test.js` (physiology),
 `npm run test:kidney` (performs every step in Chromium) and `node tests/ui/kidney-jump.js` (enters

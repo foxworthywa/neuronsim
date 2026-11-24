@@ -169,13 +169,14 @@
     const X = (t) => padL + (t - t0) / W * (w - padL - padR);
     const n = cfg.rows.length, rowH = (h - padT - padB - gap * (n - 1)) / n;
     // time axis
-    const stepOpts = [30, 60, 120, 180, 240, 360, 720, 1440, 2880];
+    const stepOpts = [5, 10, 15, 30, 60, 120, 180, 240, 360, 720, 1440, 2880];
     const step = stepOpts.find(s => W / s <= 9) || 2880;
     c.textAlign = 'center'; c.textBaseline = 'top';
-    for (let t = Math.ceil(t0 / step - 1e-9) * step; t <= t1 + 1e-6; t += step) {
+    const origin = cfg.clock ? 0 : app.zero;      // elapsed-time axes count from the start of the run
+    for (let t = origin + Math.ceil((t0 - origin) / step - 1e-9) * step; t <= t1 + 1e-6; t += step) {
       c.strokeStyle = '#e6e3da'; c.lineWidth = 1; c.beginPath(); c.moveTo(X(t), padT); c.lineTo(X(t), h - padB); c.stroke();
       c.fillStyle = '#7b8190';
-      const label = cfg.clock ? clockTime(t, W > DAY ? app.days : null) : (W > 3 * DAY ? `day ${Math.round((t - app.zero) / DAY)}` : `${Math.round((t - app.zero) / HOUR)} h`);
+      const label = cfg.clock ? clockTime(t, W > DAY ? app.days : null) : (W > 3 * DAY ? `day ${Math.round((t - app.zero) / DAY)}` : W < 3 * HOUR ? `${Math.round(t - app.zero)} min` : `${Math.round((t - app.zero) / HOUR)} h`);
       if (X(t) > padL + 14 && X(t) < w - padR - 14 || t === t0) c.fillText(label, X(t), h - padB + 3);
     }
     cfg.rows.forEach((key, i) => {
@@ -318,6 +319,17 @@
     if (e.key === 'p' && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement) && !(e.target instanceof HTMLSelectElement)) setPaused(!app.paused);
   });
 
+  // An anatomical figure in a larger window (scene 3), with its full credit.
+  function openFigure(which) {
+    const A = (window.KD_ANATOMY || {})[which]; if (!A) return;
+    $('#figure-title').textContent = A.title;
+    $('#figure-img').src = A.src; $('#figure-img').alt = A.alt;
+    $('#figure-credit').innerHTML = `<i>${A.title}</i>. <a href="${A.source}" target="_blank" rel="noopener">${A.credit.replace(' CC BY 3.0.', '')}</a> Licensed <a href="${A.license}" target="_blank" rel="noopener">CC BY 3.0</a>. Resized; otherwise unaltered.`;
+    $('#figure').classList.add('on'); $('#figure-close').focus();
+  }
+  $('#figure-close').addEventListener('click', () => $('#figure').classList.remove('on'));
+  $('#figure').addEventListener('click', (e) => { if (e.target.id === 'figure') $('#figure').classList.remove('on'); });
+
   function start(lesson, opts) {
     runner = Lesson.createRunner(Object.assign({ lesson, panel, progress: $('#progress'), host, inheritKeys: ['view', 'viewOpts', 'speed', 'graph', 'meters', 'clock', 'days'] }, opts || {}));
     KD.runner = runner;
@@ -328,7 +340,7 @@
 
   const KD = window.KD = {
     app, views, COL, ROWS, $, clamp, htmlEl, svgEl, setAttrs, fx, signed, flow, big, clockTime, urineColour, colourWord,
-    setSim, clearHistory, startRun, finishRun, fastFinish, skip, mark, mountView, setPaused, setSpeed, start,
+    setSim, clearHistory, startRun, finishRun, fastFinish, skip, mark, mountView, setPaused, setSpeed, start, openFigure,
     runner: null,
   };
   window.__kidneysim = { app, KD, goto: (s, k) => runner.goto(s, k), runner: () => runner, finishRun: () => fastFinish() };

@@ -154,7 +154,7 @@
     get bp() { const m = this.pressure, pp = 40 * Math.pow(clamp(m / this.p.map, 0.3, 1.6), 0.8); return { sys: Math.round(m + 2 * pp / 3), dia: Math.round(m - pp / 3) }; }
 
     adhTarget() { return clamp((this.osmolarity - 283) / 8.5, 0, 1.3) + clamp((0.93 - this.volume) * 8, 0, 1); }
-    aldoTarget() { return clamp(0.5 + 12 * (this.s.volumeSet - this.volume) + 0.25 * (this.potassium - this.p.k), 0, 1); }
+    aldoTarget() { return clamp(0.5 + 18 * (this.s.volumeSet - this.volume) + 0.25 * (this.potassium - this.p.k), 0, 1); }
 
     // ------------------------------------------------------------------ the nephron, this minute
     // Fills this.f with what is filtered, taken back, pushed in and excreted, per minute.

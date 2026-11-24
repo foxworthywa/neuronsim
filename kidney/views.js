@@ -269,7 +269,7 @@
   KD.nephronShape = nephronShape; KD.SEG = SEG; KD.numbered = numbered;
 
   views.anatomy = function (opts) {
-    const svg = svgEl('svg', { viewBox: '0 0 1000 560', role: 'img', 'aria-label': 'Where the kidneys are, what is inside one, and one nephron' }, stage);
+    const svg = svgEl('svg', { viewBox: '0 0 1000 612', role: 'img', 'aria-label': 'Where the kidneys are, what is inside one, and one nephron' }, stage);
     const view = { svg, onPart: null };
     const slides = [0, 1, 2].map(() => svgEl('g', { opacity: 0, 'pointer-events': 'none' }, svg));
     const hi = {}, names = [];
@@ -306,66 +306,87 @@
       const fl = svgEl('g', {}, g);
       view.flowT = [label(fl, 716, 120, '', { 'font-size': 15, 'font-weight': 650 }), small(fl, 716, 140, '', { 'font-size': 13.5 }), small(fl, 716, 158, '', { 'font-size': 13.5 })];
     }
+    // An anatomical figure from an anatomy text, shown beside the lab's own drawing. Click for a larger view.
+    function figure(g, which, x, y, w) {
+      const A = (window.KD_ANATOMY || {})[which]; if (!A) return;
+      const h = w * A.height / A.width;
+      label(g, x, y - 12, 'As an anatomy text draws it', { 'font-size': 14, 'font-weight': 650, fill: COL.muted });
+      svgEl('rect', { x: x - 3, y: y - 3, width: w + 6, height: h + 6, rx: 6, fill: '#fff', stroke: '#d9d6cc' }, g);
+      const img = svgEl('image', { href: A.src, x, y, width: w, height: h, preserveAspectRatio: 'xMidYMid meet' }, g);
+      clickable(img, `${A.title}: an anatomical figure. Open a larger view`, () => KD.openFigure(which));
+      svgEl('title', { text: A.alt }, img);
+      small(g, x, y + h + 20, 'Click the figure for a larger view.', { 'font-size': 13 });
+      small(g, x, y + h + 37, 'OpenStax College, CC BY 3.0', { 'font-size': 12.5 });
+    }
     // ---- slide 1: one kidney cut open
     {
-      const g = slides[1], cx = 380, cy = 280;
-      svgEl('path', { d: bean(210, 250), transform: `translate(${cx},${cy})`, fill: COL.cortex, stroke: COL.kidneyDark, 'stroke-width': 4 }, g);
+      const g = slides[1], cx = 380, cy = 280, S = 0.62, TX = 418, TY = 76;
+      const T = (x, y) => [TX + S * x, TY + S * y];
+      figure(g, 'kidney', 14, 96, 456);
+      label(g, 500, 84, 'As this lab draws it', { 'font-size': 14, 'font-weight': 650, fill: COL.muted });
+      const sh = svgEl('g', { transform: `translate(${TX},${TY}) scale(${S})` }, g);
+      svgEl('path', { d: bean(210, 250), transform: `translate(${cx},${cy})`, fill: COL.cortex, stroke: COL.kidneyDark, 'stroke-width': 5 }, sh);
       // the inner part: cone-shaped blocks pointing at the hollow in the middle
       const sinus = [cx + 70, cy];
       const angles = [100, 136, 172, 208, 244, 268].map(a => a * Math.PI / 180);
       const calyx = [];
       angles.forEach((a) => {
         const R1 = 150 + 30 * Math.abs(Math.sin(a)), R0 = 62, sp = 0.24;
-        const bx = (r, d) => [cx + 20 + r * Math.cos(a + d) * 1.0, cy - r * Math.sin(a + d) * 1.18];
+        const bx = (r, d) => [cx + 20 + r * Math.cos(a + d), cy - r * Math.sin(a + d) * 1.18];
         const p1 = bx(R1, sp), p2 = bx(R1, -sp), apex = bx(R0, 0);
-        svgEl('path', { d: `M${p1} Q${bx(R1 + 14, 0)} ${p2} L${apex} Z`, fill: COL.medulla, stroke: '#a85a4c', 'stroke-width': 1.5 }, g);
-        for (let i = 1; i < 5; i++) { const f = i / 5, q = [p1[0] + (p2[0] - p1[0]) * f, p1[1] + (p2[1] - p1[1]) * f]; svgEl('path', { d: `M${q} L${apex}`, stroke: '#b9695a', 'stroke-width': 0.8, opacity: 0.6 }, g); }
+        svgEl('path', { d: `M${p1} Q${bx(R1 + 14, 0)} ${p2} L${apex} Z`, fill: COL.medulla, stroke: '#a85a4c', 'stroke-width': 1.8 }, sh);
+        for (let i = 1; i < 5; i++) { const f = i / 5, q = [p1[0] + (p2[0] - p1[0]) * f, p1[1] + (p2[1] - p1[1]) * f]; svgEl('path', { d: `M${q} L${apex}`, stroke: '#b9695a', 'stroke-width': 1, opacity: 0.6 }, sh); }
         calyx.push(apex);
       });
       // the hollow that collects urine, and the tube that drains it
-      let pel = `M${sinus[0] + 60},${sinus[1] + 6} `;
-      svgEl('path', { d: calyx.map(p => `M${p[0]},${p[1]} L${sinus[0] + 34},${sinus[1] + 6}`).join(' '), stroke: '#e9d27a', 'stroke-width': 13, 'stroke-linecap': 'round', fill: 'none' }, g);
-      svgEl('path', { d: `M${sinus[0] + 20},${sinus[1] - 26} Q${sinus[0] + 80},${sinus[1] - 10} ${sinus[0] + 96},${sinus[1] + 60} Q${sinus[0] + 104},${sinus[1] + 150} ${sinus[0] + 92},${sinus[1] + 262} L${sinus[0] + 76},${sinus[1] + 262} Q${sinus[0] + 84},${sinus[1] + 150} ${sinus[0] + 70},${sinus[1] + 80} Q${sinus[0] + 50},${sinus[1] + 40} ${sinus[0] + 14},${sinus[1] + 36} Z`, fill: '#e9d27a', stroke: '#b08900', 'stroke-width': 1.5 }, g);
-      void pel;
-      svgEl('path', { d: `M${cx + 300},${cy - 60} L${sinus[0] + 60},${cy - 44}`, stroke: COL.bloodDark, 'stroke-width': 12, 'stroke-linecap': 'round' }, g);
-      svgEl('path', { d: `M${cx + 300},${cy - 22} L${sinus[0] + 66},${cy - 16}`, stroke: '#8e5a78', 'stroke-width': 12, 'stroke-linecap': 'round' }, g);
-      small(g, cx + 310, cy - 62, 'blood in', { 'font-size': 14 }); small(g, cx + 310, cy - 18, 'blood out', { 'font-size': 14 }); small(g, sinus[0] + 106, sinus[1] + 240, 'urine out', { 'font-size': 14 });
+      svgEl('path', { d: calyx.map(p => `M${p[0]},${p[1]} L${sinus[0] + 34},${sinus[1] + 6}`).join(' '), stroke: '#e9d27a', 'stroke-width': 13, 'stroke-linecap': 'round', fill: 'none' }, sh);
+      svgEl('path', { d: `M${sinus[0] + 20},${sinus[1] - 26} Q${sinus[0] + 80},${sinus[1] - 10} ${sinus[0] + 96},${sinus[1] + 60} Q${sinus[0] + 104},${sinus[1] + 150} ${sinus[0] + 92},${sinus[1] + 262} L${sinus[0] + 76},${sinus[1] + 262} Q${sinus[0] + 84},${sinus[1] + 150} ${sinus[0] + 70},${sinus[1] + 80} Q${sinus[0] + 50},${sinus[1] + 40} ${sinus[0] + 14},${sinus[1] + 36} Z`, fill: '#e9d27a', stroke: '#b08900', 'stroke-width': 2 }, sh);
+      svgEl('path', { d: `M${cx + 300},${cy - 60} L${sinus[0] + 60},${cy - 44}`, stroke: COL.bloodDark, 'stroke-width': 13, 'stroke-linecap': 'round' }, sh);
+      svgEl('path', { d: `M${cx + 300},${cy - 22} L${sinus[0] + 66},${cy - 16}`, stroke: '#8e5a78', 'stroke-width': 13, 'stroke-linecap': 'round' }, sh);
       // one nephron, drawn far larger than life: its filter in the outer part, its loop dipping into a cone
-      const neph = svgEl('g', {}, g);
-      svgEl('path', { d: 'M236,112 C262,100 270,128 288,118 C306,108 308,134 300,150 L300,208 C300,222 316,222 316,208 L316,158 C316,140 338,140 338,160 L352,236', fill: 'none', stroke: '#fff', 'stroke-width': 9, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, neph);
-      svgEl('path', { d: 'M236,112 C262,100 270,128 288,118 C306,108 308,134 300,150 L300,208 C300,222 316,222 316,208 L316,158 C316,140 338,140 338,160 L352,236', fill: 'none', stroke: '#2f4f86', 'stroke-width': 4.5, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, neph);
-      svgEl('circle', { cx: 228, cy: 112, r: 11, fill: '#fff', stroke: '#2f4f86', 'stroke-width': 4 }, neph); svgEl('circle', { cx: 228, cy: 112, r: 5, fill: COL.bloodDark }, neph);
-      const hit = svgEl('rect', { x: 206, y: 92, width: 160, height: 150, rx: 14, fill: 'transparent' }, neph);
+      const neph = svgEl('g', {}, sh);
+      const ND = 'M236,112 C262,100 270,128 288,118 C306,108 308,134 300,150 L300,208 C300,222 316,222 316,208 L316,158 C316,140 338,140 338,160 L352,236';
+      svgEl('path', { d: ND, fill: 'none', stroke: '#fff', 'stroke-width': 10, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, neph);
+      svgEl('path', { d: ND, fill: 'none', stroke: '#2f4f86', 'stroke-width': 5, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, neph);
+      svgEl('circle', { cx: 228, cy: 112, r: 12, fill: '#fff', stroke: '#2f4f86', 'stroke-width': 4.5 }, neph); svgEl('circle', { cx: 228, cy: 112, r: 5.5, fill: COL.bloodDark }, neph);
+      const hit = svgEl('rect', { x: 200, y: 86, width: 172, height: 162, rx: 14, fill: 'transparent' }, neph);
       part(g, 'nephron', 'A tiny structure that starts in the outer part and dips into a cone of the inner part', hit); hi.nephron.push(neph);
-      part(g, 'cortex', 'The outer part of the kidney', svgEl('circle', { cx: 196, cy: 330, r: 24, fill: 'transparent' }, g));
-      part(g, 'medulla', 'A cone of the inner part of the kidney', svgEl('circle', { cx: 290, cy: 350, r: 30, fill: 'transparent' }, g));
-      part(g, 'pelvis', 'The hollow in the middle of the kidney', svgEl('circle', { cx: cx + 130, cy: cy + 40, r: 30, fill: 'transparent' }, g));
-      small(g, 90, 330, 'outer part', { 'font-size': 14, 'text-anchor': 'end' }); svgEl('path', { d: 'M94,326 L180,330', stroke: COL.muted, 'stroke-width': 1 }, g);
-      small(g, 90, 420, 'inner part', { 'font-size': 14, 'text-anchor': 'end' }); svgEl('path', { d: 'M94,416 L262,372', stroke: COL.muted, 'stroke-width': 1 }, g);
-      small(g, 700, 330, 'hollow that collects urine', { 'font-size': 14 }); svgEl('path', { d: `M696,326 L${cx + 150},${cy + 44}`, stroke: COL.muted, 'stroke-width': 1 }, g);
-      nameT(g, 90, 348, 'renal cortex', { 'text-anchor': 'end', fill: COL.kidneyDark, 'font-size': 14 }); nameT(g, 90, 438, 'renal medulla', { 'text-anchor': 'end', fill: COL.kidneyDark, 'font-size': 14 });
-      nameT(g, 700, 348, 'renal pelvis', { fill: '#8a6d00', 'font-size': 14 }); nameT(g, 200, 78, 'a nephron (about a million in each kidney)', { fill: '#2f4f86', 'font-size': 14 });
+      part(g, 'cortex', 'The outer part of the kidney', svgEl('circle', { cx: 196, cy: 330, r: 26, fill: 'transparent' }, sh));
+      part(g, 'medulla', 'A cone of the inner part of the kidney', svgEl('circle', { cx: 290, cy: 350, r: 32, fill: 'transparent' }, sh));
+      part(g, 'pelvis', 'The hollow in the middle of the kidney', svgEl('circle', { cx: cx + 130, cy: cy + 40, r: 32, fill: 'transparent' }, sh));
+      const lead = (x1, y1, p) => svgEl('path', { d: `M${x1},${y1} L${p[0]},${p[1]}`, stroke: COL.muted, 'stroke-width': 1 }, g);
+      label(g, 860, T(0, cy - 60)[1] + 5, 'blood in', { 'font-size': 14.5 }); label(g, 860, T(0, cy - 22)[1] + 9, 'blood out', { 'font-size': 14.5 });
+      label(g, 860, 300, 'hollow that', { 'font-size': 14.5 }); label(g, 860, 317, 'collects urine', { 'font-size': 14.5 }); lead(856, 300, T(cx + 150, cy + 44));
+      label(g, T(sinus[0] + 112, 0)[0], T(0, sinus[1] + 250)[1], 'urine out', { 'font-size': 14.5 });
+      label(g, 500, 452, 'outer part', { 'font-size': 14.5 }); lead(540, 438, T(214, 440));
+      label(g, 640, 452, 'inner part', { 'font-size': 14.5 }); lead(672, 438, T(360, 440));
+      nameT(g, 500, 470, 'renal cortex', { fill: COL.kidneyDark, 'font-size': 14, 'font-weight': 650 }); nameT(g, 640, 470, 'renal medulla', { fill: COL.kidneyDark, 'font-size': 14, 'font-weight': 650 });
+      nameT(g, 860, 335, 'renal pelvis', { fill: '#8a6d00', 'font-size': 14, 'font-weight': 650 });
+      nameT(g, 500, 510, 'The blue structure is a nephron. Each kidney has about a million.', { fill: '#2f4f86', 'font-size': 14.5, 'font-weight': 650 });
     }
     // ---- slide 2: one nephron
     {
-      const g = slides[2];
-      svgEl('rect', { x: 180, y: 20, width: 640, height: 250, fill: '#fbeee9' }, g); svgEl('rect', { x: 180, y: 270, width: 640, height: 280, fill: '#f6e0d9' }, g);
-      small(g, 808, 44, 'outer part of the kidney', { 'text-anchor': 'end', 'font-size': 13 }); small(g, 808, 294, 'inner part', { 'text-anchor': 'end', 'font-size': 13 });
-      const n = nephronShape(g, { x: 240, y: 30, scale: 1 }), P = n.parts;
+      const g = slides[2], NX = 440, NY = 64, S = 0.84;
+      const T = (x, y) => [NX + S * x, NY + S * y];
+      figure(g, 'nephron', 14, 52, 362);
+      label(g, 404, 40, 'As this lab draws it', { 'font-size': 14, 'font-weight': 650, fill: COL.muted });
+      svgEl('rect', { x: 400, y: 50, width: 590, height: 214, fill: '#fbeee9' }, g); svgEl('rect', { x: 400, y: 264, width: 590, height: 206, fill: '#f6e0d9' }, g);
+      small(g, 982, 68, 'outer part of the kidney', { 'text-anchor': 'end', 'font-size': 13 }); small(g, 982, 282, 'inner part', { 'text-anchor': 'end', 'font-size': 13 });
+      const n = nephronShape(g, { x: NX, y: NY, scale: S }), P = n.parts;
       view.neph = P;
       for (const [id, el, name] of [['filter', P.filter, 'A knot of capillaries inside a cup'], ['first', P.first, 'The first, coiled stretch of the tube'], ['loop', P.loop, 'A hairpin that dips into the inner part'], ['last', P.last, 'The last stretch of the tube'], ['ret', P.ret, 'Capillaries wrapped round the tube']]) part(g, id, name, el);
-      const lead = (x1, y1, x2, y2) => svgEl('path', { d: `M${x1},${y1} L${x2},${y2}`, stroke: COL.muted, 'stroke-width': 1 }, g);
-      label(g, 34, 60, 'blood in', { 'font-size': 14.5 }); lead(100, 56, 250, 46);
-      label(g, 34, 150, 'a knot of capillaries', { 'font-size': 14.5 }); label(g, 34, 168, 'inside a cup', { 'font-size': 14.5 }); lead(150, 150, 300, 130);
-      label(g, 34, 330, 'a long tube, in', { 'font-size': 14.5 }); label(g, 34, 348, 'three stretches', { 'font-size': 14.5 }); lead(140, 334, 556, 334);
-      label(g, 34, 450, 'a second set of', { 'font-size': 14.5, fill: '#9e3a33' }); label(g, 34, 468, 'capillaries, wrapped', { 'font-size': 14.5, fill: '#9e3a33' }); label(g, 34, 486, 'round the tube', { 'font-size': 14.5, fill: '#9e3a33' }); lead(176, 462, 536, 440);
-      label(g, 708, 516, 'to the hollow of', { 'font-size': 14 }); label(g, 708, 534, 'the kidney: urine', { 'font-size': 14 });
-      label(g, 770, 190, 'blood back to', { 'font-size': 14 }); label(g, 770, 208, 'the body', { 'font-size': 14 }); lead(766, 192, 756, 186);
-      nameT(g, 34, 190, 'glomerulus + glomerular capsule', { fill: SEG.filter, 'font-size': 13.5, 'font-weight': 650 });
-      nameT(g, 468, 30, 'proximal convoluted tubule', { fill: '#8a6a12', 'font-size': 13.5, 'font-weight': 650, 'text-anchor': 'middle' });
-      nameT(g, 592, 528, 'nephron loop', { fill: '#5e6d2c', 'font-size': 13.5, 'font-weight': 650, 'text-anchor': 'middle' });
-      nameT(g, 704, 250, 'distal convoluted tubule,', { fill: '#1f6f6c', 'font-size': 13.5, 'font-weight': 650 }); nameT(g, 704, 268, 'then collecting duct', { fill: '#1f6f6c', 'font-size': 13.5, 'font-weight': 650 });
-      nameT(g, 34, 506, 'peritubular capillaries', { fill: '#9e3a33', 'font-size': 13.5, 'font-weight': 650 });
+      const lead = (x1, y1, p) => svgEl('path', { d: `M${x1},${y1} L${p[0]},${p[1]}`, stroke: COL.muted, 'stroke-width': 1 }, g);
+      label(g, 478, 78, 'blood in', { 'font-size': 14.5 });
+      label(g, 408, 232, 'a knot of capillaries', { 'font-size': 14.5 }); label(g, 408, 249, 'inside a cup', { 'font-size': 14.5 }); lead(470, 218, T(80, 150));
+      label(g, 408, 330, 'a second set of', { 'font-size': 14.5, fill: '#9e3a33' }); label(g, 408, 347, 'capillaries, wrapped', { 'font-size': 14.5, fill: '#9e3a33' }); label(g, 408, 364, 'round the tube', { 'font-size': 14.5, fill: '#9e3a33' }); lead(540, 350, T(300, 360));
+      label(g, 884, 176, 'blood back', { 'font-size': 14.5 }); label(g, 884, 193, 'to the body', { 'font-size': 14.5 });
+      label(g, 846, 312, 'a long tube,', { 'font-size': 14.5 }); label(g, 846, 329, 'in three stretches', { 'font-size': 14.5 }); lead(842, 316, T(452, 300));
+      label(g, 846, 440, 'to the hollow of', { 'font-size': 14.5 }); label(g, 846, 457, 'the kidney: urine', { 'font-size': 14.5 });
+      // the names, as a key under the drawing
+      [[SEG.filter, 'the filter: glomerulus inside the glomerular capsule'], [SEG.first, 'first stretch: proximal convoluted tubule'], [SEG.loop, 'the hairpin: nephron loop'], [SEG.last, 'last stretch: distal convoluted tubule, then collecting duct'], [SEG.ret, 'second set of capillaries: peritubular capillaries']].forEach(([col, text], i) => {
+        const y = 494 + i * 22, dot = svgEl('rect', { x: 408, y: y - 11, width: 22, height: 12, rx: 4, fill: col, opacity: 0 }, g);
+        names.push(dot); nameT(g, 438, y, text, { 'font-size': 14.5, 'font-weight': 600 });
+      });
     }
     const marks = numbered(svg, opts.marksAt || []);
     view.setMarks = (on) => marks.setAttribute('opacity', on ? 1 : 0);

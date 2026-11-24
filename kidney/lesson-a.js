@@ -512,7 +512,7 @@
 
   // Scene 1: what an ideal exit would do with six things in the blood, and why.
   var KINDS = (function () {
-    const O = ['keep all of it', 'keep what is needed, lose the extra', 'get rid of all of it'];
+    const O = ['keep all of it', 'keep enough, lose the extra', 'get rid of all of it'];
     const row = (name, what, answer) => ({ aria: name, label: `${name}</b><span class="was">${what}</span><b>`, cells: [{ options: O, answer }] });
     return [
       row('Glucose', 'Fuel for every cell, won from food. The body can store what it does not burn today.', O[0]),

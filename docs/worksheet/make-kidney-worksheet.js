@@ -139,7 +139,7 @@ const sheet = () => [
   q(v('Our prediction (circle one):   all three will rise   /   only urea will rise   /   nothing much will change', 'Our prediction (keep one, delete the others):   all three will rise   /   only urea will rise   /   nothing much will change')),
   q('Mr. Herrera, Monday noon → Wednesday 8 am:   weight 82.0 → ________ kg     potassium 4.0 → ________ mmol/L     urea (BUN) 25 → ________ mg/dL'),
   q('In those 44 hours he took in ________ L of water and ________ g of salt. Was any of it unusual?  yes / no'),
-  q('Three kinds of thing in the blood, with one example of each and the reason:   keep all of it: ______________ because ____________________________;   keep what is needed and lose the extra: ______________ because ____________________________;   get rid of all of it: ______________ because ____________________________.'),
+  q('Three kinds of thing in the blood, with one example of each and the reason:   keep all of it: ______________ because ____________________________;   keep enough and lose the extra: ______________ because ____________________________;   get rid of all of it: ______________ because ____________________________.'),
 
   scene(2, 'You are the exit', 'Hold her steady for a day · Read your own day', 2),
   q('By hand: water and salt both in range ________ % of the day. We let out ________ L of urine carrying ________ g of salt.'),

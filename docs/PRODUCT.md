@@ -7,7 +7,7 @@ animations.
 
 Two modules share one lesson engine:
 
-- **NeuronSim** (`index.html`): one neuron: anatomy, resting membrane, synaptic input (excitatory
+- **NeuronSim** (`neuron.html`): one neuron: anatomy, resting membrane, synaptic input (excitatory
   and inhibitory), integration and threshold, action potential built from channel behaviour,
   propagation along an unmyelinated axon, transmitter release onto the next neuron, plus a
   free-play lab.

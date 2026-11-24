@@ -9,7 +9,7 @@
  * Usage:
  *   node tests/ui/smoke.js [page ...] [--out=DIR] [--compare=DIR] [--dwell=MS] [--serve]
  *
- *   page       one or more HTML pages relative to the repo root (default: index.html dist/index.html)
+ *   page       one or more HTML pages relative to the repo root (default: neuron.html dist/neuron.html)
  *   --out      directory for screenshots (default: $SMOKE_OUT or <os tmpdir>/neuronsim-ui)
  *   --compare  directory holding earlier screenshots with the same names; each new screenshot is
  *              pixel-compared against it and a *.diff.png is written next to the new one
@@ -46,7 +46,7 @@ for (const a of args) {
   else if (a === '--serve') opt.serve = true;
   else pages.push(a);
 }
-if (!pages.length) pages.push('index.html', 'dist/index.html');
+if (!pages.length) pages.push('neuron.html', 'dist/neuron.html');
 fs.mkdirSync(opt.out, { recursive: true });
 
 const HANDLE = '(window.__simapp || window.__neuronsim || window.__musclesim)';

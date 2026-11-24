@@ -3,61 +3,98 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NeuronSim — How a neuron signals</title>
-<link rel="stylesheet" href="style.css">
+<title>Physiology simulations</title>
+<meta name="description" content="Interactive, model-driven physiology lessons: NeuronSim, MuscleSim, HeartSim, EndoSim, BloodSim and ImmuneSim.">
+<style>
+  /* Home page. Colours follow lib/base.css (docs/VISUAL_STYLE.md). The cards come from catalog.js. */
+  :root { --bg: #f6f5f0; --panel: #ffffff; --ink: #1f2430; --muted: #5f6675; --line: #d9d6cc; --accent: #2f6fd6; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px; }
+  header { background: var(--panel); border-bottom: 1px solid var(--line); padding: 28px 0 22px; }
+  h1 { font-size: 28px; line-height: 1.2; margin: 0 0 6px; font-weight: 650; letter-spacing: .2px; }
+  header p { margin: 0; color: var(--muted); max-width: 62ch; }
+  main { padding: 8px 0 40px; }
+  h2 { font-size: 18px; margin: 28px 0 2px; font-weight: 650; }
+  .note { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; list-style: none; margin: 0; padding: 0; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-top: 4px solid var(--c, var(--accent)); border-radius: 12px; padding: 14px 16px 14px; display: flex; flex-direction: column; }
+  .card h3 { font-size: 19px; margin: 0; font-weight: 650; }
+  .card .subt { color: var(--muted); font-size: 14px; margin: 0 0 8px; }
+  .card .sum { font-size: 14.5px; margin: 0 0 10px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; padding: 0; list-style: none; }
+  .chips li { font-size: 12.5px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; background: #faf9f5; white-space: nowrap; }
+  .card .foot { margin-top: auto; }
+  a.open { display: inline-block; background: var(--accent); color: #fff; text-decoration: none; font-weight: 600; font-size: 15px; padding: 8px 16px; border-radius: 8px; }
+  a.open:hover { background: #2a62bd; }
+  a.open:focus-visible, .more a:focus-visible { outline: 3px solid #9dbcf0; outline-offset: 2px; }
+  .more { margin: 10px 0 0; padding: 0; list-style: none; font-size: 13.5px; }
+  .more a { color: var(--accent); text-decoration: none; }
+  .more a:hover { text-decoration: underline; }
+  footer { color: var(--muted); font-size: 13.5px; padding: 0 0 36px; }
+  footer a { color: var(--accent); }
+  noscript p { background: #fff3d6; border-radius: 8px; padding: 10px 12px; }
+</style>
 </head>
 <body>
 <header>
-  <div>
-    <h1>NeuronSim</h1>
-    <div class="sub">How a neuron receives, decides, sends · <a href="muscle.html">Muscle module →</a></div>
+  <div class="wrap">
+    <h1>Physiology simulations</h1>
+    <p>Interactive lessons, each run by a working model of the biology. In every scene you predict what will happen, watch the model, then explain what you saw.</p>
   </div>
-  <div id="progress" title="Scenes"></div>
-  <div class="spacer"></div>
-  <label class="sub">Speed
-    <select id="speed" title="How much simulated time passes per second of real time">
-      <option value="0.0015">1 s = 1.5 ms (slowest)</option>
-      <option value="0.003">1 s = 3 ms</option>
-      <option value="0.005">1 s = 5 ms</option>
-      <option value="0.01" selected>1 s = 10 ms</option>
-      <option value="0.02">1 s = 20 ms</option>
-      <option value="0.05">1 s = 50 ms</option>
-    </select>
-  </label>
-  <button id="btn-pause" title="Pause / resume the simulation clock (space)">Pause</button>
-  <button id="btn-lab" title="Free-play lab with all controls">Lab</button>
 </header>
-
-<main>
-  <div id="stage-wrap">
-    <div id="stage-top">
-      <div id="stage-caption"></div>
-      <div id="vm-badge"><span id="vm-label">Vm</span> <b id="vm-value">−70.0</b> mV</div>
-    </div>
-    <div id="stage"></div>
-    <div id="paused-badge">Paused — predict first, then continue</div>
-    <div id="narrator" aria-live="polite"></div>
-  </div>
-  <aside id="panel"></aside>
-  <div id="trace-wrap">
-    <div id="trace-head">
-      <span id="trace-title">Membrane potential recorded inside the soma</span>
-      <span class="legend" id="trace-legend"></span>
-      <span style="flex:1"></span>
-      <label><input type="checkbox" id="show-g"> show Na⁺/K⁺ conductance</label>
-      <span id="sim-clock" style="font-variant-numeric: tabular-nums">t = 0.0 ms</span>
-    </div>
-    <canvas id="trace"></canvas>
-  </div>
+<main class="wrap" id="catalog">
+  <noscript><p>This page and the simulations need JavaScript. Please turn it on in your browser and reload.</p></noscript>
 </main>
+<footer class="wrap">
+  <p>Bookmark this page: every simulation is listed here, and new ones are added as they are built. They run in any current browser on a laptop or desktop; nothing is installed and no account is needed.</p>
+</footer>
 
-<script src="engine.js"></script>
-<script src="app.js"></script>
-<script src="scenes/shared.js"></script>
-<script src="lessons/neuron.js"></script>
+<script src="catalog.js"></script>
+<script>window.CATALOG_BUILT = false;</script>
 <script>
-  // Boot: the generic SimApp runs the neuron model with the neuron lesson (see docs/APP_API.md).
-  window.__neuronsim = SimApp.init(Object.assign({ model: new NeuronSim.Neuron() }, NeuronLesson));
+(function () {
+  'use strict';
+  // In the repository the pages live at their source paths (heart/index.html); in the built
+  // site they are flat (heart.html). build.js flips CATALOG_BUILT so the links follow.
+  const built = window.CATALOG_BUILT, { GROUPS, SIMS } = window.CATALOG;
+  const el = (tag, attrs, kids) => {
+    const n = document.createElement(tag);
+    for (const k in attrs || {}) { if (k === 'text') n.textContent = attrs[k]; else n.setAttribute(k, attrs[k]); }
+    for (const kid of kids || []) if (kid) n.appendChild(kid);
+    return n;
+  };
+  const main = document.getElementById('catalog');
+  const names = GROUPS.map(g => g.name);
+  for (const s of SIMS) if (!names.includes(s.group)) { GROUPS.push({ name: s.group }); names.push(s.group); }   // a new group still shows
+
+  for (const g of GROUPS) {
+    const sims = SIMS.filter(s => s.group === g.name);
+    if (!sims.length) continue;
+    const id = 'g-' + g.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const section = el('section', { 'aria-labelledby': id }, [el('h2', { id, text: g.name }), g.note ? el('p', { class: 'note', text: g.note }) : null]);
+    const grid = el('ul', { class: 'grid' });
+    for (const s of sims) {
+      const href = built ? s.page : s.src;
+      const chips = [s.scenes + ' scenes', s.minutes ? 'about ' + s.minutes + ' min' : null, s.format || null].filter(Boolean);
+      const more = [];
+      if (s.verify) more.push(el('li', {}, [el('a', { href: href + '#verify', text: 'Instructors: check a completion code' })]));
+      if (s.frozen) more.push(el('li', {}, [el('a', { href: s.frozen.href, text: s.frozen.label })]));
+      grid.appendChild(el('li', { class: 'card', style: '--c:' + s.color, id: s.id }, [
+        el('h3', { text: s.title }),
+        el('p', { class: 'subt', text: s.subtitle }),
+        el('p', { class: 'sum', text: s.summary }),
+        el('ul', { class: 'chips' }, chips.map(c => el('li', { text: c }))),
+        el('div', { class: 'foot' }, [
+          el('a', { class: 'open', href, 'aria-label': 'Open ' + s.title, text: 'Open ' + s.title }),
+          more.length ? el('ul', { class: 'more' }, more) : null,
+        ]),
+      ]));
+    }
+    section.appendChild(grid);
+    main.appendChild(section);
+  }
+})();
 </script>
 </body>
 </html>

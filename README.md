@@ -7,8 +7,16 @@ force → relax → tetanus, then the neuromuscular junction, with a lab of clin
 muscle module is self-contained (it is taught first in the course it was built for) and
 introduces the resting membrane and the action potential from scratch.
 
-**Live versions:** https://foxworthywa.github.io/neuronsim/ (neuron) and
+**Home page, listing every simulation:** https://foxworthywa.github.io/neuronsim/. It is drawn
+from `catalog.js`, the one list of simulations, which `build.js` also uses to decide what is
+published; so a new simulation cannot go live without appearing there. Every simulation's header
+links back to it ("All simulations", opening in a new tab so a lesson in progress is not lost).
+How to add one: `CLAUDE.md`. `tests/catalog.test.js` enforces it.
+
+**Live versions:** https://foxworthywa.github.io/neuronsim/neuron.html (neuron) and
 https://foxworthywa.github.io/neuronsim/muscle.html (muscle), rebuilt automatically on every push.
+NeuronSim used to be at the site's root address; that address is now the home page, and the frozen
+copy below has not moved.
 
 **Frozen release, safe to assign:** https://foxworthywa.github.io/neuronsim/v1/muscle.html and
 https://foxworthywa.github.io/neuronsim/v1/index.html. These are byte-for-byte copies of the first
@@ -90,7 +98,7 @@ pasted into the lab's own handout (`assignments/blood.md`). Design, model and op
 `docs/BLOOD_MODULE.md`. Tests: `tests/blood.test.js` (biology) and `npm run test:blood` (performs
 every step in Chromium).
 
-No build step. Open `index.html` in a browser (or serve the folder with any static server).
+No build step. Open `index.html` (the home page) or any simulation page in a browser (or serve the folder with any static server).
 
 ```
 npm test          # biology unit tests (Node 18+)
@@ -101,8 +109,8 @@ npm run test:walk   # perform every muscle activity through the panel buttons
 npm run test:robust # no step callback throws, and the loop survives one that does
 ```
 
-`dist/index.html` is the single-file version: copy it anywhere, double-click it, or drop it on
-GitHub Pages / a course site. It is regenerated from the source files by `node build.js`.
+Each `dist/<page>.html` is a single-file version: copy it anywhere, double-click it, or drop it on
+GitHub Pages / a course site. They are regenerated from the source files by `node build.js`.
 
 ## What the student does
 
@@ -172,7 +180,7 @@ rigor mortis versus cramp, and "which calcium?". The design and every question a
 - `scenes/shared.js` — the resting-membrane, recording-electrode and action-potential scenes,
   built from a cell profile so other modules (muscle) can re-stage them.
 - `lessons/neuron.js` — everything neuron-specific: the neuron drawing, the zoom/neuron/synapse/axon
-  views, the ten-scene lesson and the lab. `index.html` + `style.css` are the page.
+  views, the ten-scene lesson and the lab. `neuron.html` + `style.css` are the page.
 - `muscle.js` — the skeletal muscle fibre: 17 coupled sarcolemma segments (3 cm) with the same
   channel kinetics, a split K⁺/Na⁺ leak resting at −85 mV, per-segment excitation–contraction
   coupling (T-tubule sensor → SR release channel → cytosolic Ca²⁺ → troponin → cross-bridges →

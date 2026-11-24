@@ -1,4 +1,4 @@
-/* NeuronSim / MuscleSim page styles (shared by index.html and muscle.html). */
+/* NeuronSim / MuscleSim page styles (shared by neuron.html and muscle.html). */
 :root {
   --bg: #f6f5f0;
   --panel: #ffffff;
@@ -156,3 +156,5 @@ kbd.part { background: #eef0f4; border: 1px solid #d6dae2; border-radius: 4px; p
 .card .card-body .feedback.good { font-size: 13px; }
 header .sub a { color: var(--accent); text-decoration: none; }
 header .sub a:hover { text-decoration: underline; }
+header a.home { color: var(--muted); font-size: 13px; text-decoration: none; white-space: nowrap; }
+header a.home:hover { text-decoration: underline; }

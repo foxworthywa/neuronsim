@@ -1,5 +1,5 @@
 /*
- * NeuronLesson: everything neuron-specific for index.html (see docs/APP_API.md).
+ * NeuronLesson: everything neuron-specific for neuron.html (see docs/APP_API.md).
  *
  *   window.NeuronLesson = { profile, drawCell, views, lesson, lab }
  *

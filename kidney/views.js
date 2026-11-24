@@ -390,7 +390,7 @@
       label(g, 846, 312, 'a long tube,', { 'font-size': 14.5 }); label(g, 846, 329, 'in three stretches', { 'font-size': 14.5 }); lead(842, 316, T(452, 300));
       label(g, 846, 440, 'to the hollow of', { 'font-size': 14.5 }); label(g, 846, 457, 'the kidney: urine', { 'font-size': 14.5 });
       // the names, as a key under the drawing
-      [[SEG.filter, 'the filter: glomerulus inside the glomerular capsule'], [SEG.first, 'first stretch: proximal convoluted tubule'], [SEG.loop, 'the hairpin: nephron loop'], [SEG.last, 'last stretch: distal convoluted tubule, then collecting duct'], [SEG.ret, 'second set of capillaries: peritubular capillaries']].forEach(([col, text], i) => {
+      [[SEG.filter, 'the filter: glomerulus inside the glomerular capsule'], [SEG.first, 'first stretch: proximal convoluted tubule'], [SEG.loop, 'the hairpin: nephron loop (a descending limb, then an ascending limb)'], [SEG.last, 'last stretch: distal convoluted tubule, then collecting duct'], [SEG.ret, 'second set of capillaries: peritubular capillaries']].forEach(([col, text], i) => {
         const y = 494 + i * 22, dot = svgEl('rect', { x: 408, y: y - 11, width: 22, height: 12, rx: 4, fill: col, opacity: 0 }, g);
         names.push(dot); nameT(g, 438, y, text, { 'font-size': 14.5, 'font-weight': 600 });
       });

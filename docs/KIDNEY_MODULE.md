@@ -455,7 +455,16 @@ Each milestone is usable in a course on its own.
 
 ## As built (differences from the plan above)
 
-- **Ten scenes, 56 steps.** The scene list is as planned. Changes inside scenes:
+- **Ten scenes, 57 steps.** The scene list is as planned. Changes inside scenes:
+  - *Plain names and anatomical names together* (instructor review, Nov 2026). The parts of the
+    nephron are named in the key of scene 3's drawing, and from then on every label on the strip
+    carries both: "first stretch / proximal convoluted tubule (PCT)", "the loop / nephron loop",
+    "last stretch / distal convoluted tubule, then collecting duct", "the filter / glomerulus +
+    capsule", "the return line (peritubular capillaries)". The step text gives the anatomical
+    name wherever a stretch is first mentioned in a scene, and says which part a hormone or a
+    drug acts on (ADH chiefly on the collecting duct; furosemide on the ascending limb of the
+    loop). Scene 9 ends with **The parts by name**: the anatomical names are hidden and the
+    student gives each of six parts, described by what it does, its name.
   - *Scene 1* ends with a step added at instructor review (Nov 2026): **why** some things must
     leave the blood and others must stay. The student decides what an ideal exit would do with
     six things (glucose, water, salt, potassium, urea, a drug), each described by what it is for,

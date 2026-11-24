@@ -428,7 +428,7 @@
           enter: (c) => c.view().setMarks(true),
           text: `<p>Your kidneys are built like design 2. This picture stays on screen for the rest of the lab: one nephron, with its tube pulled out straight.</p>
                  <ol><li><b>The filter:</b> the knot of capillaries in its cup. Blood comes in by the afferent arteriole, and everything small is pushed out of it here.</li>
-                 <li><b>The tubule:</b> the long tube, lined with take-back pumps. <b>Its width in this picture is the flow:</b> watch it narrow.</li>
+                 <li><b>The tubule:</b> the long tube, lined with take-back pumps, in the three stretches you met in scene 3. Each is labelled with a plain name and, under it, the name your textbook uses. <b>The tubule's width in this picture is the flow:</b> watch it narrow.</li>
                  <li><b>The return line:</b> the blood leaves the knot by the efferent arteriole, which leads into the second set of capillaries, drawn here as one wide vessel running beside the tubule. Whatever is taken back goes into it, and back to the body.</li>
                  <li><b>The urine:</b> whatever was not taken back.</li></ol>
                  <p>The price of this design: your kidneys filter about <b>180 litres</b> a day and take nearly all of it back. They are half a percent of your weight and use nearly a tenth of your resting energy doing it.</p>`,

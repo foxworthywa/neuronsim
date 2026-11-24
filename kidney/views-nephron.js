@@ -235,7 +235,7 @@
     const repY = (ledKeys.length ? 384 + ledKeys.length * 26 : 356) + 14;
     const H = Math.max(inset ? 540 : ledKeys.length ? 372 + 22 + ledKeys.length * 26 : 356, opts.report ? repY + 80 : 0);
     const svg = svgEl('svg', { viewBox: `0 0 1000 ${H}`, role: 'img', 'aria-label': 'One nephron drawn straightened: the filter at the left, the tubule running to the right, the return line above it carrying back what is taken back, and the urine at the right' }, stage);
-    const view = { svg, kinds: (opts.kinds || ['water']).slice(), revealed: new Set(opts.revealed || []), names: !!opts.names };
+    const view = { svg, kinds: (opts.kinds || ['water']).slice(), revealed: new Set(opts.revealed || []), names: opts.names !== false };      // each part carries its plain name and its anatomical name, unless a step is testing the names
     const body = () => app.sim;
     const TY = 206, GX = 92, X = [140, 440, 600, 860], RY = 62;         // tubule centre line; filter; segment ends; return line
     const FULL = 46;                                                    // half-height of the stream at 125 mL/min
@@ -250,8 +250,8 @@
     // unseen guides that the particles follow
     const affPath = svgEl('path', { d: AFF, fill: 'none', stroke: 'none' }, svg), tuft = svgEl('path', { d: TUFT, fill: 'none', stroke: 'none' }, svg);
     const retLine = svgEl('path', { d: `M108,176 C116,120 130,${RY} 190,${RY} L944,${RY}`, fill: 'none', stroke: 'none' }, svg);
-    label(svg, 6, 62, 'blood in:', { 'font-size': 13.5, fill: '#8f2620' }); label(svg, 6, 78, 'afferent arteriole', { 'font-size': 13, fill: '#8f2620', 'font-weight': 650 });
-    label(svg, 138, 142, 'efferent arteriole', { 'font-size': 13, fill: '#8f2620', 'font-weight': 650 });
+    label(svg, 6, 62, 'blood in:', { 'font-size': 13.5, fill: '#8f2620' });
+    const affT = label(svg, 6, 78, 'afferent arteriole', { 'font-size': 13, fill: '#8f2620', 'font-weight': 650 }), effT = label(svg, 138, 142, 'efferent arteriole', { 'font-size': 13, fill: '#8f2620', 'font-weight': 650 });
     const retName = label(svg, 560, RY - 22, 'the return line: back to the body', { 'font-size': 13.5, fill: '#8f2620', 'text-anchor': 'middle' });
     // ---- the filter
     const damageG = svgEl('g', { opacity: 0 }, svg);
@@ -262,7 +262,7 @@
     const wall = svgEl('path', { fill: COL.tubule, stroke: COL.tubuleLine, 'stroke-width': 2.5, 'stroke-linejoin': 'round' }, svg);
     const stream = svgEl('path', { fill: '#cfe3f6', opacity: 0.95 }, svg);
     const segBars = [], segNames = [], segTerms = [], segNotes = [];
-    const SEGS = [['first', 'first stretch', 'proximal convoluted tubule'], ['loop', 'loop', 'nephron loop'], ['last', 'last stretch', 'distal tubule + collecting duct']];
+    const SEGS = [['first', 'first stretch', 'proximal convoluted tubule (PCT)'], ['loop', 'the loop', 'nephron loop'], ['last', 'last stretch', 'distal convoluted tubule, then collecting duct']];
     SEGS.forEach(([id, plain, term], i) => {
       const x0 = X[i] + 3, x1 = X[i + 1] - 3, mid = (x0 + x1) / 2;
       segBars.push(svgEl('rect', { x: x0, y: TY + FULL + 14, width: x1 - x0, height: 6, rx: 3, fill: SEG[id] }, svg));
@@ -356,6 +356,7 @@
       const hEnd = halfAt(X[3], fw);
       outlet.setAttribute('d', `M${X[3]},${TY - hEnd - 6} L${X[3] + 30},${TY - hEnd - 6} M${X[3]},${TY + hEnd + 6} L${X[3] + 30},${TY + hEnd + 6}`);
       // names
+      affT.setAttribute('opacity', view.names ? 1 : 0); effT.setAttribute('opacity', view.names ? 1 : 0);
       setText(filtTerm, view.names ? 'glomerulus + capsule' : ''); SEGS.forEach((s, i) => setText(segTerms[i], view.names ? s[2] : ''));
       setText(retName, view.names ? 'the return line (peritubular capillaries): back to the body' : 'the return line: back to the body');
       // flow at the four places

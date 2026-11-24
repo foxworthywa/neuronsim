@@ -31,9 +31,9 @@
   // Four urine reports for scene 8, each from the model with one thing changed.
   const FAULTS = [
     ['damage', 'A damaged filter', (b) => b.set('filterDamage', 1)],
-    ['sugar', 'Blood glucose too high for the carriers', (b) => b.set('glucose', 300)],
-    ['carrier', 'A drug blocking the glucose carriers', (b) => b.set('glucoseCarrier', 0.3)],
-    ['salt', 'A drug blocking salt carriers in the loop', (b) => b.set('loopBlock', 0.45)],
+    ['sugar', 'Blood glucose too high for the carriers', (b) => b.set('glucose', 400)],
+    ['carrier', 'A drug blocking the glucose carriers', (b) => b.set('glucoseCarrier', 0.15)],
+    ['salt', 'A drug blocking salt carriers in the loop', (b) => b.set('loopBlock', 0.25)],
   ];
   function faultCards() {
     if (!cache.faults) {
@@ -46,8 +46,8 @@
   const WHO = [
     ['runner', 'Maya, after a half-marathon in the heat', () => { const b = rest(); b.steady = false; b.lose({ sweat: 2200, over: 120 }); b.advance(150); return b; }],
     ['bled', 'Tom, half an hour after heavy bleeding', () => { const b = rest(); b.steady = false; b.bleed(1500); b.advance(30); return b; }],
-    ['sam', 'Sam, who missed his insulin', () => { const b = rest().set('glucose', 300); b.advance(8 * HOUR); return b; }],
-    ['lin', 'Mrs. Lin, with a quarter of her nephrons left', () => { const b = rest().set('nephrons', 0.25).set('filterDamage', 0.6); b.advance(12 * DAY); return b; }],
+    ['sam', 'Sam, who missed his insulin', () => { const b = rest().set('glucose', 400).set('thirst', 1); b.advance(8 * HOUR); return b; }],
+    ['lin', 'Mrs. Lin, with a quarter of her filtering left', () => { const b = rest().set('nephrons', 0.25).set('filterDamage', 0.6).set('thirst', 1); b.advance(12 * DAY); return b; }],
   ];
   function patientCards() {
     if (!cache.patients) {
@@ -146,7 +146,7 @@
           question: { prompt: 'There are no water pumps. So what moves 124 mL of water a minute back into the blood?', onCorrect: (c) => c.view().setNames(true), options: [
             { t: 'It follows the salt: where salt is carried across, water moves after it by osmosis', ok: true, fb: `<b>Water follows salt.</b> Keep that rule: it explains diuretics and the thirst of diabetes in scene 8.${nameBox('Taking substances back from the filtrate into the blood: <b>tubular reabsorption</b>. The tube: the <b>renal tubule</b>. Its first stretch: the <b>proximal convoluted tubule</b>. The return line: the <b>peritubular capillaries</b> (that is what the second set of capillaries in scene 3 was for).')}` },
             { t: 'Blood pressure pushes it back', fb: 'Pressure pushed it out of the blood at the filter. Along the tubule the pressure is low. What is being carried across that water could follow?' },
-            { t: 'The return line sucks it across', fb: 'Nothing sucks. Think of osmosis: water moves toward wherever the dissolved particles are being moved to.' },
+            { t: 'The return line sucks it across', fb: 'The return line does carry the water away once it is across. But what moves it out of the tubule in the first place? Think of osmosis: what is being carried across that water could follow?' },
           ] },
         },
         {
@@ -156,7 +156,7 @@
           text: `<p>Back to the question from scene 3: why do the kidneys take a fifth of the heart's output? They filter 180 L a day, and she has 3 L of plasma.</p>`,
           question: { type: 'number', prompt: 'How many times a day is a volume equal to all her plasma filtered and taken back?', unit: 'times a day', answer: () => 60, tol: 3, recordAs: 'timesPerDay',
             hint: () => '180 L filtered a day ÷ 3 L of plasma.',
-            explain: () => 'About <b>60 times a day</b>. Every substance in her blood is offered to the tubule about once every 24 minutes, so the level of any of them can be corrected within the hour. That takes a great deal of blood flow.' },
+            explain: () => 'About <b>60 times a day</b>. A volume equal to all her plasma passes the tubule about every 24 minutes, so the kidney can start correcting any change within minutes and finish within hours. That takes a great deal of blood flow.' },
         },
       ],
     },
@@ -181,7 +181,7 @@
         },
         substance('alb', 'A blood protein', `<p><b>Albumin</b> is the commonest protein in her blood: about 4 g in every 100 mL. It is far larger than anything that passed the filter in scene 5.</p>`, 'It never left the blood. A healthy person\'s urine contains almost no protein.'),
         substance('glucose', 'Glucose', `<p>Her blood glucose is 90 mg/dL, and glucose is small. The first stretch of the tubule is lined with carriers that fit it.</p>`, 'About 160 g of glucose is filtered every day, and every gram is carried back. None is wasted.'),
-        substance('cr', 'Creatinine', `<p><b>Creatinine</b> is a waste her muscles make at a steady rate, about 1.6 g a day. It is small, and the tubule does not take it back.</p>`, `Everything filtered leaves, and almost nothing else does. So the rate at which creatinine leaves <i>is</i> the rate of filtering.${nameBox('That is why <b>creatinine</b> is on every blood panel: it is how filtering (GFR) is estimated without measuring it directly. You will use it in scene 10.')}`),
+        substance('cr', 'Creatinine', `<p><b>Creatinine</b> is a waste her muscles make at a steady rate, about 1.6 g a day. It is small, and the tubule does not take it back.</p>`, `Everything filtered leaves, and almost nothing else does. So the amount of creatinine leaving each minute = the filtering rate × the level in the blood. Measure the level in the blood and you can work out the filtering rate.${nameBox('That is why <b>creatinine</b> is on every blood panel: it is how filtering (GFR) is estimated without measuring it directly. You will use it in scene 10.')}`),
         substance('drug', 'A drug', `<p><b>Penicillin</b> is small. The tubule has no carrier to take it back. But its cells do have carriers that pick up certain molecules from the <b>return line</b> and push them into the tubule.</p>`, `More leaves than was ever filtered, because it is pushed in as well. Half of a dose of penicillin is gone in about half an hour, which is why it is given several times a day.${nameBox('Moving a substance from the blood of the return line into the tubule: <b>tubular secretion</b>. Many drugs, and some of the body\'s own wastes and potassium, leave partly this way.')}`, ['drug']),
         {
           view: 'strip', title: 'The sum',
@@ -206,7 +206,7 @@
           title: 'A urine report',
           setup: () => setSim(rest()),
           enter: (c) => c.view().show(['alb', 'glucose', 'water']),
-          text: `<p>Urine is easy to collect, and it is evidence of what the nephron did. Under the picture is the healthy student's urine as a <b>test strip</b> (protein, glucose, blood) and a measuring jug would report it. Her blood contains 90 mg/dL of glucose and 4 g/dL of protein; her urine has neither.</p>
+          text: `<p>Urine is easy to collect, and it is evidence of what the nephron did. Under the picture is the healthy student's urine as a <b>test strip</b> (protein, glucose, blood) and a measuring jug would report it. Her blood contains 90 mg/dL of glucose and 4 g/dL of albumin, its main protein; her urine has neither.</p>
                  <p><b>Concentration</b> is how much is dissolved in each litre. On this scale blood is about 290, and urine can be anywhere from 50 (nearly water) to 1,200.</p>`,
           question: { prompt: 'Is glucose missing from her urine for the same reason that protein is?', options: [
             { t: 'No: protein never got through the filter; glucose got through and was all taken back', ok: true, fb: 'Two different steps. So each can fail by itself, and the urine will show which one did.' },
@@ -225,7 +225,7 @@
             { t: 'Nothing new: the tubule will take back whatever leaks through', fb: 'The tubule has carriers for a short list of things. Are large proteins and red cells on it?' },
           ] }),
           actions: [{ label: 'Damage the filter', cls: 'warnb', disabled: (c) => afterPrediction(c) || data(c).ran, run: (c) => { app.sim.set('filterDamage', 1); c.view().show(['alb', 'rbc', 'water']); data(c).ran = true; c.recordValue('damage', app.sim.urineReport()); c.refresh(); } }],
-          status: (c) => (data(c).ran ? `The report now shows protein <b>${c.record.values.damage.protein}</b> and blood <b>${c.record.values.damage.blood}</b>; glucose is still negative.${nameBox('Protein in the urine: <b>proteinuria</b>. Blood in the urine: <b>hematuria</b>. Either points to the filter, because nothing downstream can let them in.')}` : ''),
+          status: (c) => (data(c).ran ? `The report now shows protein <b>${c.record.values.damage.protein}</b> and blood <b>${c.record.values.damage.blood}</b>; glucose is still negative.${nameBox('Protein in the urine: <b>proteinuria</b>. It points to the filter: blood proteins are too large to get in anywhere else. Blood in the urine: <b>hematuria</b>. Blood can come from a damaged filter, but more often it comes from further down (a stone, an infection, the bladder), so it always needs explaining.')}` : ''),
           waitFor: (c) => data(c).ran, waitHint: 'Damage the filter',
         },
         {
@@ -237,14 +237,14 @@
           extra: (el, c) => glucoseDial(el, c),
           question: { type: 'number', prompt: 'To the nearest 10: what is the highest blood glucose at which the urine test for glucose is still negative?', unit: 'mg/dL', answer: () => threshold(), tol: 10, recordAs: 'threshold',
             hint: () => 'Start at 90 and go up 10 at a time, reading the Glucose line of the report each time.',
-            explain: () => `The carriers can take back only so much each minute. Up to about 180 mg/dL they take back everything that is filtered. Above that, the extra stays in the tubule and leaves in the urine.${nameBox('The most a carrier system can move: its <b>transport maximum</b>. The blood level at which a substance first appears in the urine: its <b>renal threshold</b> (for glucose, about 180 mg/dL). Glucose in the urine: <b>glucosuria</b>.')}` },
-          waitFor: (c) => data(c).high, waitHint: "Set the blood glucose to Sam's 300 mg/dL",
+            explain: () => `The carriers can take back only so much each minute. Up to about 180 mg/dL they take back everything that is filtered. Above that, some stays in the tubule and leaves in the urine, and the higher the blood glucose, the more.${nameBox('The most a carrier system can move: its <b>transport maximum</b> (for glucose, about 375 mg a minute). The blood level at which a substance first appears in the urine: its <b>renal threshold</b> (for glucose, about 180 mg/dL). Glucose starts to escape before every carrier is full, because some nephrons reach their limit before others. Glucose in the urine: <b>glucosuria</b>.')}` },
+          waitFor: (c) => data(c).high, waitHint: "Set the blood glucose to Sam's 400 mg/dL",
         },
         {
           view: 'strip', title: 'Why so much urine?',
-          setup: () => setSim(rest().set('glucose', 300)),
+          setup: () => setSim(rest().set('glucose', 400)),
           enter: (c) => c.view().show(['glucose', 'water']),
-          text: () => { const b = app.sim, u = b.urineReport(); return `<p>At 300 mg/dL Sam is losing <b>${fx(b.ledger('glucose').excreted, 0)} g</b> of glucose a day in <b>${fx(u.perDay, 1)} L</b> of urine: more than three times the usual volume. Look at the stream in the last stretch: it is wider than before. His filtering rate has not changed.</p>`; },
+          text: () => { const b = app.sim, u = b.urineReport(); return `<p>At 400 mg/dL Sam is losing <b>${fx(b.ledger('glucose').excreted, 0)} g</b> of glucose a day in <b>${fx(u.perDay, 1)} L</b> of urine: nearly three times the usual volume. Look at the stream in the last stretch: it is wider than before. His filtering rate has not changed.</p>`; },
           question: { prompt: 'Why does glucose left in the tubule increase the volume of urine?', options: [
             { t: 'Glucose that is not taken back holds water in the tubule with it', ok: true, fb: `Water follows what is carried across, and stays with what is not. Sam's thirst is his body replacing the water. And his kidneys are <b>not</b> damaged: they are doing exactly what they always do.${nameBox('A large volume of urine: <b>polyuria</b>. Polyuria with thirst is often the first sign of diabetes mellitus.')}` },
             { t: 'High glucose makes the kidneys filter more', fb: 'Compare the "mL/min filtered" at the start of the stream with the healthy student\'s 125. What has changed is further along.' },
@@ -256,12 +256,12 @@
           setup: () => setSim(rest()),
           enter: (c) => c.view().show(['glucose', 'water']),
           text: `<p>A healthy person, blood glucose 90 mg/dL. A newer group of diabetes drugs (their names end in <i>-gliflozin</i>) block most of the glucose carriers in the first stretch.</p>`,
-          question: predict({ prompt: 'Her blood glucose is normal. With 70 % of the carriers blocked, will there be glucose in her urine?', options: [
+          question: predict({ prompt: 'Her blood glucose is normal. With most of the carriers blocked, will there be glucose in her urine?', options: [
             { t: 'Yes: the carriers that are left cannot take back even a normal load', ok: true, fb: 'Give the drug and read the report.' },
             { t: 'No: glucose appears in urine only when blood glucose is high', fb: 'It appears whenever more is filtered than the carriers can take back. What has the drug done to the carriers?' },
             { t: 'No: the filter will hold the glucose back', fb: 'The filter passes glucose whatever happens downstream.' },
           ] }),
-          actions: [{ label: 'Give the drug', cls: 'drugb', disabled: (c) => afterPrediction(c) || data(c).ran, run: (c) => { app.sim.set('glucoseCarrier', 0.3); data(c).ran = true; c.recordValue('carrier', { g: app.sim.ledger('glucose').excreted, report: app.sim.urineReport().glucose }); c.refresh(); } }],
+          actions: [{ label: 'Give the drug', cls: 'drugb', disabled: (c) => afterPrediction(c) || data(c).ran, run: (c) => { app.sim.set('glucoseCarrier', 0.15); data(c).ran = true; c.recordValue('carrier', { g: app.sim.ledger('glucose').excreted, report: app.sim.urineReport().glucose }); c.refresh(); } }],
           status: (c) => (data(c).ran ? `<div class="feedback note">About <b>${fx(c.record.values.carrier.g, 0)} g</b> of glucose a day now leaves in the urine. That is the point of the drug: in diabetes it lowers blood glucose by letting the kidneys spill it. A positive urine glucose in someone taking it is expected.</div>` : ''),
           waitFor: (c) => data(c).ran, waitHint: 'Give the drug',
         },
@@ -287,7 +287,7 @@
           setup: () => { if (!(isBody() && app.sim.weight0 === 74 && app.sim.t > 7 * HOUR)) { setSim(dana()); app.sim.take({ diuretic: 1 }); skip(8 * HOUR); } },
           text: `<p>Mrs. Brooks lost about two litres in a few hours, which is what her swollen ankles and wet lungs needed. Look at the bottom row of the graph.</p>`,
           question: { prompt: 'Did the drug work by making her kidneys filter more?', options: [
-            { t: 'No: filtering hardly changed. Less salt was taken back, so less water was', ok: true, fb: `Nearly every drug that increases urine volume works on taking-back, and none works on the filter.${nameBox('A drug that increases urine volume: a <b>diuretic</b>. Furosemide is a <b>loop diuretic</b>, named for where it acts. After the dose wears off, notice how little urine she makes: the kidney is holding on to salt again.')}` },
+            { t: 'No: filtering hardly changed. Less salt was taken back, so less water was', ok: true, fb: `Nearly every drug that increases urine volume works on taking-back, and none works on the filter.${nameBox('A drug that increases urine volume: a <b>diuretic</b>. Furosemide is a <b>loop diuretic</b>, named for where it acts. More salt reaching the last stretch also means more potassium pushed out there, which is why potassium is checked in patients on these drugs. After the dose wears off, notice how little urine she makes: the kidney is holding on to salt again.')}` },
             { t: 'Yes: more was filtered, so more urine was made', fb: 'Read the bottom row of the graph: the filtering rate (GFR) through the eight hours.' },
             { t: 'It pumped water into the tubule', fb: 'There are no water pumps, in the body or in a tablet. The drug blocked a salt carrier. What does water do when salt stays in the tubule?' },
           ] },
@@ -298,7 +298,7 @@
           title: 'Whose urine?',
           setup: () => setSim(rest()),
           text: `<p>Four reports, A to D, each from the model with one step broken or blocked. Match each to its cause. The line at the bottom of each report gives the blood glucose.</p>`,
-          extra: (el, c) => matchTable(el, c, 'faults', faultCards(), '<b>All four matched.</b> Notice which line of the report you used for each: protein and blood for the filter; glucose, read together with the blood glucose, for the carriers; volume for the salt carrier.'),
+          extra: (el, c) => matchTable(el, c, 'faults', faultCards(), '<b>All four matched.</b> Notice which line of the report you used for each: protein (with or without blood) for the filter; glucose, read together with the blood glucose, for the carriers; volume for the salt carrier.'),
           waitFor: () => false, waitHint: 'Match all four reports',
         },
       ],
@@ -358,12 +358,12 @@
           setup: () => autoDayAt(12.5 * HOUR),
           text: `<p>At 12:30 she eats a salty lunch: about 5 g of salt, a teaspoonful, with a small drink.</p>`,
           question: predict({ prompt: 'Predict her urine this afternoon.', options: [
-            { t: 'More salt in it, in a small volume of concentrated urine', ok: true, fb: 'Run the afternoon and watch the other meter.' },
-            { t: 'More salt, in a large volume of dilute urine', fb: 'She has too much salt, not too much water. Losing a lot of water with it would leave her blood even more concentrated.' },
+            { t: 'More salt in it, and no more water than usual', ok: true, fb: 'Run the afternoon and watch the other meter.' },
+            { t: 'More salt, carried out in a large volume of water', fb: 'She has too much salt, not too much water. Losing a lot of water with it would leave her blood even more concentrated.' },
             { t: 'No extra salt: the tubule always takes back the same amount', fb: 'The first stretch and the loop do. Think of the second dial on the last stretch.' },
           ] }),
           actions: [{ label: 'Run the afternoon (to 3:30)', cls: 'go', disabled: (c) => afterPrediction(c) || busy(c) || data(c).ran, run: (c) => { const na0 = app.sim.f.ex.na; experiment(c, { minutes: 3 * HOUR, speed: 15, after: (b, c) => c.recordValue('lunch', { before: na0 * 60 / SALT, after: b.f.ex.na * 60 / SALT, osm: b.f.urine.osm, flow: b.f.urine.flow }) }); } }],
-          status: (c) => { const v = c.record.values.lunch; return data(c).ran && v ? `Salt in her urine: ${fx(v.before, 2)} → <b>${fx(v.after, 2)} g an hour</b>. Urine flow ${fx(v.flow, 1)} mL/min at <b>${big(v.osm)} mOsm/L</b>.${nameBox('The second hormone is <b>aldosterone</b>, from the adrenal cortex. Aldosterone makes the last stretch take back more salt (and push out more potassium). After a salty meal it falls, so more salt is left in the urine.')}` : ''; },
+          status: (c) => { const v = c.record.values.lunch; return data(c).ran && v ? `Salt in her urine: ${fx(v.before, 2)} → <b>${fx(v.after, 2)} g an hour</b> (her usual is about 0.4). Urine flow ${fx(v.flow, 1)} mL/min, about her usual 1, and more concentrated: <b>${big(v.osm)} mOsm/L</b>.${nameBox('The second hormone is <b>aldosterone</b>, from the adrenal cortex. Aldosterone makes the last stretch take back more salt (and push out more potassium). After a salty meal it falls, so more salt is left in the urine.')}` : ''; },
           waitFor: (c) => data(c).ran, waitHint: 'Run the afternoon',
         },
         {
@@ -393,17 +393,17 @@
           question: predict({ prompt: 'Predict his urine in the half hour after the bleed.', options: [
             { t: 'Almost none: the pressure is too low to filter much, and nearly all of that is taken back', ok: true, fb: 'Run the half hour.' },
             { t: 'More than usual, because he is stressed', fb: 'Stress does not make urine. What drives filtering, and what has happened to it?' },
-            { t: 'About the usual amount: the arteriole holds filtering steady', fb: 'It does, down to about 80 mmHg. Below that it is fully open and can do no more.' },
+            { t: 'About the usual amount: the arteriole holds filtering steady', fb: 'It does, down to a mean pressure of about 80 mmHg. Below that it is fully open and can do no more. (A blood pressure of 80/52 is a mean of only about 60.)' },
           ] }),
           actions: [{ label: 'He loses 1.5 L of blood (run 30 minutes)', cls: 'warnb', disabled: (c) => afterPrediction(c) || busy(c) || data(c).ran, run: (c) => experiment(c, { before: (b) => { b.steady = false; b.bleed(1500); KD.mark('bleed'); }, minutes: 30, speed: 2, after: (b, c) => c.recordValue('bleed', { bp: b.bp, gfr: b.f.gfr, perHour: b.f.urine.flow * 60, osm: b.f.urine.osm }) }) }],
-          status: (c) => { const v = c.record.values.bleed; return data(c).ran && v ? `Half an hour on: blood pressure <b>${v.bp.sys}/${v.bp.dia}</b>, filtering <b>${fx(v.gfr, 0)} mL/min</b>, urine <b>${fx(v.perHour, 0)} mL an hour</b>. This is why nurses chart urine output every hour in a seriously ill patient: it is the cheapest sign of whether the kidneys, and the other organs, are getting enough blood. Less than about 30 mL an hour is an alarm.` : ''; },
+          status: (c) => { const v = c.record.values.bleed; return data(c).ran && v ? `Half an hour on: blood pressure <b>${v.bp.sys}/${v.bp.dia}</b>, filtering <b>${fx(v.gfr, 0)} mL/min</b>, urine <b>${fx(v.perHour, 0)} mL an hour</b>. This is why nurses chart urine output every hour in a seriously ill patient: it is the cheapest sign of whether the kidneys, and the other organs, are getting enough blood. In a seriously ill patient, less than about 30 mL an hour that does not pick up with fluids is an alarm.` : ''; },
           waitFor: (c) => data(c).ran, waitHint: 'Run the half hour',
         },
         {
           view: 'strip', title: 'Four events',
           graph: NO_GRAPH, meters: NO_METERS,
           setup: () => setSim(rest()),
-          text: `<p>Fill in the table from your four runs. For each event, compare the urine afterwards with the urine just before.</p>`,
+          text: `<p>Fill in the table from your four runs. Compare the urine after each event with her <b>usual</b> urine: about 1 mL a minute at about 680 mOsm/L. (Your numbers are in the results on the last screen, and each run can be repeated with the numbered circles.)</p>`,
           extra: (el, c) => selectTable(el, c, {
             key: 'events', head: ['', 'Urine volume', 'Urine concentration', 'The kidney is…'], rows: EVENTS,
             done: `<b>Complete.</b> In every row the urine changed so that the blood would not. ADH fell after the water and rose in the other three. Aldosterone fell after the salt and rose after the sweat and the bleed.${nameBox('The last stretch is the <b>distal convoluted tubule</b> and the <b>collecting duct</b>. Between it and the first stretch is the hairpin called the <b>nephron loop</b> (loop of Henle). How the loop lets urine become <i>more</i> concentrated than blood is a story for another lab; here, note only that the last stretch does the adjusting.')}`,
@@ -459,28 +459,28 @@
           view: 'strip', viewOpts: STRIP({ kinds: ['cr', 'water'], ledger: ['cr', 'water'], revealed: ['cr', 'water'], names: true, short: true, caption: 'Losing nephrons. Time is running: a day a second.' }), remount: true,
           graph: GRAPH.loss, meters: METERS.loss, speed: 1440,
           title: 'Losing nephrons slowly',
-          setup: () => setSim(rest()),
+          setup: () => setSim(rest().set('thirst', 1)),
           enter: (c) => c.view().show(['cr', 'water']),
-          text: `<p>Mr. Herrera did not lose his kidneys overnight. In long-standing diabetes or high blood pressure, nephrons are lost a few at a time, over years. Each one lost takes its share of the filtering with it.</p>
+          text: `<p>Mr. Herrera did not lose his kidneys overnight. In long-standing diabetes or high blood pressure, nephrons are lost a few at a time, over years. The nephrons that are left work harder, so at first filtering falls by less than the number lost, and nothing is noticed.</p>
                  <p>Her muscles go on making creatinine at the same rate, and it leaves only by being filtered (scene 7).</p>`,
-          question: predict({ prompt: 'She loses half her nephrons, so filtering halves. Once things settle, what will her blood creatinine be? (It is 0.9 mg/dL now.)', options: [
-            { t: 'About double: 1.8', ok: true, fb: 'Run it, then halve the nephrons again.' },
+          question: predict({ prompt: 'Suppose enough nephrons are gone that her filtering has halved. Once things settle, what will her blood creatinine be? (It is 0.9 mg/dL now.)', options: [
+            { t: 'About double: 1.8', ok: true, fb: 'Run it, then halve the filtering again.' },
             { t: 'Slightly up: about 1.0', fb: 'The same amount is made each day and must be filtered out through half the filters. What must the blood level be for that to balance?' },
             { t: 'Unchanged, until nearly all the nephrons are gone', fb: 'Many things do stay normal for a long time, as you will see. But creatinine leaves only by filtering. If filtering halves, what must happen?' },
           ] }),
           actions: [
-            { label: 'Lose half the nephrons (run 8 days)', cls: 'warnb', disabled: (c) => afterPrediction(c) || busy(c) || data(c).ran, run: (c) => experiment(c, { before: (b) => { b.set('nephrons', 0.5); KD.mark('half the nephrons lost'); }, minutes: 8 * DAY, speed: 1440, after: (b, c) => c.recordValue('half', { cr: b.creatinine, gfr: b.f.gfr, k: b.potassium, bun: b.bun, urine: b.urineReport().perDay }) }) },
-            { label: 'Lose half of those (run 10 days)', cls: 'warnb', disabled: (c) => busy(c) || !data(c).ran || data(c).quarter, run: (c) => experiment(c, { before: (b) => { b.set('nephrons', 0.25); KD.mark('a quarter left'); }, minutes: 10 * DAY, speed: 1440, key: 'quarter', after: (b, c) => c.recordValue('quarter', { cr: b.creatinine, gfr: b.f.gfr, k: b.potassium, bun: b.bun, urine: b.urineReport().perDay }) }) },
+            { label: 'Filtering halves (run 8 days)', cls: 'warnb', disabled: (c) => afterPrediction(c) || busy(c) || data(c).ran, run: (c) => experiment(c, { before: (b) => { b.set('nephrons', 0.5); KD.mark('filtering halved'); }, minutes: 8 * DAY, speed: 1440, after: (b, c) => c.recordValue('half', { cr: b.creatinine, gfr: b.f.gfr, k: b.potassium, bun: b.bun, urine: b.urineReport().perDay }) }) },
+            { label: 'Filtering halves again (run 10 days)', cls: 'warnb', disabled: (c) => busy(c) || !data(c).ran || data(c).quarter, run: (c) => experiment(c, { before: (b) => { b.set('nephrons', 0.25); KD.mark('halved again'); }, minutes: 10 * DAY, speed: 1440, key: 'quarter', after: (b, c) => c.recordValue('quarter', { cr: b.creatinine, gfr: b.f.gfr, k: b.potassium, bun: b.bun, urine: b.urineReport().perDay }) }) },
           ],
           extra: (el, c) => {
             const h = c.record.values.half, q = c.record.values.quarter, d = data(c);
             if (!(d.ran && h)) return;
             el.className = 'extra';
             el.innerHTML = labHTML([
-              { name: 'All her nephrons', value: '0.9', unit: 'mg/dL · GFR 125', flag: '' },
+              { name: 'Normal filtering', value: '0.9', unit: 'mg/dL · GFR 125', flag: '' },
               { name: 'Half', value: fx(h.cr, 1), unit: `mg/dL · GFR ${fx(h.gfr, 0)}`, flag: 'H' },
             ].concat(d.quarter && q ? [{ name: 'A quarter', value: fx(q.cr, 1), unit: `mg/dL · GFR ${fx(q.gfr, 0)}`, flag: 'H' }] : []), 'Creatinine') +
-              (d.quarter && q ? `<div class="feedback note">Each halving of filtering doubles the creatinine. It is balance again: the amount made each day has to equal the filtering rate × the blood level. With a quarter of her nephrons she still passes <b>${fx(q.urine, 1)} L</b> of urine a day and may feel well, but her potassium is now <b>${fx(q.k, 1)}</b> and her urea (BUN) <b>${fx(q.bun, 0)}</b>.${nameBox('Lab reports give an <b>estimated GFR (eGFR)</b> worked out from the blood creatinine. <b>Blood urea nitrogen (BUN)</b> rises for the same reason. Long-term loss of nephrons is <b>chronic kidney disease</b>.')}</div>` : '');
+              (d.quarter && q ? `<div class="feedback note">Each halving of filtering doubles the creatinine. It is balance again: the amount made each day has to equal the filtering rate × the blood level. With a quarter of her filtering she still passes <b>${fx(q.urine, 1)} L</b> of urine a day and may feel well, but her urea (BUN) is <b>${fx(q.bun, 0)}</b> and her potassium, at <b>${fx(q.k, 1)}</b>, is creeping toward the top of its range.${nameBox('Lab reports give an <b>estimated GFR (eGFR)</b> worked out from the blood creatinine. <b>Blood urea nitrogen (BUN)</b> rises for the same reason. Long-term loss of nephrons is <b>chronic kidney disease</b>.')}</div>` : '');
           },
           waitFor: (c) => data(c).ran && data(c).quarter, waitHint: 'Run both',
         },
@@ -491,7 +491,7 @@
           setup: () => setSim(rest()),
           text: `${caseNote('Four patients', RUNNER + BLED + SAM.replace(' (from EndoSim)', '') + LIN)}
                  <p>Match each chart to its patient. Use the urine and the blood together. (A healthy adult at rest passes about 40 to 80 mL of urine an hour.)</p>`,
-          extra: (el, c) => matchTable(el, c, 'charts', patientCards(), '<b>All four matched.</b> Two of these patients (Maya and Tom) pass almost no urine, and it is concentrated: in one the kidneys are saving water, in the other they are barely being supplied with blood. The blood pressure tells them apart.'),
+          extra: (el, c) => matchTable(el, c, 'charts', patientCards(), '<b>All four matched.</b> Two of these patients pass little urine, and it is concentrated: Maya about half the usual amount, Tom almost none. In Maya the kidneys are saving water; in Tom they are barely being supplied with blood. The blood pressure tells them apart.'),
           waitFor: () => false, waitHint: 'Match all four charts',
         },
         {
@@ -507,13 +507,13 @@
 
   // Scene 9's table.
   var EVENTS = (function () {
-    const V = ['up', 'down'], C = ['more dilute', 'more concentrated'];
-    const W = ['getting rid of water', 'getting rid of salt while keeping water', 'keeping water and salt', 'barely filtering at all'];
+    const V = ['more', 'about the same', 'less'], C = ['more dilute', 'more concentrated'];
+    const W = ['getting rid of water', 'getting rid of salt, with no extra water', 'filtering normally, and keeping water and salt', 'filtering much less, and keeping nearly all of that'];
     return [
-      ['A big bottle of water', 'up', 'more dilute', W[0]],
-      ['A salty lunch', 'down', 'more concentrated', W[1]],
-      ['An hour of sweating', 'down', 'more concentrated', W[2]],
-      ['A heavy bleed', 'down', 'more concentrated', W[3]],
+      ['A big bottle of water', 'more', 'more dilute', W[0]],
+      ['A salty lunch', 'about the same', 'more concentrated', W[1]],
+      ['An hour of sweating', 'less', 'more concentrated', W[2]],
+      ['A heavy bleed', 'less', 'more concentrated', W[3]],
     ].map(([label, v, cn, why]) => ({ label, cells: [{ options: V, answer: v }, { options: C, answer: cn }, { options: W, answer: why }] }));
   })();
 
@@ -521,8 +521,8 @@
   function glucoseDial(el, c) {
     el.className = 'extra';
     const d = data(c);
-    dial(el, { cls: '', id: 'dial-glucose', label: 'Blood glucose', min: 90, max: 400, step: 10, value: app.sim.glucose, show: (v) => `${v} mg/dL`, ends: ['90: normal', '400'],
-      onInput: (v) => { app.sim.set('glucose', v); if (v >= 300 && !d.high) { d.high = true; c.recordValue('sam', { g: app.sim.ledger('glucose').excreted, urine: app.sim.urineReport().perDay }); c.complete(); } } });
+    dial(el, { cls: '', id: 'dial-glucose', label: 'Blood glucose', min: 90, max: 500, step: 10, value: app.sim.glucose, show: (v) => `${v} mg/dL`, ends: ['90: normal', '500'],
+      onInput: (v) => { app.sim.set('glucose', v); if (v >= 400 && !d.high) { d.high = true; c.recordValue('sam', { g: app.sim.ledger('glucose').excreted, urine: app.sim.urineReport().perDay }); c.complete(); } } });
   }
   // Scene 9: the last stretch, by hand.
   function lateDials(el, c) {
@@ -576,32 +576,31 @@
   // =========================================================================
   const TERMS = [
     [2, 'keeping the body\'s fluid steady', 'homeostasis; fluid and electrolyte balance'],
-    [2, 'getting rid of something in the urine', 'excretion'],
-    [3, 'blood in, blood out, urine out', 'renal artery, renal vein, ureter'],
-    [3, 'where urine is stored, and the tube it leaves by', 'urinary bladder, urethra'],
-    [3, 'outer part, inner part, the hollow', 'renal cortex, renal medulla, renal pelvis'],
+    [2, 'removal in the urine', 'excretion'],
+    [3, 'blood in · blood out · urine out', 'renal artery · renal vein · ureter'],
+    [3, 'urine store · its exit tube', 'urinary bladder · urethra'],
+    [3, 'outer part · inner part · hollow', 'renal cortex · renal medulla · renal pelvis'],
     [3, 'one filter with its tubule', 'nephron'],
-    [5, 'the filter: a knot of capillaries in a cup', 'glomerulus + glomerular capsule = renal corpuscle'],
-    [5, 'what comes through the filter', 'filtrate'],
-    [5, 'filtering', 'glomerular filtration'],
+    [5, 'the filter (capillaries in a cup)', 'glomerulus + glomerular capsule = renal corpuscle'],
+    [5, 'what comes through the filter', 'filtrate (the process: glomerular filtration)'],
     [5, 'how fast the kidneys filter', 'glomerular filtration rate (GFR): about 125 mL/min'],
-    [5, 'the arteriole feeding the filter, and the one leaving it', 'afferent and efferent arterioles'],
-    [5, 'holding filtering steady as blood pressure changes', 'autoregulation'],
+    [5, 'arteriole into · out of the filter', 'afferent arteriole · efferent arteriole'],
+    [5, 'holding filtering steady', 'autoregulation'],
     [6, 'taking back', 'tubular reabsorption'],
-    [6, 'the tubule; its first stretch', 'renal tubule; proximal convoluted tubule'],
+    [6, 'the first stretch of the tubule', 'proximal convoluted tubule'],
     [6, 'the return line', 'peritubular capillaries'],
     [7, 'pushing extra in', 'tubular secretion'],
-    [7, 'the waste that measures filtering', 'creatinine'],
-    [8, 'protein, blood, glucose in the urine', 'proteinuria, hematuria, glucosuria'],
-    [8, 'the most a carrier can take back', 'transport maximum; renal threshold (glucose: about 180 mg/dL)'],
+    [7, 'waste that measures filtering', 'creatinine'],
+    [8, 'protein · blood · glucose in urine', 'proteinuria · hematuria · glucosuria'],
+    [8, 'the most a carrier can take back', 'transport maximum (and the renal threshold: for glucose, about 180 mg/dL)'],
     [8, 'a large volume of urine', 'polyuria'],
-    [8, 'a drug that increases urine volume', 'diuretic'],
+    [8, 'drug that increases urine volume', 'diuretic'],
     [9, 'the hormone for water', 'antidiuretic hormone (ADH)'],
-    [9, 'the hormone for salt (and potassium)', 'aldosterone'],
-    [9, 'the last stretch', 'distal convoluted tubule and collecting duct'],
-    [9, 'the hairpin between the two stretches', 'nephron loop (loop of Henle)'],
+    [9, 'hormone for salt (and potassium)', 'aldosterone'],
+    [9, 'the last stretch of the tubule', 'distal convoluted tubule and collecting duct'],
+    [9, 'the hairpin between them', 'nephron loop (loop of Henle)'],
     [10, 'the machine', 'hemodialysis'],
-    [10, 'filtering worked out from creatinine; long-term loss of nephrons', 'estimated GFR (eGFR); chronic kidney disease'],
+    [10, 'long-term loss of nephrons', 'chronic kidney disease (followed by the estimated GFR, eGFR)'],
   ];
   function renderTerms() {
     const r = KD.runner.runner, reached = Math.max(r.scene + 1, ...[...r.record.visited].map(k => LESSON.findIndex(s => s.id === k.split('.')[0]) + 1));
@@ -652,8 +651,8 @@
     L.push('Scene 8 · Break a step, read the urine');
     if (v.damage) L.push(`  Damaged filter: protein ${v.damage.protein}, blood ${v.damage.blood}, glucose ${v.damage.glucose}`);
     if (v.threshold) L.push(`  Highest blood glucose with a negative urine test: ${v.threshold.model} mg/dL`);
-    if (v.sam) L.push(`  At 300 mg/dL: ${fx(v.sam.g, 0)} g of glucose a day in ${fx(v.sam.urine, 1)} L of urine`);
-    if (v.carrier) L.push(`  Glucose carriers 70 % blocked, blood glucose 90: ${fx(v.carrier.g, 0)} g a day in the urine (test: ${v.carrier.report})`);
+    if (v.sam) L.push(`  At 400 mg/dL: ${fx(v.sam.g, 0)} g of glucose a day in ${fx(v.sam.urine, 1)} L of urine`);
+    if (v.carrier) L.push(`  Most glucose carriers blocked, blood glucose 90: ${fx(v.carrier.g, 0)} g a day in the urine (test: ${v.carrier.report})`);
     if (v.dana) L.push(`  Mrs. Brooks, 8 h after furosemide: ${fx(v.dana.urine, 1)} L of urine, ${fx(v.dana.salt, 0)} g of salt; weight ${fx(v.dana.w0, 1)} → ${fx(v.dana.w1, 1)} kg; GFR ${fx(v.dana.gfrLo, 0)}–${fx(v.dana.gfrHi, 0)} mL/min`);
     L.push('Scene 9 · The adjustable part');
     if (v.morning) L.push(`  800 mL of water: urine up to ${fx(v.morning.peak, 1)} mL/min, down to ${big(v.morning.dilute)} mOsm/L; GFR ${fx(v.morning.gfrLo, 0)}–${fx(v.morning.gfrHi, 0)}`);
@@ -663,8 +662,8 @@
     if (v.bleed) L.push(`  Tom Bradley, 30 min after losing 1.5 L of blood: BP ${v.bleed.bp.sys}/${v.bleed.bp.dia}; GFR ${fx(v.bleed.gfr, 0)} mL/min; urine ${fx(v.bleed.perHour, 0)} mL/hour`);
     L.push('Scene 10 · Back to the patients');
     if (v.session) L.push(`  Dialysis session: weight ${fx(v.session.pre.w, 1)} → ${fx(v.session.post.w, 1)} kg; potassium ${fx(v.session.pre.k, 1)} → ${fx(v.session.post.k, 1)}; BUN ${fx(v.session.pre.bun, 0)} → ${fx(v.session.post.bun, 0)}`);
-    if (v.half) L.push(`  Half the nephrons: GFR ${fx(v.half.gfr, 0)}, creatinine ${fx(v.half.cr, 1)} mg/dL, potassium ${fx(v.half.k, 1)}`);
-    if (v.quarter) L.push(`  A quarter: GFR ${fx(v.quarter.gfr, 0)}, creatinine ${fx(v.quarter.cr, 1)} mg/dL, potassium ${fx(v.quarter.k, 1)}, BUN ${fx(v.quarter.bun, 0)}, urine ${fx(v.quarter.urine, 1)} L/day`);
+    if (v.half) L.push(`  Filtering halved: GFR ${fx(v.half.gfr, 0)}, creatinine ${fx(v.half.cr, 1)} mg/dL, potassium ${fx(v.half.k, 1)}`);
+    if (v.quarter) L.push(`  Halved again: GFR ${fx(v.quarter.gfr, 0)}, creatinine ${fx(v.quarter.cr, 1)} mg/dL, potassium ${fx(v.quarter.k, 1)}, BUN ${fx(v.quarter.bun, 0)}, urine ${fx(v.quarter.urine, 1)} L/day`);
     return L;
   }
   function renderCompletion(el, c) {

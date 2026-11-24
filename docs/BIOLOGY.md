@@ -213,8 +213,9 @@ Targets and model details: `HEART_MODULE.md`.
   and no cells unless it is damaged.
 - Filtering is driven by pressure. With the feeding arteriole adjusting, it stays within 10 % of
   normal from 80 to 180 mmHg, is below 30 % at 60 mmHg and has stopped by about 50.
-- Glucose is all taken back until the filtered amount exceeds what the carriers can move (blood
-  glucose of about 180 mg/dL); above that the excess is excreted and takes water with it.
+- Glucose is all taken back up to a blood glucose of about 180 mg/dL. The carriers fill
+  unevenly, so some escapes from there on, well before all of them are full (375 mg/min, reached
+  at about 300 mg/dL); what escapes takes water with it.
 - Creatinine: excreted = filtered. A substance that is also secreted is excreted in a larger
   amount than is filtered. A substance with no carrier at all is still cleared, in hours.
 - Water follows solute: salt or glucose left in the tubule raises urine volume; filtering does
@@ -227,5 +228,7 @@ Targets and model details: `HEART_MODULE.md`.
 - With no nephrons, an ordinary diet raises weight by 1 to 1.5 kg a day, urea (BUN) by about
   25 mg/dL a day, and potassium out of range within two days; a four-hour dialysis session
   reverses all three.
-- Half the nephrons doubles plasma creatinine; a quarter gives about fourfold, with urea and
-  potassium raised and a urine that can no longer be made very concentrated.
+- Half the filtering doubles plasma creatinine; a quarter gives about fourfold, with urea raised
+  and a urine that can no longer be made very concentrated. Potassium stays in range until late,
+  because each surviving nephron pushes out more: high-normal at a quarter, out of range at an
+  eighth. These are steady states (with thirst), not drifts.

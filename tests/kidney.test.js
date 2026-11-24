@@ -166,20 +166,27 @@ test('glucose appears in the urine only above about 180 mg/dL, and takes water w
   const at = (g) => new Kidney().set('glucose', g);
   assert.equal(at(100).urineReport().glucose, 'negative');
   assert.equal(at(150).urineReport().glucose, 'negative');
-  assert.notEqual(at(190).urineReport().glucose, 'negative');
-  const a = at(250), b = at(300), c = at(400);
+  assert.notEqual(at(200).urineReport().glucose, 'negative');
+  const a = at(250), b = at(400), c = at(500);
   assert.ok(a.f.ex.glucose < b.f.ex.glucose && b.f.ex.glucose < c.f.ex.glucose, 'the higher the blood glucose, the more is lost');
-  between((c.f.ex.glucose - b.f.ex.glucose) / (c.f.filt.glucose - b.f.filt.glucose), 0.95, 1.05, 'above the limit, every extra milligram filtered is lost');
-  assert.ok(b.f.urine.flow > 2 * at(100).f.urine.flow, 'urine volume more than doubles at 300 mg/dL');
+  // the carriers fill unevenly: glucose escapes from about 180 mg/dL, long before all are full at about 300
+  between(at(300).ledger('glucose').excreted, 15, 70, 'glucose lost at 300 mg/dL (g/day)');
+  between(b.ledger('glucose').excreted, 120, 240, 'glucose lost at 400 mg/dL (g/day)');
+  between((c.f.ex.glucose - b.f.ex.glucose) / (c.f.filt.glucose - b.f.filt.glucose), 0.9, 1.05, 'with every carrier full, each extra milligram filtered is lost');
+  assert.ok(b.f.urine.flow > 2 * at(100).f.urine.flow, 'urine volume more than doubles at 400 mg/dL');
   // hours later: still a large volume, and the body is short of water
   b.advance(6 * HOUR);
   assert.ok(b.urineReport().perDay > 2.5, 'still more than 2.5 L a day');
   assert.ok(b.waterExcess < -0.3 && b.osmolarity > 293, 'the body is losing water');
   assert.equal(b.urineReport().protein, 'negative');
+  // if he drinks when thirsty, the concentration of his blood is held and the loss goes on
+  const t = at(400).set('thirst', 1); t.advance(8 * HOUR);
+  between(t.osmolarity, 288, 296, 'plasma concentration with thirst (mOsm/L)');
+  assert.ok(t.urineReport().perDay > 2.5, 'still polyuric');
 });
 
 test('blocking the glucose carrier puts glucose in the urine at a normal blood glucose', () => {
-  const b = new Kidney().set('glucoseCarrier', 0.3);
+  const b = new Kidney().set('glucoseCarrier', 0.15);
   assert.equal(b.glucose, 90);
   between(b.ledger('glucose').excreted, 40, 100, 'glucose lost (g/day)');
   assert.notEqual(b.urineReport().glucose, 'negative');
@@ -197,9 +204,9 @@ test('a damaged filter leaks protein and red cells, and nothing else changes', (
 
 test('blocking salt take-back in the loop: salt stays in the tubule and water stays with it', () => {
   const rest = new Kidney();
-  const b = new Kidney().set('loopBlock', 0.45);
-  assert.ok(b.f.ex.na > 5 * rest.f.ex.na, 'much more salt excreted');
-  assert.ok(b.f.urine.flow > 5 * rest.f.urine.flow, 'much more water excreted');
+  const b = new Kidney().set('loopBlock', 0.25);
+  assert.ok(b.f.ex.na > 3 * rest.f.ex.na, 'much more salt excreted');
+  assert.ok(b.f.urine.flow > 2.5 * rest.f.urine.flow, 'much more water excreted');
   between(b.f.gfr / rest.f.gfr, 0.98, 1.02, 'filtering unchanged: diuretics do not make the kidney filter more');
   // one dose by mouth: a large volume for about six hours, then the kidney holds on to salt
   const d = new Kidney(); d.take({ diuretic: 1 });
@@ -281,16 +288,23 @@ test('taking back 1 % less of the filtered water adds about 1.8 L of urine a day
 });
 
 // ------------------------------------------------------------------ failing kidneys
-test('half the nephrons: creatinine doubles; a quarter: about fourfold, with urea and potassium up', () => {
-  const half = new Kidney().set('nephrons', 0.5).advance(8 * DAY);
-  between(half.creatinine / 0.9, 1.8, 2.2, 'creatinine with half the nephrons (× normal)');
+test('half the filtering: creatinine doubles; a quarter: fourfold, with urea up and potassium only now nearing its limit', () => {
+  const half = new Kidney().set('nephrons', 0.5).set('thirst', 1).advance(8 * DAY);
+  between(half.creatinine / 0.9, 1.8, 2.2, 'creatinine at half (× normal)');
   between(half.urineReport().perDay, 1, 2.2, 'urine volume still ordinary (L/day)');
-  between(half.potassium, 3.5, 5.0, 'potassium still in range');
-  const q = new Kidney().set('nephrons', 0.25).advance(10 * DAY);
-  between(q.creatinine / 0.9, 3.6, 4.4, 'creatinine with a quarter (× normal)');
+  between(half.potassium, 3.5, 4.6, 'potassium barely moved');
+  const q = new Kidney().set('nephrons', 0.25).set('thirst', 1).advance(12 * DAY);
+  between(q.creatinine / 0.9, 3.6, 4.4, 'creatinine at a quarter (× normal)');
   assert.ok(q.bun > 35, 'urea well up');
-  assert.ok(q.potassium > half.potassium, 'potassium higher still');
+  between(q.potassium, 4.5, 5.0, 'potassium high-normal: each surviving nephron pushes out more');
   assert.ok(q.f.urine.osm < 650, 'and the urine can no longer be made very concentrated');
+  // and that is a steady state, not a drift: three weeks later nothing has moved
+  const later = q.copy().advance(20 * DAY);
+  between(later.potassium / q.potassium, 0.98, 1.02, 'potassium steady');
+  between(later.sodium, 135, 145, 'sodium in range');
+  // at an eighth, potassium is out of range and fluid is retained
+  const e = new Kidney().set('nephrons', 0.125).set('thirst', 1).advance(20 * DAY);
+  assert.ok(e.potassium > 5.0 && e.ecf > 15 && e.pressure > 96, 'potassium high, fluid retained, pressure up');
 });
 
 // ------------------------------------------------------------------ the design bench

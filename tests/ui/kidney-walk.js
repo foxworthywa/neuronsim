@@ -83,7 +83,7 @@ const URL = (arg ? (arg.includes('://') ? arg : 'file://' + path.resolve(arg)) :
       } else if (st.title === 'What pushes it through?' || st.title === 'Holding it steady') {
         for (const v of [120, 150, 80, 60, 93]) { await setRange('#dial-map', v); await page.waitForTimeout(60); }
       } else if (st.title === 'Too much to take back') {
-        for (const v of [150, 180, 250, 300]) { await setRange('#dial-glucose', v); await page.waitForTimeout(60); }
+        for (const v of [150, 180, 250, 300, 400]) { await setRange('#dial-glucose', v); await page.waitForTimeout(60); }
         await answer(ki);
       } else if (st.title === 'Try the two dials') {
         for (const [w, a] of [[5, 50], [100, 50], [80, 100]]) { await setRange('#dial-w', w); await setRange('#dial-a', a); await page.waitForTimeout(60); }

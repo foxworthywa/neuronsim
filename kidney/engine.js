@@ -52,7 +52,8 @@
     eNormal: 0.075,            // share of the salt reaching the last stretch that is excreted, normal aldosterone
     eMin: 0.002, eMax: 0.35,   // ... at the most and the least aldosterone
     kBase: 0.0556,             // mmol/min of potassium excreted at rest (80 mmol a day)
-    glucoseTm: 225,            // mg/min: the most the glucose carriers take back (threshold 180 mg/dL at 125 mL/min)
+    glucoseTm: 375,            // mg/min: the most the glucose carriers take back, all of them full
+    glucoseSplay: 35,          // mg/min: carriers fill unevenly, so glucose first escapes at about 180 mg/dL, well before that
     drugSecretion: 0.375,      // L/min of plasma cleared of the drug by its carrier
     drugVd: 20, toxinVd: 42,   // L: volumes the drug and the unfamiliar substance spread through
     uMin: 50, uMax: 1200,      // mOsm/L: the most dilute and the most concentrated urine
@@ -110,6 +111,7 @@
       this.s = {
         nephrons: 1, autoreg: 1, filterDamage: 0, glucoseCarrier: 1, loopBlock: 0, adh: 1, map: null,
         takeBack: 1,           // 0: the tubule takes nothing back (a thought experiment, scene 6)
+        thirst: 0,             // 1: she drinks when her blood becomes too concentrated (used for runs of days)
         drugHold: null,        // mg: keep this much of the drug in the body (a steady infusion)
         volumeSet: 1,          // the blood volume (× normal) that aldosterone defends
       };
@@ -178,9 +180,9 @@
       const ex = {}, sec = { k: 0, drug: 0 };
       const loopWork = (1 - s.loopBlock) * (1 - this.diureticBlock());
       // Glucose: a carrier with a maximum rate.
-      const tm = p.glucoseTm * N * s.glucoseCarrier, soft = 5 * Math.max(N, 0.05);
+      const tm = p.glucoseTm * N * s.glucoseCarrier, soft = p.glucoseSplay * Math.max(N * s.glucoseCarrier, 0.02);
       ex.glucose = N > 0 ? soft * Math.log(1 + Math.exp((filt.glucose - tm) / soft)) : 0;
-      if (ex.glucose < 1e-4) ex.glucose = 0;
+      if (ex.glucose < 0.05) ex.glucose = 0;                    // a trace too small for any test strip
       // Salt: two-thirds in the first stretch, a quarter in the loop, the rest decided last.
       const reach = filt.na * (1 - p.proximal - p.loopNa * loopWork);         // reaches the last stretch
       const a = this.manualLate ? this.manualLate.a : this.a;
@@ -188,7 +190,8 @@
       ex.na = reach - Math.min((1 - eps) * reach, p.lateCap * N);
       // Potassium: nearly all taken back early; the last stretch pushes in what must leave.
       const reach0 = P.na * 0.125 * (1 - p.proximal - p.loopNa) * Math.max(N, 1e-9);
-      ex.k = N > 0 ? Math.min(0.6 * N, p.kBase * Math.sqrt(N) * Math.pow(a / 0.5, 0.7) * clamp(1 + 3 * (cK - p.k), 0.15, 8) * Math.sqrt(clamp(reach / reach0, 0.2, 4))) : 0;
+      // (each surviving nephron of a failing kidney pushes out more, so the total falls far less than the number of nephrons)
+      ex.k = N > 0 ? Math.min(0.6 * Math.sqrt(N), p.kBase * Math.pow(N, 0.25) * Math.pow(Math.max(a, 0.02) / 0.5, 0.4) * clamp(1 + 4 * (cK - p.k), 0.15, 8) * Math.sqrt(clamp(reach / reach0, 0.2, 4))) : 0;
       sec.k = Math.max(0, ex.k - 0.1 * filt.k);
       // Urea drifts back with the water, a little more when the urine is concentrated.
       const w = !s.adh ? 0 : this.manualLate ? this.manualLate.w : this.w;
@@ -280,6 +283,7 @@
         this.tbw += win / 1000; this.na += this.base.na * h; this.kx += this.base.k * h;
         c.waterIn += win; c.naIn += this.base.na * h; c.kIn += this.base.k * h;
       }
+      if (this.s.thirst) { const drink = 1.5 * Math.max(0, this.osmolarity - 293) * h; this.tbw += drink / 1000; c.waterIn += drink; }
       this.tbw += p.metabolic * h / 1000; c.waterIn += p.metabolic * h;
       this.urea += p.ureaProd * h; c.ureaIn += p.ureaProd * h;
       this.cr += p.crProd * h; c.crIn += p.crProd * h;
@@ -358,7 +362,7 @@
       return this;
     }
     // Fluid held back before the run begins (salt and water together), e.g. in heart failure.
-    retain(litres) { const c = this.sodium; this.tbw += litres; this.na += litres * c; this.compute(); return this; }
+    retain(litres) { const c = this.sodium, k = this.potassium; this.tbw += litres; this.na += litres * c; this.kx += litres * k; this.compute(); return this; }
     set(key, value) {
       if (key === 'glucose') this.glucose = value;                  // blood glucose is set from outside: the pancreas is not modelled
       else if (key === 'drugHold') { this.s.drugHold = value; if (value != null) this.drug = value; }

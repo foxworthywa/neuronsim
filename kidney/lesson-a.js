@@ -125,7 +125,7 @@
   const HERRERA = `<p><b>Luis Herrera, 56.</b> His kidneys failed two years ago, after many years of diabetes and high blood pressure. They now make no urine at all. Three times a week, on Monday, Wednesday and Friday, he spends four hours connected to a <b>dialysis machine</b>.</p>
     <p>It is <b>noon on Monday</b> and he has just come off the machine. His next session is at <b>8 am on Wednesday</b>, 44 hours away. Until then he will eat and drink much as you do.</p>`;
   const HERRERA_Q = `<ol><li>What does the machine do for him?</li><li>Why does the nurse weigh him before every session?</li><li>Why does his diet sheet limit fluids, salt, and foods such as bananas and potatoes?</li></ol>`;
-  const SAM = `<p><b>Sam Reyes, 19</b> (from EndoSim) has type 1 diabetes. He missed his insulin yesterday. This morning his blood glucose is <b>300 mg/dL</b>, he is very thirsty, and he has been passing large amounts of urine all night.</p>`;
+  const SAM = `<p><b>Sam Reyes, 19</b> (from EndoSim) has type 1 diabetes. He missed his insulin yesterday. This morning his blood glucose is <b>400 mg/dL</b>, he is very thirsty, and he has been passing large amounts of urine all night.</p>`;
   const DANA = `<p><b>Dana Brooks, 62</b> (from HeartSim) had a heart attack two weeks ago. Since then she has held on to about <b>2 litres</b> of extra salt and water: her ankles are swollen and she is breathless lying down. Her doctor starts <b>furosemide</b>, a tablet she calls her "water pill".</p>`;
   const RUNNER = `<p><b>Maya Okonkwo, 24,</b> has just finished a half-marathon on a hot day. She drank almost nothing during the race.</p>`;
   const BLED = `<p><b>Tom Bradley, 41,</b> was brought to the emergency department half an hour ago after a motorcycle accident, with heavy bleeding from a broken thigh.</p>`;
@@ -162,7 +162,7 @@
   const NO_GRAPH = { rows: [] }, NO_METERS = () => [];
   const METERS = {
     bench: () => { const b = app.sim; return b instanceof Bench ? [['Time', b.t < 2 * HOUR ? `${Math.round(b.t)} min` : `${Math.floor(b.t / HOUR)} h`], ['New drug in her body', `${fx(b.level.drug, 1)} doses`, b.level.drug > 2 ? 'bad' : '']] : []; },
-    filter: () => { if (!isBody()) return []; const f = app.sim.f; return [['Pressure in her arteries', `${fx(f.map, 0)} mmHg`], ['Filtered', `${fx(f.gfr, 0)} mL/min`, f.gfr < 60 || f.gfr > 190 ? 'bad' : 'good']]; },
+    filter: () => { if (!isBody()) return []; const f = app.sim.f; return [['Mean pressure in her arteries', `${fx(f.map, 0)} mmHg`], ['Filtered', `${fx(f.gfr, 0)} mL/min`, f.gfr < 60 || f.gfr > 190 ? 'bad' : 'good']]; },
   };
 
   const FIND = (part, slide, prompt, explain, wrong, o) => Object.assign({
@@ -252,7 +252,7 @@
           text: `<p>Now a healthy nursing student on an ordinary day. What she will eat, drink and sweat is listed under <b>Coming up</b>. For today, <b>you are her kidneys</b>.</p>
                  <p>You will have two dials: how much <b>water</b> leaves in her urine each minute, and how much <b>salt</b> leaves each hour. Your job is to keep</p>
                  <ol><li>the <b>water in her body</b> and</li><li>the <b>salt in her body</b></li></ol>
-                 <p>inside their green bands. Her body holds about 42 L of water; the band is ¾ L either side of that. (Her potassium, urea and the rest will be looked after for you today.)</p>`,
+                 <p>inside their green bands. Her body holds about 42 L of water (the figure for a 70 kg adult); the band is ¾ L either side of that. (Her potassium, urea and the rest will be looked after for you today.)</p>`,
           question: { prompt: 'At 9:30 she will drink a big bottle of water. What will you need to do with the water dial?', options: [
             { t: 'Turn it up for an hour or two, then back down', ok: true, fb: 'The water has to leave again, and only for as long as there is too much of it.' },
             { t: 'Leave it where it is: her body will use the water up', fb: 'Water is not used up. Whatever she drinks has to leave again by some route, or stay.' },
@@ -296,10 +296,10 @@
         {
           view: 'person', title: 'Could another exit do this job?',
           setup: () => { if (!(isBody() && app.sim.tag === 'handDone')) standInDay(); },
-          text: `<p>Her lungs, skin and gut lose water too, and sweat carries salt. In her run, sweat removed water faster than the kidneys ever do.</p>`,
+          text: `<p>Her lungs, skin and gut lose water too, and sweat carries salt. In her run, sweat removed water faster than her kidneys did at any time that day.</p>`,
           question: { prompt: 'Why can\'t those exits do the kidneys\' job?', options: [
-            { t: 'What they lose is set by other needs (breathing, cooling, digestion), not by what the blood has too much of', ok: true, fb: `She sweated because she was hot, not because she had water to spare.${nameBox('Keeping the fluid around the cells steady is <b>homeostasis</b>; for water and salts it is called <b>fluid and electrolyte balance</b>. Getting rid of something in the urine is <b>excretion</b>. The kidneys are the body\'s <b>adjustable exit</b>: you managed water and salt by hand; they also handle potassium, urea, acid, calcium, phosphate and every drug, each with its own setting, all at once.')}` },
-            { t: 'They lose too little to matter', fb: 'Sweat can exceed a litre an hour, more than the kidneys usually pass in a day. Amount is not the difficulty. What decides how much she sweats?' },
+            { t: 'What they lose is set by other needs (breathing, cooling, digestion), not by what the blood has too much of', ok: true, fb: `She sweated because she was hot, not because she had water to spare.${nameBox('Keeping the fluid around the cells steady is <b>homeostasis</b>; for water and salts it is called <b>fluid and electrolyte balance</b>. Getting rid of something in the urine is <b>excretion</b>. The kidneys are the body\'s <b>adjustable exit</b>: you managed water and salt by hand; they also handle potassium, urea, acid, calcium, phosphate, and most drugs or what the liver makes of them, each with its own setting, all at once.')}` },
+            { t: 'They lose too little to matter', fb: 'Sweat can exceed a litre an hour; the kidneys usually pass little more than that in a whole day. Amount is not the difficulty. What decides how much she sweats?' },
             { t: 'They cannot carry salt', fb: 'Sweat is salty: she lost about 2.5 g of salt on her run. What decides how much she sweats?' },
           ] },
         },
@@ -318,7 +318,7 @@
           text: `<p>The two kidneys together weigh about 300 g: less than half of one percent of the body.</p>`,
           question: { prompt: 'What share of all the blood the heart pumps goes through the kidneys?', onCorrect: (c) => { c.view().showFlow = true; c.view().highlight('artery'); }, options: [
             { t: 'About a fifth', ok: true, fb: 'More than a litre a minute, far more than they need for their own oxygen. Why would two small organs be given a fifth of the blood? <b>Keep that question.</b> Scene 6 answers it.' },
-            { t: 'About 5 %', fb: 'Still too low. They receive more blood for their weight than the brain or the heart muscle does.' },
+            { t: 'About 5 %', fb: 'Too low. They receive more blood for their weight than the brain or the heart muscle does.' },
             { t: 'About 0.5 %, in line with their weight', fb: 'That is what their size suggests, and it is wrong by a factor of forty.' },
           ] },
         },
@@ -461,8 +461,8 @@
           view: 'filter', title: 'What pushes it through?', meters: METERS.filter,
           setup: () => setSim(new Kidney().set('autoreg', 0)),
           enter: (c) => { const v = c.view(); v.setOpen(true); v.showChart(true); v.showArteriole = true; v.showDay = true; v.plot(); },
-          text: `<p>Nothing here is pumped. <b>Blood pressure</b> pushes the fluid through the pores. Her resting pressure is about 93 mmHg (120/80).</p>
-                 <p>For this step the small artery that feeds the filter is held at a <b>fixed width</b>. Move her blood pressure up to <b>120</b> or more (climbing stairs) and down to <b>80</b> or less (standing up quickly). Each setting is plotted on the chart.</p>`,
+          text: `<p>Nothing here is pumped. <b>Blood pressure</b> pushes the fluid through the pores. Her blood pressure is 120/80; averaged over a heartbeat, the <b>mean pressure</b>, that is about 93 mmHg. The dial sets the mean.</p>
+                 <p>For this step the small artery that feeds the filter is held at a <b>fixed width</b>. Move her mean pressure up to <b>120</b> or more (hard exercise) and down to <b>80</b> or less (a dip on standing up). Each setting is plotted on the chart.</p>`,
           extra: (el, c) => pressureDial(el, c, 'fixed'),
           question: { prompt: 'With a fixed arteriole, what would an ordinary day of standing, sitting and climbing stairs do to her filtering?', options: [
             { t: 'Swing it between a trickle and a flood', ok: true, fb: 'And the tubule would have to cope with a load that kept changing several-fold. The next step shows what a real kidney does about it.' },
@@ -476,11 +476,11 @@
           setup: () => setSim(new Kidney()),
           enter: (c) => { const v = c.view(); v.setOpen(true); v.showChart(true); v.showArteriole = true; v.showDay = true; if (!v.points.fixed.length) for (const m of [70, 80, 93, 105, 120, 135]) { app.sim.set('autoreg', 0).set('map', m); v.plot(); } app.sim.set('autoreg', 1).set('map', null); v.plot(); },
           text: `<p>Now the arteriole is free to <b>adjust itself</b>: when her blood pressure rises it narrows, and when the pressure falls it widens. Watch its width as you move the pressure.</p>
-                 <p>Try <b>150</b> or more, then go down to <b>60</b> or less. The new points are plotted in blue.</p>`,
+                 <p>Try a mean pressure of <b>150</b> or more, then go down to <b>60</b> or less. The new points are plotted in blue.</p>`,
           extra: (el, c) => pressureDial(el, c, 'auto'),
-          question: { prompt: 'The blue line is nearly flat from 80 to 180 mmHg, then drops. What does that mean for a patient whose blood pressure falls to 60 and stays there?', options: [
-            { t: 'Filtering nearly stops, so wastes, water and potassium build up as they did in Mr. Herrera', ok: true, fb: `This is one common way for kidneys to fail suddenly: after heavy bleeding, in shock, or in severe dehydration. It is called <b>acute kidney injury</b>, and falling urine output is the early warning.${nameBox('The small artery feeding the glomerulus is the <b>afferent arteriole</b>; the one leaving it is the <b>efferent arteriole</b>. The kidney\'s ability to hold its own filtering steady is <b>autoregulation</b>. (Your textbook breaks the push through the filter into three pressures, the <b>net filtration pressure</b>.)')}` },
-            { t: 'Nothing: the arteriole keeps filtering steady at any pressure', fb: 'Look at the blue points below 80 mmHg. Once the arteriole is fully open, there is nothing more it can do.' },
+          question: { prompt: 'The blue line is nearly flat between 80 and 180 mmHg, and falls steeply below 80. What does that mean for a patient whose mean pressure falls to 60 and stays there?', options: [
+            { t: 'Filtering falls to a fraction of normal and urine nearly stops, so wastes, water and potassium build up as they did in Mr. Herrera', ok: true, fb: `This is one common way for kidneys to fail suddenly: after heavy bleeding, in shock, or in severe dehydration. It is called <b>acute kidney injury</b>, and falling urine output is the early warning.${nameBox('The small artery feeding the glomerulus is the <b>afferent arteriole</b>; the one leaving it is the <b>efferent arteriole</b>. The kidney\'s ability to hold its own filtering steady is <b>autoregulation</b>. (Your textbook breaks the push through the filter into three pressures, the <b>net filtration pressure</b>.)')}` },
+            { t: 'Nothing: the arteriole keeps filtering steady at any pressure', fb: 'Look at the blue points below a mean of 80 mmHg. Once the arteriole is fully open, there is nothing more it can do.' },
             { t: 'Filtering rises, to make up for the low pressure', fb: 'Pressure is what does the filtering. Look at the blue points below 80 mmHg.' },
           ] },
           waitFor: (c) => data(c).hi && data(c).lo, waitHint: 'Try a pressure of 150 or more, and one of 60 or less',
@@ -544,7 +544,7 @@
     const cur = app.sim.s.map == null ? 93 : app.sim.s.map;
     const checks = htmlEl('div', { class: 'checks' });
     const paint = () => { checks.innerHTML = `<div class="${d.hi ? 'done' : ''}">${d.hi ? '☑' : '☐'} a pressure of ${need[0]} or more</div><div class="${d.lo ? 'done' : ''}">${d.lo ? '☑' : '☐'} a pressure of ${need[1]} or less</div>`; };
-    dial(el, { cls: '', id: 'dial-map', label: 'Pressure in her arteries (mean)', min: 50, max: 180, step: 5, value: cur, show: (v) => `${v} mmHg`, ends: ['50', '180'],
+    dial(el, { cls: '', id: 'dial-map', label: 'Mean pressure in her arteries', min: 50, max: 180, step: 5, value: cur, show: (v) => `${v} mmHg`, ends: ['50', '180'],
       onInput: (v) => {
         app.sim.set('map', v); c.view().plot();
         if (v >= need[0]) { d.hi = true; d.gHi = app.sim.f.gfr; } if (v <= need[1]) { d.lo = true; d.gLo = app.sim.f.gfr; }

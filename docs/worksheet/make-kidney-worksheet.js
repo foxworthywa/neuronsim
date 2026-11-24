@@ -102,15 +102,17 @@ const box = (height, label, setup) => new Table({
 
 const W2 = [5400, 5400], W4 = [3000, 2600, 2600, 2600], W5 = [2400, 2100, 2100, 2100, 2100];
 const TERMS = [
-  ['2', 'keeping the body’s fluid steady'], ['2', 'getting rid of something in the urine'],
-  ['3', 'blood in · blood out · urine out'], ['3', 'outer part · inner part of the kidney'], ['3', 'one filter with its tubule'],
-  ['5', 'the filter: a knot of capillaries in a cup'], ['5', 'what comes through the filter'], ['5', 'how fast the kidneys filter'], ['5', 'the arteriole feeding the filter'],
+  ['2', 'keeping the body’s fluid steady'], ['2', 'removal in the urine'],
+  ['3', 'blood in · blood out · urine out'], ['3', 'urine store · its exit tube'], ['3', 'outer part · inner part · hollow'], ['3', 'one filter with its tubule'],
+  ['5', 'the filter (capillaries in a cup)'], ['5', 'what comes through the filter'], ['5', 'how fast the kidneys filter'], ['5', 'arteriole into · out of the filter'], ['5', 'holding filtering steady'],
   ['6', 'taking back'], ['6', 'the first stretch of the tubule'], ['6', 'the return line'],
-  ['7', 'pushing extra in'], ['8', 'the most a carrier can take back'], ['8', 'protein · glucose in the urine'], ['8', 'a drug that increases urine volume'],
-  ['9', 'the hormone for water'], ['9', 'the hormone for salt'], ['9', 'the last stretch of the tubule'], ['10', 'the machine'],
+  ['7', 'pushing extra in'], ['7', 'waste that measures filtering'],
+  ['8', 'protein · blood · glucose in urine'], ['8', 'the most a carrier can take back'], ['8', 'a large volume of urine'], ['8', 'drug that increases urine volume'],
+  ['9', 'the hormone for water'], ['9', 'hormone for salt (and potassium)'], ['9', 'the last stretch of the tubule'], ['9', 'the hairpin between them'],
+  ['10', 'the machine'], ['10', 'long-term loss of nephrons'],
 ];
 const termRows = () => { const half = Math.ceil(TERMS.length / 2), rows = [['#', 'Plain words in the sim', 'The term', '#', 'Plain words in the sim', 'The term']]; for (let i = 0; i < half; i++) { const a = TERMS[i], b = TERMS[i + half] || ['', '']; rows.push([a[0], a[1], '', b[0], b[1], '']); } return rows; };
-const WT = [460, 2840, 2100, 460, 2840, 2100];
+const WT = [460, 2900, 2040, 460, 2900, 2040];
 
 const sheet = () => [
   new Paragraph({ spacing: { after: 20 }, children: [run('KidneySim: the kidney', { bold: true, size: 32 })] }),
@@ -121,7 +123,7 @@ const sheet = () => [
   table([TEXT_W], [[[
     p([run('The idea in one line: ', { bold: true, size: 20 }), run('the kidneys are the body’s adjustable exit. They push everything small out of the blood through a filter, take back what must be kept, and let the rest go. The urine changes from hour to hour so that the blood does not.', { size: 20 })]),
     TYPE
-      ? p([run('How to use this document. ', { bold: true, size: 20 }), run('First make your own copy (File → Make a copy) if you were not given one. Type between the yellow brackets [   ] and in the pale yellow boxes; they grow as you type. Where there is a choice, delete the choices that do not apply. Do Part A before you open the sim. In Part B the numbers match the circles across the top of the sim: when a box names a scene, stop there and fill it in. Write predictions BEFORE you press the run button. The sim explains each thing in plain words and then names it: copy each name into the table of terms as it appears (the Terms button in the sim lists them). ', { size: 20 }), TALK_TAG(), run('means every person says their answer out loud before anyone types. Working alone? Type your own first answer before you run the experiment, then add what changed. Part C is answered after the sim, in full sentences, using your own numbers. The sim takes about an hour. You can return to any scene with the numbered circles. There is also a print version of this handout with the same questions.', { size: 20 })])
+      ? p([run('How to use this document. ', { bold: true, size: 20 }), run('First make your own copy (File → Make a copy) if you were not given one. Type between the yellow brackets [   ] and in the pale yellow boxes; they grow as you type. Where there is a choice, delete the choices that do not apply. Do Part A before you open the sim. In Part B the numbers match the circles across the top of the sim: when a box names a scene, stop there and fill it in. Write predictions BEFORE you press the run button. The sim explains each thing in plain words and then names it: copy each name into the table of terms as it appears (the Terms button in the sim lists them all). ', { size: 20 }), TALK_TAG(), run('means every person says their answer out loud before anyone types. Working alone? Type your own first answer before you run the experiment, then add what changed. Part C is answered after the sim, in full sentences, using your own numbers. The sim takes about an hour. You can return to any scene with the numbered circles. There is also a print version of this handout with the same questions.', { size: 20 })])
       : p([run('How to use this sheet. ', { bold: true, size: 20 }), run('Part A before you open the sim. In Part B the numbers match the circles across the top of the sim: when a box names a scene, stop there and fill it in. Write predictions BEFORE you press the run button. The sim explains each thing in plain words and then names it: copy each name into the table of terms as it appears (the Terms button in the sim lists them). ', { size: 20 }), TALK_TAG(), run('means every person says their answer out loud before anyone writes. Working alone? Write your own first answer before you run the experiment, then add what changed. Part C is answered after the sim, in full sentences, using your own numbers. The sim takes about an hour. You can return to any scene with the numbered circles. There is also a type-in version of this handout (a Google Doc) with the same questions.', { size: 20 })]),
   ]]]),
 
@@ -188,7 +190,7 @@ const sheet = () => [
   table([3600, 3600, 3600], [
     ['What was changed', 'What appeared or changed in the urine', 'Which step of the nephron is responsible'],
     blankRow([3600, 3600, 3600], 'The filter was damaged'),
-    blankRow([3600, 3600, 3600], 'Blood glucose raised to 300 mg/dL (Sam)'),
+    blankRow([3600, 3600, 3600], 'Blood glucose raised to 400 mg/dL (Sam)'),
     blankRow([3600, 3600, 3600], 'Glucose carriers blocked by a drug'),
     blankRow([3600, 3600, 3600], 'Salt carriers in the loop blocked (furosemide)'),
   ]),
@@ -198,7 +200,7 @@ const sheet = () => [
   q('If the last stretch took back 1 % less of the 180 L filtered, she would pass ________ L more urine a day.'),
   q(v('Write each prediction BEFORE you press Run. Circle any prediction that was wrong.', 'Type each prediction BEFORE you press Run. Put a * after any prediction that was wrong.')),
   table(W5, [
-    ['Event', 'Urine volume: predicted', 'Urine volume: observed', 'Urine concentration', 'The kidney is…'],
+    ['Event (compare with her usual urine)', 'Urine volume: predicted', 'Urine volume: observed', 'Urine concentration', 'The kidney is…'],
     blankRow(W5, 'A big bottle of water'),
     blankRow(W5, 'A salty lunch'),
     blankRow(W5, 'An hour of sweating'),
@@ -208,7 +210,7 @@ const sheet = () => [
 
   scene(10, 'Back to the patients', 'Wednesday, 8 am · Losing nephrons slowly · Four patients, four charts', 1),
   q('Dialysis session:  weight ________ → ________ kg;  potassium ________ → ________;  urea (BUN) ________ → ________.'),
-  q('Creatinine:  all her nephrons 0.9;   half ________;   a quarter ________ mg/dL.        Charts:  A = ______________   B = ______________   C = ______________   D = ______________'),
+  q('Creatinine:  normal filtering 0.9;   filtering halved ________;   halved again ________ mg/dL.        Charts:  A = ______________   B = ______________   C = ______________   D = ______________'),
 
   new Paragraph({ spacing: { before: 130, after: 40 }, keepNext: true, border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: LINE, space: 2 } }, children: [run('  Plain words and their terms', { bold: true, size: 23 }), run('   ·   fill in as the sim names each one', { color: GREY, italics: true }), pts(2)] }),
   table(WT, termRows()),
@@ -220,19 +222,19 @@ const sheet = () => [
   part('C · After the sim', 'full sentences, your own numbers; explain why, not just what (28 points)'),
   q('1. Mr. Herrera. (a) What does the dialysis machine do for him? (b) Why does the nurse weigh him before every session? (c) Why does his diet sheet limit fluids, salt, and foods such as bananas and potatoes, when a healthy person can eat and drink them freely? Use your numbers from scenes 1 and 10.', false, 5),
   ...lines(5),
-  q('2. Intake changes. For each of these, say which way the VOLUME and the CONCENTRATION of the urine go, and why, naming the hormone involved: (a) a litre of water; (b) a salty meal; (c) a hot day’s sweating with nothing to drink. Then respond to this: “Drink more water, it makes your kidneys filter more.” Use your filtering (GFR) numbers from scene 9.', true, 5),
+  q('2. Intake changes. For each of these, say how the urine changes (its volume, its concentration, the salt in it) and why, naming the hormone involved: (a) a litre of water; (b) a salty meal; (c) a hot day’s sweating with nothing to drink. Then respond to this: “Drink more water, it makes your kidneys filter more.” Use your filtering (GFR) numbers from scene 9.', true, 5),
   ...lines(5),
-  q('3. Urine findings. A test strip shows: (a) protein 3+; (b) glucose 4+, in a patient whose blood glucose is 300 mg/dL; (c) glucose 4+, in a patient whose blood glucose is 90 mg/dL. For each, which step of the nephron explains it (the filter, taking back, or pushing in), and does it mean the kidney is damaged?', false, 5),
+  q('3. Urine findings. A test strip shows: (a) protein 3+; (b) glucose 4+, in a patient whose blood glucose is 400 mg/dL; (c) glucose 4+, in a patient whose blood glucose is 90 mg/dL. For each, which step of the nephron explains it (the filter, taking back, or pushing in), and does it mean the kidney is damaged?', false, 5),
   ...lines(4),
   q('4. A drug. Furosemide blocks carriers that take back salt. Starting from the rule “water follows salt”, explain what it does to urine volume, to body weight, and to the filtering rate. A classmate says diuretics “make the kidneys filter more”. Respond, using Mrs. Brooks’s numbers.', false, 4),
   ...lines(4),
-  q('5. Failing kidneys. Mrs. Lin has a quarter of her nephrons left and still passes a normal volume of urine. What builds up in her blood, and why? Why is blood creatinine the test used to follow her? Predict her creatinine if she loses half of the nephrons she has left, and explain your reasoning.', false, 4),
+  q('5. Failing kidneys. Mrs. Lin has a quarter of her filtering left and still passes a normal volume of urine. What builds up in her blood, and why? Why is blood creatinine the test used to follow her? Predict her creatinine if her filtering halves once more, and explain your reasoning.', false, 4),
   ...lines(4),
   q('6. Low blood pressure. After his bleed, Tom Bradley passed almost no urine. Explain why, starting from what pushes fluid through the filter. Why is hourly urine output charted in seriously ill patients?', true, 3),
   ...lines(3),
   q('7. Now redraw your Part A picture: a litre of water and a bag of salted chips, from mouth to toilet. Show the filter, what is taken back, and what is left. Under it, write one thing in your Part A drawing that you would now change.', false, 2),
-  box(1500, 'your drawing', 'draw one large empty rectangle (about the width of the page and a third of its height)'),
-  ...lines(1),
+  box(2300, 'your drawing', 'draw one large empty rectangle (about the width of the page and a third of its height)'),
+  ...lines(2),
 ];
 
 async function build(typed, file) {

@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KidneySim — The kidney</title>
+<link rel="stylesheet" href="../lib/base.css">
+<style>
+  :root { --water: #3b8fd9; --salt: #e8772e; --pot: #8e5cf0; --glucose: #2f9e5b; --urea: #8a6d3b; --creat: #5f6675; --protein: #b0478a; --drug: #d0372d; --urine: #d9a514; --blood: #b8322a; --kidney: #9c4a3c; }
+  #trace { height: 210px; }
+  @media (max-height: 800px) { #trace { height: 170px; } #narrator { min-height: 0; margin-bottom: 6px; } #stage-wrap { min-height: 0; } }
+  #stage-top { flex-wrap: wrap; row-gap: 4px; }
+  #stage-caption { min-width: 180px; }
+  #meters { display: none; gap: 6px; flex-wrap: wrap; align-items: center; }
+  #meters.on { display: flex; }
+  #meters .m { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 2px 8px; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  #meters .m b { font-size: 14px; color: var(--ink); font-variant-numeric: tabular-nums; }
+  #meters .m.good { border-color: var(--good); background: #f1faf4; }
+  #meters .m.bad { border-color: var(--bad); background: #fdf1ef; }
+  #meters .m.bad b { color: #a3271c; }
+  #vm-badge { display: none; }
+  #sim-clock { font-weight: 650; color: var(--ink); font-size: 14px; }
+  #stage { position: relative; }
+  .record textarea { width: 100%; height: 210px; font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; border: 1px solid var(--line); border-radius: 8px; padding: 8px; resize: vertical; }
+  .record input[type=text] { font: inherit; width: 100%; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; }
+  .record label { font-size: 13px; color: var(--muted); display: block; margin: 4px 0 2px; }
+  .record .row { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+  .record .code { margin-top: 6px; font-size: 15px; }
+  .record .warn, .warn { color: #8a4b0f; background: #fff3d6; border-radius: 8px; padding: 6px 10px; margin: 8px 0 0; font-size: 14px; }
+  .dialog { position: fixed; inset: 0; background: rgba(31, 36, 48, .45); display: none; align-items: center; justify-content: center; z-index: 10; }
+  .dialog.on { display: flex; }
+  .dialog .box { background: #fff; border-radius: 12px; padding: 16px 18px; width: min(660px, 92vw); max-height: 90vh; overflow: auto; display: flex; flex-direction: column; gap: 8px; }
+  .dialog input { font: inherit; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; }
+  .dialog .result { font-weight: 600; }
+  .dialog p { margin: 0 0 6px; }
+  .case { border-left: 4px solid var(--kidney); background: #fbf2ef; border-radius: 8px; padding: 8px 12px; margin: 6px 0; font-size: 14px; }
+  .case p { margin: 0 0 6px; }
+  .case p:last-child { margin-bottom: 0; }
+  .case-h { font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: #7a3226; font-weight: 700; margin-bottom: 4px; }
+  .question .options button.noted, .question .options button.noted:disabled { border-color: var(--accent); background: #eaf1fd; color: var(--ink); }
+  .feedback.note { background: #eaf1fd; border: 1px solid #c3d5f3; }
+  .name { border-left: 4px solid #f0b429; background: #fff8e6; border-radius: 8px; padding: 6px 12px; margin: 6px 0; font-size: 14px; }
+  .name .t { font-size: 11.5px; text-transform: uppercase; letter-spacing: .5px; color: #8a6200; font-weight: 700; display: block; margin-bottom: 2px; }
+  #panel ol, #panel ul { margin: 4px 0 6px 18px; padding: 0; }
+  #panel li { margin-bottom: 3px; }
+  /* lab report and urine report */
+  .labrep { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; font-size: 13px; margin: 6px 0; background: #fff; }
+  .labrep .lh { background: #f1efe8; padding: 4px 8px; font-weight: 650; display: flex; justify-content: space-between; gap: 8px; }
+  .labrep table { width: 100%; border-collapse: collapse; }
+  .labrep td, .labrep th { padding: 3px 8px; border-top: 1px solid #eceae3; text-align: left; font-variant-numeric: tabular-nums; }
+  .labrep th { font-weight: 600; color: var(--muted); font-size: 12px; }
+  .labrep td.v { text-align: right; font-weight: 650; }
+  .labrep td.f { width: 22px; font-weight: 700; }
+  .labrep tr.H td.f, .labrep tr.H td.v, .labrep tr.pos td.v { color: #b0352b; }
+  .labrep tr.L td.f, .labrep tr.L td.v { color: #2457a6; }
+  .labrep td.r { color: var(--muted); font-size: 12px; }
+  .labrep .sw { display: inline-block; width: 26px; height: 12px; border-radius: 3px; border: 1px solid #c9c4b4; vertical-align: -1px; margin-right: 5px; }
+  /* tables the student fills in */
+  .ptable { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .ptable th, .ptable td { border: 1px solid var(--line); padding: 4px 6px; text-align: left; vertical-align: top; }
+  .ptable th { background: #f1efe8; font-weight: 600; }
+  .ptable select { font: inherit; font-size: 13px; max-width: 100%; width: 100%; padding: 2px 4px; border-radius: 6px; border: 1px solid var(--line); background: #fff; }
+  .ptable td.right select { border-color: var(--good); background: #eaf7ee; }
+  .ptable td.wrong select { border-color: var(--bad); background: #fdeeec; }
+  .ptable .mark { font-weight: 700; margin-left: 4px; }
+  .ptable .mark.ok { color: #1e7a45; } .ptable .mark.no { color: #b0352b; }
+  .ptable .was { display: block; font-size: 12px; color: var(--muted); }
+  /* dials */
+  .dial { border: 1px solid #d9d2ee; background: #faf8ff; border-radius: 10px; padding: 8px 12px; }
+  .dial + .dial { margin-top: 8px; }
+  .dial.water { border-color: #c5dcf3; background: #f4f9fe; }
+  .dial.salt { border-color: #f3d7c3; background: #fef8f3; }
+  .dial label { font-size: 13px; color: var(--muted); display: block; }
+  .dial .big { font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .dial.water .big { color: #1f6fb5; } .dial.salt .big { color: #b3560f; }
+  .dial input[type=range] { width: 100%; margin: 4px 0 0; }
+  .dial .ends { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+  .meterbar { height: 9px; background: #eceae3; border-radius: 5px; overflow: hidden; margin-top: 3px; }
+  .meterbar i { display: block; height: 100%; background: var(--good); }
+  .checks { font-size: 13.5px; margin: 4px 0; }
+  .checks div.done { color: #1e7a45; }
+  .extra .options { display: flex; flex-direction: column; gap: 5px; margin-top: 6px; }
+  .actions button.go { border-color: var(--accent); color: #1f4f9e; }
+  .actions button.warnb { border-color: var(--bad); color: #8f2620; }
+  .actions button.drugb { border-color: #6b7385; color: #3c4353; }
+  .actions button.held, .actions button.on { background: #e9f1fd; }
+  #stage [tabindex]:focus { outline: none; }
+  #stage [tabindex]:focus-visible { outline: 3px solid #f0b429; outline-offset: 2px; }
+  #trace-head { flex-wrap: wrap; row-gap: 2px; }
+  #trace-head .legend { flex-wrap: wrap; font-size: 12px; gap: 8px; }
+  /* cards on the stage (urine reports, patient charts) */
+  .cards { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 14px 16px; overflow: auto; align-content: start; background: var(--bg); }
+  .cards.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  @media (max-width: 1250px) { .cards.four { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+  .card h3 { margin: 0 0 4px; font-size: 15px; display: flex; justify-content: space-between; align-items: baseline; }
+  .card h3 span { font-size: 12.5px; font-weight: 400; color: var(--muted); }
+  .card .labrep { margin: 4px 0 0; }
+  .card.right { border-color: var(--good); box-shadow: 0 0 0 2px #cfead8; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>KidneySim</h1>
+    <div class="sub">The kidney · the body's adjustable exit</div>
+  </div>
+  <nav id="progress" aria-label="Scenes"></nav>
+  <div class="spacer"></div>
+  <button id="btn-terms" type="button" title="The terms named so far">Terms</button>
+  <button id="btn-case" type="button" title="Reopen the patient cases">The patients</button>
+  <label class="sub">Speed
+    <select id="speed" title="How much simulated time passes per second of real time">
+      <option value="1">1 minute per second</option>
+      <option value="4">4 minutes per second</option>
+      <option value="8" selected>8 minutes per second</option>
+      <option value="15">15 minutes per second</option>
+      <option value="30">½ hour per second</option>
+      <option value="60">1 hour per second</option>
+      <option value="180">3 hours per second</option>
+      <option value="720">½ day per second</option>
+      <option value="1440">1 day per second</option>
+    </select>
+  </label>
+  <button id="btn-pause" type="button" title="Pause / resume the simulation clock (P)">Pause</button>
+</header>
+<main>
+  <div id="stage-wrap">
+    <div id="stage-top">
+      <div id="stage-caption"></div>
+      <div id="meters" aria-live="off"></div>
+      <div id="vm-badge" aria-live="off"><span id="badge-label">Clock</span> <b id="badge-value">—</b></div>
+    </div>
+    <div id="stage"></div>
+    <div id="paused-badge">Paused</div>
+    <div id="narrator" aria-live="off"></div>
+    <div id="sr-live" class="sr-only" aria-live="polite"></div>
+  </div>
+  <aside id="panel" aria-label="Lesson"></aside>
+  <div id="trace-wrap">
+    <div id="trace-head">
+      <span id="trace-title"><b style="color:var(--ink);font-weight:650">The day graph</b></span>
+      <span class="legend" id="trace-legend"></span>
+      <span style="flex:1"></span>
+      <span id="sim-clock" style="font-variant-numeric: tabular-nums"></span>
+    </div>
+    <canvas id="trace" role="img" aria-label="The day graph: values in the blood, which stay nearly flat, and the urine, which swings, against time"></canvas>
+  </div>
+</main>
+<div id="verify" class="dialog" role="dialog" aria-modal="true" aria-labelledby="verify-title">
+  <div class="box">
+    <h2 id="verify-title" style="margin:0;font-size:16px">Check a completion code (instructor)</h2>
+    <p style="margin:0;font-size:14px;color:var(--muted)">Type the names as the student or group entered them, and the code from their handout. The order of the names, capitals and extra spaces do not matter.</p>
+    <label class="sub" for="verify-name">Names</label><input type="text" id="verify-name">
+    <label class="sub" for="verify-code">Completion code</label><input type="text" id="verify-code" placeholder="KD-XXXXX-XXXXX">
+    <div class="result" id="verify-result" role="status"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" id="verify-close">Close</button><button type="button" class="primary" id="verify-check">Check</button></div>
+  </div>
+</div>
+<div id="case" class="dialog" role="dialog" aria-modal="true" aria-labelledby="case-title">
+  <div class="box">
+    <h2 id="case-title" style="margin:0;font-size:16px">The patients</h2>
+    <div id="case-body" style="font-size:15px"></div>
+    <div style="display:flex;justify-content:flex-end"><button type="button" class="primary" id="case-close">Close</button></div>
+  </div>
+</div>
+<div id="terms" class="dialog" role="dialog" aria-modal="true" aria-labelledby="terms-title">
+  <div class="box">
+    <h2 id="terms-title" style="margin:0;font-size:16px">Plain words and their terms</h2>
+    <p style="margin:0;font-size:14px;color:var(--muted)">This lab explains each thing in plain words first and then names it. The names appear here as you reach them; copy them into the table on your handout.</p>
+    <div id="terms-body" style="font-size:14px"></div>
+    <div style="display:flex;justify-content:flex-end"><button type="button" class="primary" id="terms-close">Close</button></div>
+  </div>
+</div>
+<div id="resume" class="dialog" role="dialog" aria-modal="true" aria-labelledby="resume-title">
+  <div class="box">
+    <h2 id="resume-title" style="margin:0;font-size:16px">Continue where you left off?</h2>
+    <p style="margin:0;font-size:15px">This browser has saved progress in KidneySim.</p>
+    <p id="resume-info" style="margin:0;font-size:14px;color:var(--muted)"></p>
+    <p style="margin:0;font-size:14px;color:var(--muted)">If that was not you (on a shared computer, for example), start again.</p>
+    <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" id="resume-restart">Start again</button><button type="button" class="primary" id="resume-continue">Continue</button></div>
+  </div>
+</div>
+<script src="../lib/lesson.js"></script>
+<script src="engine.js"></script>
+<script src="app.js"></script>
+<script src="views.js"></script>
+<script src="views-nephron.js"></script>
+<script src="lesson-a.js"></script>
+<script src="lesson-b.js"></script>
+</body>
+</html>

@@ -109,6 +109,8 @@
       // ---- settings (each fault or drug is one of these)
       this.s = {
         nephrons: 1, autoreg: 1, filterDamage: 0, glucoseCarrier: 1, loopBlock: 0, adh: 1, map: null,
+        takeBack: 1,           // 0: the tubule takes nothing back (a thought experiment, scene 6)
+        drugHold: null,        // mg: keep this much of the drug in the body (a steady infusion)
         volumeSet: 1,          // the blood volume (× normal) that aldosterone defends
       };
       this.diuretic = { gut: 0, level: 0 };
@@ -208,12 +210,18 @@
         flow = this.manualExit.water; ex.na = this.manualExit.na;
         E = 2 * (ex.na + ex.k) + ex.urea + p.otherSolute;
       }
+      if (!s.takeBack) {
+        // nothing taken back, nothing pushed in: the filtrate leaves as it was filtered
+        for (const k of Object.keys(filt)) ex[k] = filt[k];
+        sec.k = 0; sec.drug = 0; flow = gfr; E = flow / 1000 * this.osmolarity;
+      }
       if (flow > 0) osm = E / flow * 1000;
       ex.water = flow;
       // What is left in the tubule at four places (as a share of what was filtered): just past the
       // filter, at the end of the first stretch, at the end of the loop, and in the urine.
       const share = (x, f) => (f > 0 ? x / f : 0);
-      const frac = {
+      const all = [1, 1, 1, 1];
+      const frac = !s.takeBack ? { water: all, na: all, k: all, glucose: all, urea: all, cr: all, alb: all, drug: all, toxin: all } : {
         water: [1, 1 - p.proximal, 0.18 + 0.1 * (1 - loopWork), share(flow, gfr)],
         na: [1, 1 - p.proximal, 1 - p.proximal - p.loopNa * loopWork, share(ex.na, filt.na)],
         k: [1, 1 - p.proximal, 0.1, share(ex.k, filt.k)],
@@ -288,7 +296,7 @@
       const ex = f.ex;
       this.tbw -= ex.water * h / 1000; this.na -= ex.na * h; this.kx -= ex.k * h;
       this.urea -= ex.urea * h; this.cr -= ex.cr * h;
-      this.drug = Math.max(0, this.drug - ex.drug * h); this.toxin = Math.max(0, this.toxin - ex.toxin * h);
+      this.drug = this.s.drugHold != null ? this.s.drugHold : Math.max(0, this.drug - ex.drug * h); this.toxin = Math.max(0, this.toxin - ex.toxin * h);
       c.waterOut += ex.water * h; c.naOut += ex.na * h; c.kOut += ex.k * h; c.ureaOut += ex.urea * h; c.crOut += ex.cr * h;
       c.urine += ex.water * h; c.urineNa += ex.na * h; c.urineK += ex.k * h; c.urineGlucose += ex.glucose * h; c.urineOsm += f.E * h;
       // ---- the machine, if it is running
@@ -353,6 +361,7 @@
     retain(litres) { const c = this.sodium; this.tbw += litres; this.na += litres * c; this.compute(); return this; }
     set(key, value) {
       if (key === 'glucose') this.glucose = value;                  // blood glucose is set from outside: the pancreas is not modelled
+      else if (key === 'drugHold') { this.s.drugHold = value; if (value != null) this.drug = value; }
       else if (!(key in this.s)) throw new Error('unknown setting ' + key);
       else this.s[key] = value;
       this.compute(); return this;

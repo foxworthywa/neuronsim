@@ -59,19 +59,25 @@
       if (spec.onChange) spec.onChange(st);
       if (all) c.complete();
     };
+    // spec.stack: one block for each row, its choices one under another (for a narrow panel)
+    if (spec.stack) tbl.innerHTML = '';
     spec.rows.forEach((r, ri) => {
-      const tr = htmlEl('tr', {}, `<td><b>${r.label}</b></td>`);
+      const tr = htmlEl('tr', {}, spec.stack ? '' : `<td><b>${r.label}</b></td>`);
+      const block = spec.stack ? htmlEl('td', {}, `<b>${r.label}</b>`) : null;
       r.cells.forEach((cell, ci) => {
-        const td = htmlEl('td', {});
+        const td = htmlEl(spec.stack ? 'div' : 'td', spec.stack ? { class: 'cell' } : {});
         const sel = htmlEl('select', { 'aria-label': `${r.label}: ${spec.head[ci + 1]}` });
         sel.appendChild(htmlEl('option', { value: '' }, 'choose…'));
         cell.options.forEach((o) => sel.appendChild(htmlEl('option', { value: o }, o)));
         const k = `${ri}.${ci}`;
-        const paint = () => { td.className = !st[k] ? '' : st[k] === cell.answer ? 'right' : 'wrong'; };
+        const paint = () => { td.className = (spec.stack ? 'cell ' : '') + (!st[k] ? '' : st[k] === cell.answer ? 'right' : 'wrong'); };
         if (st[k]) sel.value = st[k];
         sel.addEventListener('change', () => { if (st[k + ':first'] == null && sel.value) st[k + ':first'] = sel.value; st[k] = sel.value; paint(); check(); });
-        paint(); td.appendChild(sel); tr.appendChild(td);
+        paint();
+        if (spec.stack) { td.appendChild(htmlEl('span', {}, spec.head[ci + 1])); td.appendChild(sel); block.appendChild(td); }
+        else { td.appendChild(sel); tr.appendChild(td); }
       });
+      if (spec.stack) tr.appendChild(block);
       tbl.appendChild(tr);
     });
     el.appendChild(tbl); el.appendChild(note);

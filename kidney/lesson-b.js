@@ -400,12 +400,12 @@
           waitFor: (c) => data(c).ran, waitHint: 'Run the half hour',
         },
         {
-          view: 'strip', title: 'Four events',
+          view: 'strip', viewOpts: STRIP({ kinds: ['na', 'water'], ledger: ['water', 'na'], revealed: ['water', 'na'], names: true, urineDetail: true, lastDials: true, short: true, caption: 'Her kidney on an ordinary morning: her usual urine.' }), title: 'Four events',
           graph: NO_GRAPH, meters: NO_METERS,
           setup: () => setSim(rest()),
           text: `<p>Fill in the table from your four runs. Compare the urine after each event with her <b>usual</b> urine: about 1 mL a minute at about 680 mOsm/L. (Your numbers are in the results on the last screen, and each run can be repeated with the numbered circles.)</p>`,
           extra: (el, c) => selectTable(el, c, {
-            key: 'events', head: ['', 'Urine volume', 'Urine concentration', 'The kidney is…'], rows: EVENTS,
+            key: 'events', stack: true, head: ['', 'Urine volume', 'Concentration', 'The kidney is…'], rows: EVENTS,
             done: `<b>Complete.</b> In every row the urine changed so that the blood would not. ADH fell after the water and rose in the other three. Aldosterone fell after the salt and rose after the sweat and the bleed.${nameBox('The last stretch is the <b>distal convoluted tubule</b> and the <b>collecting duct</b>. Between it and the first stretch is the hairpin called the <b>nephron loop</b> (loop of Henle). How the loop lets urine become <i>more</i> concentrated than blood is a story for another lab; here, note only that the last stretch does the adjusting.')}`,
           }),
           waitFor: () => false, waitHint: 'Complete the table',

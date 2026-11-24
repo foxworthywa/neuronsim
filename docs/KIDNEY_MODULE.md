@@ -252,6 +252,15 @@ parathyroid hormone; acid–base balance; erythropoietin and vitamin D; the blad
 Groups in the lab hand in one handout; an online student does the same exercise alone, and "talk
 first" items have a written alternative. The completion code works for one name or several.
 
+The **print version is laid out for handwriting** (instructor review, Nov 2026: many students
+write large). Ruled lines are a third of an inch apart, as on wide-ruled paper, and each Part C
+question has six to eleven of them; a blank is about an inch for a number and longer for a word,
+and stays on the line with its unit; table rows are tall enough for two written lines; the two
+drawing boxes are three and five inches high. It runs to ten pages (five sheets printed on both
+sides), with page starts set by hand so that they fall in the same places from Word, LibreOffice
+and Google Docs, and the table of terms is the last page, where it is easy to turn to. The
+type-in version is unchanged: its boxes grow as the student types.
+
 ## The model
 
 One engine (`kidney/engine.js`), sharing the browser/CommonJS wrapper, the event queue

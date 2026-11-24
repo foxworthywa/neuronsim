@@ -409,7 +409,7 @@
       const all = {
         Na: { name: 'Sodium', value: this.sodium, unit: 'mmol/L', lo: 135, hi: 145, dp: 0 },
         K: { name: 'Potassium', value: this.potassium, unit: 'mmol/L', lo: 3.5, hi: 5.0, dp: 1 },
-        BUN: { name: 'Urea nitrogen (BUN)', value: this.bun, unit: 'mg/dL', lo: 7, hi: 20, dp: 0 },
+        BUN: { name: 'Urea nitrogen (BUN)', short: 'Urea (BUN)', value: this.bun, unit: 'mg/dL', lo: 7, hi: 20, dp: 0 },
         creatinine: { name: 'Creatinine', value: this.creatinine, unit: 'mg/dL', lo: 0.6, hi: 1.2, dp: 1 },
         glucose: { name: 'Glucose', value: this.glucose, unit: 'mg/dL', lo: 70, hi: 140, dp: 0 },
         osmolarity: { name: 'Concentration (osmolarity)', value: this.osmolarity, unit: 'mOsm/L', lo: 285, hi: 295, dp: 0 },

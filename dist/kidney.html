@@ -241,8 +241,12 @@ header a.home:hover { text-decoration: underline; }
   #trace-head .legend { flex-wrap: wrap; font-size: 12px; gap: 8px; }
   /* cards on the stage (urine reports, patient charts) */
   .cards { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 14px 16px; overflow: auto; align-content: start; background: var(--bg); }
-  .cards.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  @media (max-width: 1250px) { .cards.four { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .card .pair { display: flex; gap: 8px; align-items: flex-start; }
+  .card .pair > div { flex: 1; min-width: 0; }
+  .cards.four .labrep { font-size: 12.5px; }
+  .cards.four .labrep td, .cards.four .labrep th { padding: 2px 5px; }
+  .cards.four .labrep td.r { font-size: 11.5px; white-space: nowrap; }
+  .cards.four .labrep td.v { white-space: nowrap; }
   .card { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
   .card h3 { margin: 0 0 4px; font-size: 15px; display: flex; justify-content: space-between; align-items: baseline; }
   .card h3 span { font-size: 12.5px; font-weight: 400; color: var(--muted); }
@@ -1024,7 +1028,7 @@ header a.home:hover { text-decoration: underline; }
       const all = {
         Na: { name: 'Sodium', value: this.sodium, unit: 'mmol/L', lo: 135, hi: 145, dp: 0 },
         K: { name: 'Potassium', value: this.potassium, unit: 'mmol/L', lo: 3.5, hi: 5.0, dp: 1 },
-        BUN: { name: 'Urea nitrogen (BUN)', value: this.bun, unit: 'mg/dL', lo: 7, hi: 20, dp: 0 },
+        BUN: { name: 'Urea nitrogen (BUN)', short: 'Urea (BUN)', value: this.bun, unit: 'mg/dL', lo: 7, hi: 20, dp: 0 },
         creatinine: { name: 'Creatinine', value: this.creatinine, unit: 'mg/dL', lo: 0.6, hi: 1.2, dp: 1 },
         glucose: { name: 'Glucose', value: this.glucose, unit: 'mg/dL', lo: 70, hi: 140, dp: 0 },
         osmolarity: { name: 'Concentration (osmolarity)', value: this.osmolarity, unit: 'mOsm/L', lo: 285, hi: 295, dp: 0 },
@@ -1548,8 +1552,8 @@ header a.home:hover { text-decoration: underline; }
     // ---------------- the way in
     label(svg, 14, 34, 'IN', { 'font-size': 16, 'font-weight': 700 }); small(svg, 44, 34, 'what is eaten and drunk', { 'font-size': 14 });
     svgEl('path', { d: `M16,${FY(70)} L${FX(212)},${FY(70)}`, stroke: '#4b5563', 'stroke-width': 5, 'marker-end': head, 'stroke-linecap': 'round' }, svg);
-    const gutT = small(svg, 14, 96, '', { 'font-size': 13.5 }), gutT2 = label(svg, 14, 114, '', { 'font-size': 13.5, 'font-weight': 600 }), gutT3 = label(svg, 14, 131, '', { 'font-size': 13.5, 'font-weight': 600 });
-    small(svg, 14, 160, 'and made by the body:', { 'font-size': 13.5 }); small(svg, 14, 177, 'urea, other wastes', { 'font-size': 13.5 });
+    const gutT = small(svg, 14, 92, '', { 'font-size': 13.5 }), gutT2 = label(svg, 14, 109, '', { 'font-size': 13.5, 'font-weight': 600 }), gutT3 = label(svg, 14, 125, '', { 'font-size': 13.5, 'font-weight': 600 });
+    small(svg, 14, 148, 'and made by the body:', { 'font-size': 13.5 }); small(svg, 14, 164, 'urea, other wastes', { 'font-size': 13.5 });
     // ---------------- the ways out
     const OX = 398;
     label(svg, OX, 34, 'OUT', { 'font-size': 16, 'font-weight': 700 });
@@ -1570,20 +1574,20 @@ header a.home:hover { text-decoration: underline; }
     let mach = null;
     if (opts.machine) {
       mach = svgEl('g', {}, svg);
-      svgEl('rect', { x: 10, y: 196, width: 124, height: 148, rx: 10, fill: COL.machine, stroke: COL.machineLine, 'stroke-width': 2 }, mach);
-      label(mach, 72, 216, 'dialysis machine', { 'font-size': 13.5, 'text-anchor': 'middle', 'font-weight': 650, fill: '#45536b' });
+      svgEl('rect', { x: 8, y: 214, width: 132, height: 132, rx: 10, fill: COL.machine, stroke: COL.machineLine, 'stroke-width': 2 }, mach);
+      label(mach, 74, 233, 'dialysis machine', { 'font-size': 13.5, 'text-anchor': 'middle', 'font-weight': 650, fill: '#45536b' });
       // the filter: blood runs down one side of a membrane, cleaning fluid up the other
-      svgEl('rect', { x: 46, y: 226, width: 24, height: 86, rx: 4, fill: '#f6dcd8', stroke: COL.bloodLine, 'stroke-width': 1.5 }, mach);
-      svgEl('rect', { x: 72, y: 226, width: 24, height: 86, rx: 4, fill: '#e3effa', stroke: '#8fb4da', 'stroke-width': 1.5 }, mach);
-      svgEl('path', { d: 'M71,228 L71,310', stroke: '#45536b', 'stroke-width': 1.6, 'stroke-dasharray': '2 3' }, mach);
-      small(mach, 72, 332, 'filter', { 'font-size': 13, 'text-anchor': 'middle' });
-      mach.out = svgEl('path', { d: `M${FX(160)},${FY(250)} Q150,170 90,178 Q58,184 58,226`, fill: 'none', stroke: COL.bloodDark, 'stroke-width': 4, 'stroke-linecap': 'round' }, mach);
-      mach.back = svgEl('path', { d: `M58,312 Q58,372 120,372 Q176,372 ${FX(164)},${FY(268)}`, fill: 'none', stroke: COL.bloodDark, 'stroke-width': 4, 'stroke-linecap': 'round' }, mach);
-      mach.waste = svgEl('path', { d: 'M84,312 L84,392', fill: 'none', stroke: '#8fb4da', 'stroke-width': 4, 'stroke-linecap': 'round' }, mach);
-      svgEl('path', { d: 'M68,392 L100,392 L96,424 L72,424 Z', fill: '#f2e7b4', stroke: '#b08900', 'stroke-width': 1.5 }, mach);
-      small(mach, 106, 414, 'used fluid', { 'font-size': 13 });
-      small(mach, 96, 168, 'blood out', { 'font-size': 13 }); small(mach, 122, 390, 'blood back', { 'font-size': 13 });
-      mach.status = label(mach, 14, 444, '', { 'font-size': 13.5, 'font-weight': 650 });
+      svgEl('rect', { x: 44, y: 244, width: 26, height: 74, rx: 4, fill: '#f6dcd8', stroke: COL.bloodLine, 'stroke-width': 1.5 }, mach);
+      svgEl('rect', { x: 72, y: 244, width: 26, height: 74, rx: 4, fill: '#e3effa', stroke: '#8fb4da', 'stroke-width': 1.5 }, mach);
+      svgEl('path', { d: 'M71,246 L71,316', stroke: '#45536b', 'stroke-width': 1.6, 'stroke-dasharray': '2 3' }, mach);
+      small(mach, 74, 337, 'filter', { 'font-size': 13, 'text-anchor': 'middle' });
+      mach.out = svgEl('path', { d: `M${FX(160)},${FY(250)} Q166,196 110,198 Q57,200 57,244`, fill: 'none', stroke: COL.bloodDark, 'stroke-width': 4, 'stroke-linecap': 'round' }, mach);
+      mach.back = svgEl('path', { d: `M57,318 Q57,376 120,376 Q184,376 ${FX(164)},${FY(270)}`, fill: 'none', stroke: COL.bloodDark, 'stroke-width': 4, 'stroke-linecap': 'round' }, mach);
+      mach.waste = svgEl('path', { d: 'M85,318 L85,394', fill: 'none', stroke: '#8fb4da', 'stroke-width': 4, 'stroke-linecap': 'round' }, mach);
+      svgEl('path', { d: 'M69,394 L101,394 L97,424 L73,424 Z', fill: '#f2e7b4', stroke: '#b08900', 'stroke-width': 1.5 }, mach);
+      small(mach, 108, 416, 'used fluid', { 'font-size': 13 });
+      small(mach, 78, 190, 'blood out', { 'font-size': 13 }); small(mach, 112, 396, 'blood back', { 'font-size': 13 });
+      mach.status = label(mach, 12, 444, '', { 'font-size': 13.5, 'font-weight': 650 });
       mach.dots = [];
       for (let i = 0; i < 14; i++) mach.dots.push({ e: svgEl('circle', { r: 2.6, fill: '#fff', opacity: 0.9 }, mach), u: i / 14 });
     }
@@ -1995,18 +1999,19 @@ header a.home:hover { text-decoration: underline; }
     const pos = (s) => (s !== 'negative' ? 'pos' : '');
     const vol = o.hourly ? `${u.perHour < 9.5 ? fx(u.perHour, 0) : big(Math.round(u.perHour / 5) * 5)} mL/hour` : `${fx(u.perDay, 1)} L/day`;
     const volFlag = u.perDay > 3 ? 'H' : u.perDay < 0.5 ? 'L' : '';
-    return `<div class="labrep"><div class="lh"><span>${o.title || 'Urine'}</span><span style="font-weight:400;color:var(--muted)">usual</span></div><table>
-      <tr class="${volFlag}"><td>Volume</td><td class="v">${vol}</td><td class="f">${volFlag}</td><td class="r">${o.hourly ? '40–80' : '1–2'}</td></tr>
-      <tr><td>Colour</td><td class="v" style="font-weight:400"><span class="sw" style="background:${urineColour(u.colour)}"></span>${colourWord(u.colour)}</td><td class="f"></td><td class="r">yellow</td></tr>
-      <tr><td>Concentration</td><td class="v">${big(Math.round(u.osm / 10) * 10)} mOsm/L</td><td class="f"></td><td class="r">50–1,200</td></tr>
-      <tr class="${pos(u.protein)}"><td>Protein</td><td class="v">${u.protein}</td><td class="f"></td><td class="r">negative</td></tr>
-      <tr class="${pos(u.glucose)}"><td>Glucose</td><td class="v">${u.glucose}</td><td class="f"></td><td class="r">negative</td></tr>
-      <tr class="${pos(u.blood)}"><td>Blood</td><td class="v">${u.blood}</td><td class="f"></td><td class="r">negative</td></tr>
-      ${o.bloodGlucose != null ? `<tr class="${o.bloodGlucose > 140 ? 'H' : ''}"><td style="border-top:2px solid #d9d6cc">Blood glucose</td><td class="v" style="border-top:2px solid #d9d6cc">${big(o.bloodGlucose)} mg/dL</td><td class="f" style="border-top:2px solid #d9d6cc">${o.bloodGlucose > 140 ? 'H' : ''}</td><td class="r" style="border-top:2px solid #d9d6cc">70–140</td></tr>` : ''}</table></div>`;
+    const usual = (t) => (o.compact ? '' : `<td class="r">${t}</td>`);
+    return `<div class="labrep"><div class="lh"><span>${o.title || 'Urine'}</span><span style="font-weight:400;color:var(--muted)">${o.compact ? '' : 'usual'}</span></div><table>
+      <tr class="${volFlag}"><td>Volume</td><td class="v">${vol}</td><td class="f">${volFlag}</td>${usual(o.hourly ? '40–80' : '1–2')}</tr>
+      <tr><td>Colour</td><td class="v" style="font-weight:400"><span class="sw" style="background:${urineColour(u.colour)}"></span>${colourWord(u.colour)}</td><td class="f"></td>${usual('yellow')}</tr>
+      <tr><td>Concentration</td><td class="v">${big(Math.round(u.osm / 10) * 10)} mOsm/L</td><td class="f"></td>${usual('50–1,200')}</tr>
+      <tr class="${pos(u.protein)}"><td>Protein</td><td class="v">${u.protein}</td><td class="f"></td>${usual('negative')}</tr>
+      <tr class="${pos(u.glucose)}"><td>Glucose</td><td class="v">${u.glucose}</td><td class="f"></td>${usual('negative')}</tr>
+      <tr class="${pos(u.blood)}"><td>Blood</td><td class="v">${u.blood}</td><td class="f"></td>${usual('negative')}</tr>
+      ${o.bloodGlucose != null ? `<tr class="${o.bloodGlucose > 140 ? 'H' : ''}"><td style="border-top:2px solid #d9d6cc">Blood glucose</td><td class="v" style="border-top:2px solid #d9d6cc">${big(o.bloodGlucose)} mg/dL</td><td class="f" style="border-top:2px solid #d9d6cc">${o.bloodGlucose > 140 ? 'H' : ''}</td>${o.compact ? '' : '<td class="r" style="border-top:2px solid #d9d6cc">70–140</td>'}</tr>` : ''}</table></div>`;
   }
   function labHTML(rows, title) {
     return `<div class="labrep"><div class="lh"><span>${title || 'Blood'}</span><span style="font-weight:400;color:var(--muted)">ref. range</span></div><table>` +
-      rows.map(r => `<tr class="${r.flag || ''}"><td>${r.name}</td><td class="v">${typeof r.value === 'number' ? fx(r.value, r.dp) : r.value} <span style="font-weight:400;color:var(--muted)">${r.unit || ''}</span></td><td class="f">${r.flag || ''}</td><td class="r">${r.lo != null ? `${r.lo}–${r.hi}` : (r.ref || '')}</td></tr>`).join('') + '</table></div>';
+      rows.map(r => `<tr class="${r.flag || ''}"><td>${r.short && title === 'Blood' ? r.short : r.name}</td><td class="v">${typeof r.value === 'number' ? fx(r.value, r.dp) : r.value} <span style="font-weight:400;color:var(--muted)">${r.unit || ''}</span></td><td class="f">${r.flag || ''}</td><td class="r">${r.lo != null ? `${r.lo}–${r.hi}` : (r.ref || '')}</td></tr>`).join('') + '</table></div>';
   }
   KD.urineHTML = urineHTML; KD.labHTML = labHTML;
   views.cards = function (opts) {
@@ -2208,7 +2213,8 @@ header a.home:hover { text-decoration: underline; }
   KD.LEDGER = LEDGER;
   views.strip = function (opts) {
     const ledKeys = opts.ledger || [], inset = opts.inset !== false && !opts.short;
-    const H = inset ? 540 : ledKeys.length ? 372 + 22 + ledKeys.length * 26 : 356;
+    const repY = (ledKeys.length ? 384 + ledKeys.length * 26 : 356) + 14;
+    const H = Math.max(inset ? 540 : ledKeys.length ? 372 + 22 + ledKeys.length * 26 : 356, opts.report ? repY + 80 : 0);
     const svg = svgEl('svg', { viewBox: `0 0 1000 ${H}`, role: 'img', 'aria-label': 'One nephron drawn straightened: the filter at the left, the tubule running to the right, the return line above it carrying back what is taken back, and the urine at the right' }, stage);
     const view = { svg, kinds: (opts.kinds || ['water']).slice(), revealed: new Set(opts.revealed || []), names: !!opts.names };
     const body = () => app.sim;
@@ -2284,10 +2290,23 @@ header a.home:hover { text-decoration: underline; }
         ledRows[key] = [1, 2, 3, 4].map((i) => label(g, LX[i] + LW[i] - 14, y, '', { 'font-size': 14, 'text-anchor': 'end', 'font-weight': i === 4 ? 700 : 400 }));
       });
     }
+    // ---- the urine as a test strip and a measuring jug would report it
+    let rep = null;
+    if (opts.report) {
+      rep = svgEl('g', { transform: `translate(${inset ? 168 : 102},${repY})` }, svg);
+      label(rep, 2, 8, 'THE URINE, TESTED', { 'font-size': 12, 'font-weight': 700, fill: COL.muted });
+      label(rep, 6 * 113 + 2, 8, 'AND THE BLOOD', { 'font-size': 12, 'font-weight': 700, fill: COL.muted });
+      rep.cells = ['Volume', 'Colour', 'Concentration', 'Protein', 'Glucose', 'Blood', 'Glucose'].map((nm, i) => {
+        const g = svgEl('g', { transform: `translate(${i * 113},16)` }, rep);
+        const box = svgEl('rect', { width: 107, height: 50, rx: 8, fill: i === 6 ? '#fbeeec' : '#fff', stroke: '#d9d6cc', 'stroke-width': 1.5 }, g);
+        small(g, 53.5, 18, nm, { 'font-size': 12.5, 'text-anchor': 'middle' });
+        return { box, val: label(g, 53.5, 39, '', { 'font-size': i === 1 ? 12.5 : 14.5, 'font-weight': 700, 'text-anchor': 'middle' }) };
+      });
+    }
     // ---- particles
     const pg = svgEl('g', { 'pointer-events': 'none' }, svg);
     const parts = [];
-    const RATE = { water: 9, na: 5, glucose: 2.2, urea: 2.2, cr: 2.2, alb: 1.6, drug: 2.2, k: 2.2, rbc: 1.2 };       // particles a second at normal plasma levels
+    const RATE = { water: 9, na: 5, glucose: 3.4, urea: 3.4, cr: 3.4, alb: 1.6, drug: 3.4, k: 3.4, rbc: 1.2 };       // particles a second at normal plasma levels
     const marks = numbered(svg, opts.marksAt || []);
     view.setMarks = (on) => marks.setAttribute('opacity', on ? 1 : 0);
     view.show = (kinds) => { view.kinds = kinds.slice(); for (const p of parts) if (!view.kinds.includes(p.k)) p.dead = true; };
@@ -2332,8 +2351,8 @@ header a.home:hover { text-decoration: underline; }
       // faults
       damageG.setAttribute('opacity', b.s.filterDamage > 0 ? 1 : 0); setText(faultF, b.s.filterDamage > 0 ? 'damaged' : '');
       const blockL = 1 - (1 - b.s.loopBlock) * (1 - b.diureticBlock());
-      setText(segNotes[0], b.s.glucoseCarrier < 1 ? `glucose carriers ${Math.round(100 * (1 - b.s.glucoseCarrier))} % blocked` : (f.ex.glucose > 0.5 ? 'glucose carriers full' : ''));
-      setText(segNotes[1], blockL > 0.03 ? `salt carriers ${Math.round(100 * blockL)} % blocked` : '');
+      setText(segNotes[0], noBack ? '' : b.s.glucoseCarrier < 1 ? `glucose carriers ${Math.round(100 * (1 - b.s.glucoseCarrier))} % blocked` : (f.ex.glucose > 0.5 ? 'glucose carriers full' : ''));
+      setText(segNotes[1], !noBack && blockL > 0.03 ? `salt carriers ${Math.round(100 * blockL)} % blocked` : '');
       if (opts.lastDials) {
         const wPct = at[2] > 0 ? 100 * (1 - at[3] / at[2]) : 0, naPct = f.reachNa > 0 ? 100 * (1 - f.ex.na / f.reachNa) : 0;
         setText(lastW, `takes back ${fx(wPct, wPct > 99 ? 1 : 0)} % of its water, ${fx(naPct, naPct > 99 ? 1 : 0)} % of its salt`);
@@ -2346,6 +2365,14 @@ header a.home:hover { text-decoration: underline; }
       setText(urT[0], f.urine.flow > 0.02 ? `${flow(f.urine.flow)} mL/min` : 'almost none');
       setText(urT[1], f.urine.flow > 20 ? '' : `= ${fx(u.perDay, 1)} L a day`);
       setText(urT[2], opts.urineDetail && f.urine.flow > 0.02 && f.urine.flow < 20 ? `${big(Math.round(u.osm / 10) * 10)} mOsm/L · ${colourWord(u.colour)}` : '');
+      if (rep) {
+        const vals = [`${fx(u.perDay, 1)} L/day`, colourWord(u.colour), `${big(Math.round(u.osm / 10) * 10)} mOsm/L`, u.protein, u.glucose, u.blood, `${big(b.glucose)} mg/dL`];
+        const bad = [u.perDay > 3 || u.perDay < 0.5, false, false, u.protein !== 'negative', u.glucose !== 'negative', u.blood !== 'negative', b.glucose > 140];
+        rep.cells.forEach((cell, i) => {
+          setText(cell.val, vals[i]); cell.val.setAttribute('fill', bad[i] ? '#b0352b' : COL.ink);
+          cell.box.setAttribute('stroke', bad[i] ? '#d24b3f' : '#d9d6cc'); if (i === 1) cell.box.setAttribute('fill', urineColour(u.colour));
+        });
+      }
       // the ledger
       for (const key of ledKeys) {
         const L = b.ledger(key), U = LEDGER[key], shown = view.revealed.has(key), n = (v) => `${v * U.k < 0.05 && U.dp ? '0' : (U.dp ? fx(v * U.k, U.dp) : big(v * U.k))} ${U.unit}`;
@@ -2462,7 +2489,7 @@ header a.home:hover { text-decoration: underline; }
     const big_ = htmlEl('div', { class: 'big' }, o.show(o.value));
     const s = htmlEl('input', { type: 'range', id: o.id, min: o.min, max: o.max, step: o.step });
     s.value = o.value;
-    s.addEventListener('input', () => { const v = parseFloat(s.value); big_.innerHTML = o.show(v); o.onInput(v); });
+    s.addEventListener('input', () => { const v = parseFloat(s.value); o.onInput(v); big_.innerHTML = o.show(v); });
     box.appendChild(big_); box.appendChild(s);
     if (o.ends) box.appendChild(htmlEl('div', { class: 'ends' }, `<span>${o.ends[0]}</span><span>${o.ends[1]}</span>`));
     el.appendChild(box);
@@ -2637,13 +2664,13 @@ header a.home:hover { text-decoration: underline; }
                  <li><b>Out:</b> lungs, skin and gut go on losing about a litre of water a day.</li>
                  <li>His <b>kidneys</b>, in grey: no longer working.</li>
                  <li>Three measurements, each with a green normal band: his <b>weight</b> (the band is his target, 82 kg), and the <b>potassium</b> and <b>urea</b> in his blood. The graph below will follow the same three.</li></ol>
-                 <p>Over the 44 hours he will drink about 3.5 litres, eat about 13 g of salt, and eat ordinary amounts of potassium (it is in nearly all food) and protein.</p>`,
+                 <p>Over the 44 hours he will drink about 3.5 litres, eat about 14 g of salt, and eat ordinary amounts of potassium (it is in nearly all food) and protein.</p>`,
           question: predict({ prompt: 'Predict: by Wednesday morning, what will have happened to his weight, his potassium and his urea?', options: [
             { t: 'All three will have risen', ok: true, fb: 'Run the 44 hours and see how far.' },
             { t: 'Urea will have risen; weight and potassium will be about the same', fb: 'That would be so if the kidneys removed only wastes. Ask what else he took in during those two days, and where it could go.' },
             { t: 'None will have changed much: two days is too short', fb: 'He will take in litres of water and grams of salt in that time. With no urine, where can they go?' },
           ] }),
-          actions: [{ label: 'Run the 44 hours', cls: 'go', disabled: (c) => afterPrediction(c) || busy(c) || data(c).ran, run: (c) => experiment(c, { minutes: 44 * HOUR, speed: 180, after: (b, c) => c.recordValue('herrera', { weight: b.weight, gain: b.weight - 82, k: b.potassium, bun: b.bun, bp: b.bp, water: b.cum.waterIn / 1000, salt: b.cum.naIn / SALT, kIn: b.cum.kIn }) }) }],
+          actions: [{ label: 'Run the 44 hours', cls: 'go', disabled: (c) => afterPrediction(c) || busy(c) || data(c).ran, run: (c) => experiment(c, { minutes: 44 * HOUR, speed: 180, after: (b, c) => c.recordValue('herrera', { weight: b.weight, gain: b.weight - 82, k: b.potassium, bun: b.bun, bp: b.bp, water: (b.cum.waterIn - b.p.metabolic * 44 * 60) / 1000, salt: b.cum.naIn / SALT, kIn: b.cum.kIn }) }) }],
           status: (c) => { const v = c.record.values.herrera; return data(c).ran && v ? `Wednesday 8 am: weight <b>${fx(v.weight, 1)} kg</b> (${signed(v.gain, 1)} kg) · potassium <b>${fx(v.k, 1)}</b> mmol/L · urea (BUN) <b>${fx(v.bun, 0)}</b> mg/dL · blood pressure ${v.bp.sys}/${v.bp.dia}` : ''; },
           waitFor: (c) => data(c).ran, waitHint: 'Run the 44 hours',
         },
@@ -2653,7 +2680,8 @@ header a.home:hover { text-decoration: underline; }
           enter: (c) => c.view().setMarks(false),
           text: () => {
             const b = app.sim, c = b.cum;
-            return `<p>In 44 hours he took in <b>${fx(c.waterIn / 1000, 1)} L</b> of water, <b>${fx(c.naIn / SALT, 0)} g</b> of salt and <b>${big(c.kIn)} mmol</b> of potassium, and his body made its usual urea. Lungs, skin and gut lost <b>${fx(c.waterOut / 1000, 1)} L</b> of the water and almost none of the rest.</p>
+            const made = b.p.metabolic * 44 * 60 / 1000;
+            return `<p>In 44 hours he took in <b>${fx(c.waterIn / 1000 - made, 1)} L</b> of water (his body made another ${fx(made, 1)} L), <b>${fx(c.naIn / SALT, 0)} g</b> of salt and <b>${big(c.kIn)} mmol</b> of potassium, and his body made its usual urea. Lungs, skin and gut lost <b>${fx(c.waterOut / 1000, 1)} L</b> of the water and almost none of the rest.</p>
                     <p>Each one matters. The extra salt and water raise his blood pressure and can flood his lungs. Potassium at this level disturbs the heartbeat: in MuscleSim you saw raised K⁺ depolarize a muscle fibre's membrane. Urea and the other wastes cause nausea and confusion.</p>`;
           },
           question: { prompt: 'He ate and drank ordinary things. Why did his blood change?', options: [
@@ -3044,7 +3072,7 @@ header a.home:hover { text-decoration: underline; }
       const order = [3, 1, 0, 2];
       cache.patients = order.map((i, n) => {
         const b = WHO[i][2](), bp = b.bp, lab = b.labPanel(['creatinine', 'BUN', 'K', 'glucose']);
-        return { key: WHO[i][0], answer: WHO[i][1], title: `Chart ${'ABCD'[n]}`, sub: `BP ${bp.sys}/${bp.dia}`, body: b, html: urineHTML(b.urineReport(), { title: 'Urine', hourly: true }) + labHTML(lab, 'Blood') };
+        return { key: WHO[i][0], answer: WHO[i][1], title: `Chart ${'ABCD'[n]}`, sub: `BP ${bp.sys}/${bp.dia}`, body: b, html: `<div class="pair"><div>${urineHTML(b.urineReport(), { title: 'Urine', hourly: true, compact: true })}</div><div>${labHTML(lab, 'Blood')}</div></div>` };
       });
     }
     return cache.patients;
@@ -3071,7 +3099,6 @@ header a.home:hover { text-decoration: underline; }
     loss: () => { if (!isBody()) return []; const b = app.sim; return [['Working nephrons', `${Math.round(100 * b.s.nephrons)} %`], ['Filtered (GFR)', `${fx(b.f.gfr, 0)} mL/min`], ['Creatinine', `${fx(b.creatinine, 1)} mg/dL`, b.creatinine > 1.25 ? 'bad' : 'good']]; },
   };
   const STRIP = (o) => Object.assign({ kinds: ['water'], ledger: [] }, o);
-  const report = (o) => () => (isBody() ? urineHTML(app.sim.urineReport(), Object.assign({ title: 'Her urine, as a test strip and a measuring jug report it' }, o || {})) : '');
 
   // Scene 7: one substance at a time, with the three questions.
   const Q1 = '1. Does it get through the filter?', Q2 = '2. Is it taken back from the tubule?', Q3 = '3. Is extra pushed in from the return line?', Q4 = 'So, in the urine there is…';
@@ -3192,13 +3219,12 @@ header a.home:hover { text-decoration: underline; }
       id: 'break', title: 'Break a step, read the urine', speed: 30,
       steps: [
         {
-          view: 'strip', viewOpts: STRIP({ kinds: ['alb', 'glucose', 'water'], ledger: ['water', 'na', 'glucose', 'alb'], revealed: ['water', 'na', 'glucose', 'alb'], names: true, urineDetail: true, caption: 'The same nephron. From here on, one step at a time will be broken.' }), remount: true,
+          view: 'strip', viewOpts: STRIP({ kinds: ['alb', 'glucose', 'water'], ledger: ['water', 'na', 'glucose', 'alb'], revealed: ['water', 'na', 'glucose', 'alb'], names: true, urineDetail: true, report: true, caption: 'The same nephron, with a report on its urine underneath. From here on, one step at a time will be broken.' }), remount: true,
           graph: NO_GRAPH, meters: NO_METERS,
           title: 'A urine report',
           setup: () => setSim(rest()),
           enter: (c) => c.view().show(['alb', 'glucose', 'water']),
-          text: `<p>Urine is easy to collect, and it is evidence of what the nephron did. This is the healthy student's report. Her blood contains 90 mg/dL of glucose and 4 g/dL of protein; her urine has neither.</p>`,
-          status: report(),
+          text: `<p>Urine is easy to collect, and it is evidence of what the nephron did. Under the picture is the healthy student's urine as a <b>test strip</b> (protein, glucose, blood) and a measuring jug would report it. Her blood contains 90 mg/dL of glucose and 4 g/dL of protein; her urine has neither.</p>`,
           question: { prompt: 'Is glucose missing from her urine for the same reason that protein is?', options: [
             { t: 'No: protein never got through the filter; glucose got through and was all taken back', ok: true, fb: 'Two different steps. So each can fail by itself, and the urine will show which one did.' },
             { t: 'Yes: the filter holds both back', fb: 'In scene 5 glucose passed the filter as freely as water. What happened to it afterwards?' },
@@ -3216,7 +3242,7 @@ header a.home:hover { text-decoration: underline; }
             { t: 'Nothing new: the tubule will take back whatever leaks through', fb: 'The tubule has carriers for a short list of things. Are large proteins and red cells on it?' },
           ] }),
           actions: [{ label: 'Damage the filter', cls: 'warnb', disabled: (c) => afterPrediction(c) || data(c).ran, run: (c) => { app.sim.set('filterDamage', 1); c.view().show(['alb', 'rbc', 'water']); data(c).ran = true; c.recordValue('damage', app.sim.urineReport()); c.refresh(); } }],
-          status: (c) => (data(c).ran ? report()() + nameBox('Protein in the urine: <b>proteinuria</b>. Blood in the urine: <b>hematuria</b>. Either points to the filter, because nothing downstream can let them in.') : report()()),
+          status: (c) => (data(c).ran ? `The report now shows protein <b>${c.record.values.damage.protein}</b> and blood <b>${c.record.values.damage.blood}</b>; glucose is still negative.${nameBox('Protein in the urine: <b>proteinuria</b>. Blood in the urine: <b>hematuria</b>. Either points to the filter, because nothing downstream can let them in.')}` : ''),
           waitFor: (c) => data(c).ran, waitHint: 'Damage the filter',
         },
         {
@@ -3224,9 +3250,8 @@ header a.home:hover { text-decoration: underline; }
           setup: () => setSim(rest()),
           enter: (c) => c.view().show(['glucose', 'water']),
           text: `${caseNote('Sam Reyes', SAM)}
-                 <p>Sam's filter and tubule are healthy. Raise the blood glucose step by step and watch the green glucose in the first stretch, and the report.</p>`,
+                 <p>Sam's filter and tubule are healthy. Raise the blood glucose step by step. Watch the green glucose in the first stretch, and the report under the picture.</p>`,
           extra: (el, c) => glucoseDial(el, c),
-          status: report({ title: 'The urine' }),
           question: { type: 'number', prompt: 'To the nearest 10: what is the highest blood glucose at which the urine test for glucose is still negative?', unit: 'mg/dL', answer: () => threshold(), tol: 10, recordAs: 'threshold',
             hint: () => 'Start at 90 and go up 10 at a time, reading the Glucose line of the report each time.',
             explain: () => `The carriers can take back only so much each minute. Up to about 180 mg/dL they take back everything that is filtered. Above that, the extra stays in the tubule and leaves in the urine.${nameBox('The most a carrier system can move: its <b>transport maximum</b>. The blood level at which a substance first appears in the urine: its <b>renal threshold</b> (for glucose, about 180 mg/dL). Glucose in the urine: <b>glucosuria</b>.')}` },
@@ -3254,7 +3279,7 @@ header a.home:hover { text-decoration: underline; }
             { t: 'No: the filter will hold the glucose back', fb: 'The filter passes glucose whatever happens downstream.' },
           ] }),
           actions: [{ label: 'Give the drug', cls: 'drugb', disabled: (c) => afterPrediction(c) || data(c).ran, run: (c) => { app.sim.set('glucoseCarrier', 0.3); data(c).ran = true; c.recordValue('carrier', { g: app.sim.ledger('glucose').excreted, report: app.sim.urineReport().glucose }); c.refresh(); } }],
-          status: (c) => report({ bloodGlucose: 90 })() + (data(c).ran ? `<div class="feedback note">About <b>${fx(c.record.values.carrier.g, 0)} g</b> of glucose a day now leaves in the urine. That is the point of the drug: in diabetes it lowers blood glucose by letting the kidneys spill it. A positive urine glucose in someone taking it is expected.</div>` : ''),
+          status: (c) => (data(c).ran ? `<div class="feedback note">About <b>${fx(c.record.values.carrier.g, 0)} g</b> of glucose a day now leaves in the urine. That is the point of the drug: in diabetes it lowers blood glucose by letting the kidneys spill it. A positive urine glucose in someone taking it is expected.</div>` : ''),
           waitFor: (c) => data(c).ran, waitHint: 'Give the drug',
         },
         {
@@ -3363,7 +3388,7 @@ header a.home:hover { text-decoration: underline; }
           setup: () => autoDayAt(15.5 * HOUR),
           text: `<p>At 3:30 she goes for a run and sweats out a litre of water, with some salt, in an hour. She drinks nothing until she gets home.</p>`,
           question: predict({ prompt: 'Predict her urine at the end of the run.', options: [
-            { t: 'A trickle, dark and concentrated, with almost no salt in it', ok: true, fb: 'Run it, then finish her day.' },
+            { t: 'A trickle, dark and concentrated', ok: true, fb: 'Run it, then finish her day.' },
             { t: 'The usual amount: the kidneys cannot tell she is sweating', fb: 'They do not need to know why. Her blood has become more concentrated and her blood volume smaller, and both are sensed.' },
             { t: 'None at all', fb: 'Close, but wastes still have to leave, and they need some water to carry them. How little can she get away with?' },
           ] }),
@@ -3371,7 +3396,7 @@ header a.home:hover { text-decoration: underline; }
             { label: 'Run the hour of the run', cls: 'go', disabled: (c) => afterPrediction(c) || busy(c) || data(c).ran, run: (c) => experiment(c, { minutes: 68, speed: 8, after: (b, c) => c.recordValue('heat', { flow: b.f.urine.flow, osm: b.f.urine.osm, salt: b.f.ex.na * 60 / SALT, water: b.waterExcess, adh: b.w, aldo: b.a }) }) },
             { label: 'Finish her day (to 11 pm)', disabled: (c) => busy(c) || !data(c).ran || data(c).day, run: (c) => experiment(c, { minutes: 23 * HOUR - app.sim.t, speed: 30, key: 'day', after: (b, c) => c.recordValue('autoDay', { urine: b.cum.urine / 1000, flowLo: minOf('flow'), flowHi: maxOf('flow'), osmLo: minOf('osm'), osmHi: maxOf('osm') }) }) },
           ],
-          status: (c) => { const v = c.record.values.heat, a = c.record.values.autoDay, d = data(c); return (d.ran && v ? `End of the run: urine <b>${fx(v.flow, 1)} mL/min</b> at <b>${big(v.osm)} mOsm/L</b>, salt ${fx(v.salt, 2)} g an hour. Both hormones are high. She is still ${fx(-v.water, 1)} L short of water: the kidneys can only slow the loss.` : '') + (d.day && a ? `<br>The whole day: urine flow ranged from <b>${fx(a.flowLo, 1)} to ${fx(a.flowHi, 1)} mL/min</b>; the concentration of her blood only from <b>${big(a.osmLo)} to ${big(a.osmHi)}</b>.` : ''); },
+          status: (c) => { const v = c.record.values.heat, a = c.record.values.autoDay, d = data(c); return (d.ran && v ? `End of the run: urine <b>${fx(v.flow, 1)} mL/min</b> at <b>${big(v.osm)} mOsm/L</b>, and the salt in it is falling (${fx(v.salt, 2)} g an hour). Both hormones are rising. She is still ${fx(-v.water, 1)} L short of water: the kidneys can only slow the loss.` : '') + (d.day && a ? `<br>The whole day: urine flow ranged from <b>${fx(a.flowLo, 1)} to ${fx(a.flowHi, 1)} mL/min</b>; the concentration of her blood only from <b>${big(a.osmLo)} to ${big(a.osmHi)}</b>.` : ''); },
           waitFor: (c) => data(c).ran && data(c).day, waitHint: 'Run the hour, then finish her day',
         },
         {
@@ -3432,7 +3457,7 @@ header a.home:hover { text-decoration: underline; }
             { t: 'Only wastes such as urea', fb: 'Look at his weight and his potassium. Neither is a waste, and both are out of range.' },
             { t: 'Only the extra water', fb: 'Look at his potassium and his urea as well.' },
           ] }),
-          actions: [{ label: 'Connect him and run the four-hour session', cls: 'go', disabled: (c) => afterPrediction(c) || busy(c) || data(c).ran, run: (c) => { const pre = { w: app.sim.weight, k: app.sim.potassium, bun: app.sim.bun }; experiment(c, { before: (b) => { b.dialyse({ hours: 4, removeWater: (b.weight - 82) * 1000 }); KD.mark('dialysis'); }, minutes: 4 * HOUR, speed: 30, after: (b, c) => c.recordValue('session', { pre, post: { w: b.weight, k: b.potassium, bun: b.bun } }) }); } }],
+          actions: [{ label: 'Connect him and run the four-hour session', cls: 'go', disabled: (c) => afterPrediction(c) || busy(c) || data(c).ran, run: (c) => { const pre = { w: app.sim.weight, k: app.sim.potassium, bun: app.sim.bun }; experiment(c, { before: (b) => { b.dialyse({ hours: 4, removeWater: (b.weight - 82) * 1000 }); KD.mark('dialysis'); }, minutes: 4 * HOUR, speed: 30, after: (b, c) => { c.view().machineNote = 'session finished'; c.recordValue('session', { pre, post: { w: b.weight, k: b.potassium, bun: b.bun } }); } }); } }],
           status: (c) => { const v = c.record.values.session; return data(c).ran && v ? `Weight ${fx(v.pre.w, 1)} → <b>${fx(v.post.w, 1)} kg</b> · potassium ${fx(v.pre.k, 1)} → <b>${fx(v.post.k, 1)}</b> · urea (BUN) ${fx(v.pre.bun, 0)} → <b>${fx(v.post.bun, 0)}</b>.${nameBox('Cleaning the blood through an artificial membrane: <b>hemodialysis</b>. The machine has a filter but no tubule, so it cannot take things back. Instead its cleaning fluid already contains the right amounts of what he should keep.')}` : ''; },
           waitFor: (c) => data(c).ran, waitHint: 'Run the session',
         },
@@ -3482,7 +3507,7 @@ header a.home:hover { text-decoration: underline; }
           title: 'Four patients, four charts',
           setup: () => setSim(rest()),
           text: `${caseNote('Four patients', RUNNER + BLED + SAM.replace(' (from EndoSim)', '') + LIN)}
-                 <p>Match each chart to its patient. Use the urine and the blood together.</p>`,
+                 <p>Match each chart to its patient. Use the urine and the blood together. (A healthy adult at rest passes about 40 to 80 mL of urine an hour.)</p>`,
           extra: (el, c) => matchTable(el, c, 'charts', patientCards(), '<b>All four matched.</b> Two of these patients (Maya and Tom) pass almost no urine, and it is concentrated: in one the kidneys are saving water, in the other they are barely being supplied with blood. The blood pressure tells them apart.'),
           waitFor: () => false, waitHint: 'Match all four charts',
         },
@@ -3528,9 +3553,10 @@ header a.home:hover { text-decoration: underline; }
         <div style="margin-top:4px;color:var(--muted)">Now: urine ${flow(u)} mL/min, ${big(Math.round(f.urine.osm / 10) * 10)} mOsm/L, salt ${fx(salt, 2)} g an hour</div>`;
       if (d.flood && d.trickle && d.nosalt) { c.recordValue('lateDials', true); c.complete(); }
     };
-    dial(el, { cls: 'water', id: 'dial-w', label: 'Water taken back by the last stretch', min: 0, max: 100, step: 1, value: cur.w * 100, show: () => 'less … more', ends: ['almost none', 'nearly all'],
+    const pcts = () => { const f = app.sim.f, reach = f.gfr * f.frac.water[2]; return [reach > 0 ? 100 * (1 - f.urine.flow / reach) : 0, f.reachNa > 0 ? 100 * (1 - f.ex.na / f.reachNa) : 0]; };
+    dial(el, { cls: 'water', id: 'dial-w', label: 'Water taken back by the last stretch', min: 0, max: 100, step: 1, value: cur.w * 100, show: () => `${fx(pcts()[0], pcts()[0] > 99 ? 1 : 0)} % of what reaches it`, ends: ['less', 'more'],
       onInput: (v) => { app.sim.manualLate.w = v / 100; app.sim.compute(); paint(); } });
-    dial(el, { cls: 'salt', id: 'dial-a', label: 'Salt taken back by the last stretch', min: 0, max: 100, step: 1, value: cur.a * 100, show: () => 'less … more', ends: ['least', 'nearly all'],
+    dial(el, { cls: 'salt', id: 'dial-a', label: 'Salt taken back by the last stretch', min: 0, max: 100, step: 1, value: cur.a * 100, show: () => `${fx(pcts()[1], pcts()[1] > 99 ? 1 : 0)} % of what reaches it`, ends: ['less', 'more'],
       onInput: (v) => { app.sim.manualLate.a = v / 100; app.sim.compute(); paint(); } });
     el.appendChild(checks); paint();
   }

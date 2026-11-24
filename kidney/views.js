@@ -101,8 +101,8 @@
     // ---------------- the way in
     label(svg, 14, 34, 'IN', { 'font-size': 16, 'font-weight': 700 }); small(svg, 44, 34, 'what is eaten and drunk', { 'font-size': 14 });
     svgEl('path', { d: `M16,${FY(70)} L${FX(212)},${FY(70)}`, stroke: '#4b5563', 'stroke-width': 5, 'marker-end': head, 'stroke-linecap': 'round' }, svg);
-    const gutT = small(svg, 14, 96, '', { 'font-size': 13.5 }), gutT2 = label(svg, 14, 114, '', { 'font-size': 13.5, 'font-weight': 600 }), gutT3 = label(svg, 14, 131, '', { 'font-size': 13.5, 'font-weight': 600 });
-    small(svg, 14, 160, 'and made by the body:', { 'font-size': 13.5 }); small(svg, 14, 177, 'urea, other wastes', { 'font-size': 13.5 });
+    const gutT = small(svg, 14, 92, '', { 'font-size': 13.5 }), gutT2 = label(svg, 14, 109, '', { 'font-size': 13.5, 'font-weight': 600 }), gutT3 = label(svg, 14, 125, '', { 'font-size': 13.5, 'font-weight': 600 });
+    small(svg, 14, 148, 'and made by the body:', { 'font-size': 13.5 }); small(svg, 14, 164, 'urea, other wastes', { 'font-size': 13.5 });
     // ---------------- the ways out
     const OX = 398;
     label(svg, OX, 34, 'OUT', { 'font-size': 16, 'font-weight': 700 });
@@ -123,20 +123,20 @@
     let mach = null;
     if (opts.machine) {
       mach = svgEl('g', {}, svg);
-      svgEl('rect', { x: 10, y: 196, width: 124, height: 148, rx: 10, fill: COL.machine, stroke: COL.machineLine, 'stroke-width': 2 }, mach);
-      label(mach, 72, 216, 'dialysis machine', { 'font-size': 13.5, 'text-anchor': 'middle', 'font-weight': 650, fill: '#45536b' });
+      svgEl('rect', { x: 8, y: 214, width: 132, height: 132, rx: 10, fill: COL.machine, stroke: COL.machineLine, 'stroke-width': 2 }, mach);
+      label(mach, 74, 233, 'dialysis machine', { 'font-size': 13.5, 'text-anchor': 'middle', 'font-weight': 650, fill: '#45536b' });
       // the filter: blood runs down one side of a membrane, cleaning fluid up the other
-      svgEl('rect', { x: 46, y: 226, width: 24, height: 86, rx: 4, fill: '#f6dcd8', stroke: COL.bloodLine, 'stroke-width': 1.5 }, mach);
-      svgEl('rect', { x: 72, y: 226, width: 24, height: 86, rx: 4, fill: '#e3effa', stroke: '#8fb4da', 'stroke-width': 1.5 }, mach);
-      svgEl('path', { d: 'M71,228 L71,310', stroke: '#45536b', 'stroke-width': 1.6, 'stroke-dasharray': '2 3' }, mach);
-      small(mach, 72, 332, 'filter', { 'font-size': 13, 'text-anchor': 'middle' });
-      mach.out = svgEl('path', { d: `M${FX(160)},${FY(250)} Q150,170 90,178 Q58,184 58,226`, fill: 'none', stroke: COL.bloodDark, 'stroke-width': 4, 'stroke-linecap': 'round' }, mach);
-      mach.back = svgEl('path', { d: `M58,312 Q58,372 120,372 Q176,372 ${FX(164)},${FY(268)}`, fill: 'none', stroke: COL.bloodDark, 'stroke-width': 4, 'stroke-linecap': 'round' }, mach);
-      mach.waste = svgEl('path', { d: 'M84,312 L84,392', fill: 'none', stroke: '#8fb4da', 'stroke-width': 4, 'stroke-linecap': 'round' }, mach);
-      svgEl('path', { d: 'M68,392 L100,392 L96,424 L72,424 Z', fill: '#f2e7b4', stroke: '#b08900', 'stroke-width': 1.5 }, mach);
-      small(mach, 106, 414, 'used fluid', { 'font-size': 13 });
-      small(mach, 96, 168, 'blood out', { 'font-size': 13 }); small(mach, 122, 390, 'blood back', { 'font-size': 13 });
-      mach.status = label(mach, 14, 444, '', { 'font-size': 13.5, 'font-weight': 650 });
+      svgEl('rect', { x: 44, y: 244, width: 26, height: 74, rx: 4, fill: '#f6dcd8', stroke: COL.bloodLine, 'stroke-width': 1.5 }, mach);
+      svgEl('rect', { x: 72, y: 244, width: 26, height: 74, rx: 4, fill: '#e3effa', stroke: '#8fb4da', 'stroke-width': 1.5 }, mach);
+      svgEl('path', { d: 'M71,246 L71,316', stroke: '#45536b', 'stroke-width': 1.6, 'stroke-dasharray': '2 3' }, mach);
+      small(mach, 74, 337, 'filter', { 'font-size': 13, 'text-anchor': 'middle' });
+      mach.out = svgEl('path', { d: `M${FX(160)},${FY(250)} Q166,196 110,198 Q57,200 57,244`, fill: 'none', stroke: COL.bloodDark, 'stroke-width': 4, 'stroke-linecap': 'round' }, mach);
+      mach.back = svgEl('path', { d: `M57,318 Q57,376 120,376 Q184,376 ${FX(164)},${FY(270)}`, fill: 'none', stroke: COL.bloodDark, 'stroke-width': 4, 'stroke-linecap': 'round' }, mach);
+      mach.waste = svgEl('path', { d: 'M85,318 L85,394', fill: 'none', stroke: '#8fb4da', 'stroke-width': 4, 'stroke-linecap': 'round' }, mach);
+      svgEl('path', { d: 'M69,394 L101,394 L97,424 L73,424 Z', fill: '#f2e7b4', stroke: '#b08900', 'stroke-width': 1.5 }, mach);
+      small(mach, 108, 416, 'used fluid', { 'font-size': 13 });
+      small(mach, 78, 190, 'blood out', { 'font-size': 13 }); small(mach, 112, 396, 'blood back', { 'font-size': 13 });
+      mach.status = label(mach, 12, 444, '', { 'font-size': 13.5, 'font-weight': 650 });
       mach.dots = [];
       for (let i = 0; i < 14; i++) mach.dots.push({ e: svgEl('circle', { r: 2.6, fill: '#fff', opacity: 0.9 }, mach), u: i / 14 });
     }
@@ -548,18 +548,19 @@
     const pos = (s) => (s !== 'negative' ? 'pos' : '');
     const vol = o.hourly ? `${u.perHour < 9.5 ? fx(u.perHour, 0) : big(Math.round(u.perHour / 5) * 5)} mL/hour` : `${fx(u.perDay, 1)} L/day`;
     const volFlag = u.perDay > 3 ? 'H' : u.perDay < 0.5 ? 'L' : '';
-    return `<div class="labrep"><div class="lh"><span>${o.title || 'Urine'}</span><span style="font-weight:400;color:var(--muted)">usual</span></div><table>
-      <tr class="${volFlag}"><td>Volume</td><td class="v">${vol}</td><td class="f">${volFlag}</td><td class="r">${o.hourly ? '40–80' : '1–2'}</td></tr>
-      <tr><td>Colour</td><td class="v" style="font-weight:400"><span class="sw" style="background:${urineColour(u.colour)}"></span>${colourWord(u.colour)}</td><td class="f"></td><td class="r">yellow</td></tr>
-      <tr><td>Concentration</td><td class="v">${big(Math.round(u.osm / 10) * 10)} mOsm/L</td><td class="f"></td><td class="r">50–1,200</td></tr>
-      <tr class="${pos(u.protein)}"><td>Protein</td><td class="v">${u.protein}</td><td class="f"></td><td class="r">negative</td></tr>
-      <tr class="${pos(u.glucose)}"><td>Glucose</td><td class="v">${u.glucose}</td><td class="f"></td><td class="r">negative</td></tr>
-      <tr class="${pos(u.blood)}"><td>Blood</td><td class="v">${u.blood}</td><td class="f"></td><td class="r">negative</td></tr>
-      ${o.bloodGlucose != null ? `<tr class="${o.bloodGlucose > 140 ? 'H' : ''}"><td style="border-top:2px solid #d9d6cc">Blood glucose</td><td class="v" style="border-top:2px solid #d9d6cc">${big(o.bloodGlucose)} mg/dL</td><td class="f" style="border-top:2px solid #d9d6cc">${o.bloodGlucose > 140 ? 'H' : ''}</td><td class="r" style="border-top:2px solid #d9d6cc">70–140</td></tr>` : ''}</table></div>`;
+    const usual = (t) => (o.compact ? '' : `<td class="r">${t}</td>`);
+    return `<div class="labrep"><div class="lh"><span>${o.title || 'Urine'}</span><span style="font-weight:400;color:var(--muted)">${o.compact ? '' : 'usual'}</span></div><table>
+      <tr class="${volFlag}"><td>Volume</td><td class="v">${vol}</td><td class="f">${volFlag}</td>${usual(o.hourly ? '40–80' : '1–2')}</tr>
+      <tr><td>Colour</td><td class="v" style="font-weight:400"><span class="sw" style="background:${urineColour(u.colour)}"></span>${colourWord(u.colour)}</td><td class="f"></td>${usual('yellow')}</tr>
+      <tr><td>Concentration</td><td class="v">${big(Math.round(u.osm / 10) * 10)} mOsm/L</td><td class="f"></td>${usual('50–1,200')}</tr>
+      <tr class="${pos(u.protein)}"><td>Protein</td><td class="v">${u.protein}</td><td class="f"></td>${usual('negative')}</tr>
+      <tr class="${pos(u.glucose)}"><td>Glucose</td><td class="v">${u.glucose}</td><td class="f"></td>${usual('negative')}</tr>
+      <tr class="${pos(u.blood)}"><td>Blood</td><td class="v">${u.blood}</td><td class="f"></td>${usual('negative')}</tr>
+      ${o.bloodGlucose != null ? `<tr class="${o.bloodGlucose > 140 ? 'H' : ''}"><td style="border-top:2px solid #d9d6cc">Blood glucose</td><td class="v" style="border-top:2px solid #d9d6cc">${big(o.bloodGlucose)} mg/dL</td><td class="f" style="border-top:2px solid #d9d6cc">${o.bloodGlucose > 140 ? 'H' : ''}</td>${o.compact ? '' : '<td class="r" style="border-top:2px solid #d9d6cc">70–140</td>'}</tr>` : ''}</table></div>`;
   }
   function labHTML(rows, title) {
     return `<div class="labrep"><div class="lh"><span>${title || 'Blood'}</span><span style="font-weight:400;color:var(--muted)">ref. range</span></div><table>` +
-      rows.map(r => `<tr class="${r.flag || ''}"><td>${r.name}</td><td class="v">${typeof r.value === 'number' ? fx(r.value, r.dp) : r.value} <span style="font-weight:400;color:var(--muted)">${r.unit || ''}</span></td><td class="f">${r.flag || ''}</td><td class="r">${r.lo != null ? `${r.lo}–${r.hi}` : (r.ref || '')}</td></tr>`).join('') + '</table></div>';
+      rows.map(r => `<tr class="${r.flag || ''}"><td>${r.short && title === 'Blood' ? r.short : r.name}</td><td class="v">${typeof r.value === 'number' ? fx(r.value, r.dp) : r.value} <span style="font-weight:400;color:var(--muted)">${r.unit || ''}</span></td><td class="f">${r.flag || ''}</td><td class="r">${r.lo != null ? `${r.lo}–${r.hi}` : (r.ref || '')}</td></tr>`).join('') + '</table></div>';
   }
   KD.urineHTML = urineHTML; KD.labHTML = labHTML;
   views.cards = function (opts) {

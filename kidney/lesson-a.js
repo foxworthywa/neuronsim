@@ -36,7 +36,7 @@
     const big_ = htmlEl('div', { class: 'big' }, o.show(o.value));
     const s = htmlEl('input', { type: 'range', id: o.id, min: o.min, max: o.max, step: o.step });
     s.value = o.value;
-    s.addEventListener('input', () => { const v = parseFloat(s.value); big_.innerHTML = o.show(v); o.onInput(v); });
+    s.addEventListener('input', () => { const v = parseFloat(s.value); o.onInput(v); big_.innerHTML = o.show(v); });
     box.appendChild(big_); box.appendChild(s);
     if (o.ends) box.appendChild(htmlEl('div', { class: 'ends' }, `<span>${o.ends[0]}</span><span>${o.ends[1]}</span>`));
     el.appendChild(box);
@@ -211,13 +211,13 @@
                  <li><b>Out:</b> lungs, skin and gut go on losing about a litre of water a day.</li>
                  <li>His <b>kidneys</b>, in grey: no longer working.</li>
                  <li>Three measurements, each with a green normal band: his <b>weight</b> (the band is his target, 82 kg), and the <b>potassium</b> and <b>urea</b> in his blood. The graph below will follow the same three.</li></ol>
-                 <p>Over the 44 hours he will drink about 3.5 litres, eat about 13 g of salt, and eat ordinary amounts of potassium (it is in nearly all food) and protein.</p>`,
+                 <p>Over the 44 hours he will drink about 3.5 litres, eat about 14 g of salt, and eat ordinary amounts of potassium (it is in nearly all food) and protein.</p>`,
           question: predict({ prompt: 'Predict: by Wednesday morning, what will have happened to his weight, his potassium and his urea?', options: [
             { t: 'All three will have risen', ok: true, fb: 'Run the 44 hours and see how far.' },
             { t: 'Urea will have risen; weight and potassium will be about the same', fb: 'That would be so if the kidneys removed only wastes. Ask what else he took in during those two days, and where it could go.' },
             { t: 'None will have changed much: two days is too short', fb: 'He will take in litres of water and grams of salt in that time. With no urine, where can they go?' },
           ] }),
-          actions: [{ label: 'Run the 44 hours', cls: 'go', disabled: (c) => afterPrediction(c) || busy(c) || data(c).ran, run: (c) => experiment(c, { minutes: 44 * HOUR, speed: 180, after: (b, c) => c.recordValue('herrera', { weight: b.weight, gain: b.weight - 82, k: b.potassium, bun: b.bun, bp: b.bp, water: b.cum.waterIn / 1000, salt: b.cum.naIn / SALT, kIn: b.cum.kIn }) }) }],
+          actions: [{ label: 'Run the 44 hours', cls: 'go', disabled: (c) => afterPrediction(c) || busy(c) || data(c).ran, run: (c) => experiment(c, { minutes: 44 * HOUR, speed: 180, after: (b, c) => c.recordValue('herrera', { weight: b.weight, gain: b.weight - 82, k: b.potassium, bun: b.bun, bp: b.bp, water: (b.cum.waterIn - b.p.metabolic * 44 * 60) / 1000, salt: b.cum.naIn / SALT, kIn: b.cum.kIn }) }) }],
           status: (c) => { const v = c.record.values.herrera; return data(c).ran && v ? `Wednesday 8 am: weight <b>${fx(v.weight, 1)} kg</b> (${signed(v.gain, 1)} kg) · potassium <b>${fx(v.k, 1)}</b> mmol/L · urea (BUN) <b>${fx(v.bun, 0)}</b> mg/dL · blood pressure ${v.bp.sys}/${v.bp.dia}` : ''; },
           waitFor: (c) => data(c).ran, waitHint: 'Run the 44 hours',
         },
@@ -227,7 +227,8 @@
           enter: (c) => c.view().setMarks(false),
           text: () => {
             const b = app.sim, c = b.cum;
-            return `<p>In 44 hours he took in <b>${fx(c.waterIn / 1000, 1)} L</b> of water, <b>${fx(c.naIn / SALT, 0)} g</b> of salt and <b>${big(c.kIn)} mmol</b> of potassium, and his body made its usual urea. Lungs, skin and gut lost <b>${fx(c.waterOut / 1000, 1)} L</b> of the water and almost none of the rest.</p>
+            const made = b.p.metabolic * 44 * 60 / 1000;
+            return `<p>In 44 hours he took in <b>${fx(c.waterIn / 1000 - made, 1)} L</b> of water (his body made another ${fx(made, 1)} L), <b>${fx(c.naIn / SALT, 0)} g</b> of salt and <b>${big(c.kIn)} mmol</b> of potassium, and his body made its usual urea. Lungs, skin and gut lost <b>${fx(c.waterOut / 1000, 1)} L</b> of the water and almost none of the rest.</p>
                     <p>Each one matters. The extra salt and water raise his blood pressure and can flood his lungs. Potassium at this level disturbs the heartbeat: in MuscleSim you saw raised K⁺ depolarize a muscle fibre's membrane. Urea and the other wastes cause nausea and confusion.</p>`;
           },
           question: { prompt: 'He ate and drank ordinary things. Why did his blood change?', options: [

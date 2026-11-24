@@ -178,7 +178,8 @@
   KD.LEDGER = LEDGER;
   views.strip = function (opts) {
     const ledKeys = opts.ledger || [], inset = opts.inset !== false && !opts.short;
-    const H = inset ? 540 : ledKeys.length ? 372 + 22 + ledKeys.length * 26 : 356;
+    const repY = (ledKeys.length ? 384 + ledKeys.length * 26 : 356) + 14;
+    const H = Math.max(inset ? 540 : ledKeys.length ? 372 + 22 + ledKeys.length * 26 : 356, opts.report ? repY + 80 : 0);
     const svg = svgEl('svg', { viewBox: `0 0 1000 ${H}`, role: 'img', 'aria-label': 'One nephron drawn straightened: the filter at the left, the tubule running to the right, the return line above it carrying back what is taken back, and the urine at the right' }, stage);
     const view = { svg, kinds: (opts.kinds || ['water']).slice(), revealed: new Set(opts.revealed || []), names: !!opts.names };
     const body = () => app.sim;
@@ -254,10 +255,23 @@
         ledRows[key] = [1, 2, 3, 4].map((i) => label(g, LX[i] + LW[i] - 14, y, '', { 'font-size': 14, 'text-anchor': 'end', 'font-weight': i === 4 ? 700 : 400 }));
       });
     }
+    // ---- the urine as a test strip and a measuring jug would report it
+    let rep = null;
+    if (opts.report) {
+      rep = svgEl('g', { transform: `translate(${inset ? 168 : 102},${repY})` }, svg);
+      label(rep, 2, 8, 'THE URINE, TESTED', { 'font-size': 12, 'font-weight': 700, fill: COL.muted });
+      label(rep, 6 * 113 + 2, 8, 'AND THE BLOOD', { 'font-size': 12, 'font-weight': 700, fill: COL.muted });
+      rep.cells = ['Volume', 'Colour', 'Concentration', 'Protein', 'Glucose', 'Blood', 'Glucose'].map((nm, i) => {
+        const g = svgEl('g', { transform: `translate(${i * 113},16)` }, rep);
+        const box = svgEl('rect', { width: 107, height: 50, rx: 8, fill: i === 6 ? '#fbeeec' : '#fff', stroke: '#d9d6cc', 'stroke-width': 1.5 }, g);
+        small(g, 53.5, 18, nm, { 'font-size': 12.5, 'text-anchor': 'middle' });
+        return { box, val: label(g, 53.5, 39, '', { 'font-size': i === 1 ? 12.5 : 14.5, 'font-weight': 700, 'text-anchor': 'middle' }) };
+      });
+    }
     // ---- particles
     const pg = svgEl('g', { 'pointer-events': 'none' }, svg);
     const parts = [];
-    const RATE = { water: 9, na: 5, glucose: 2.2, urea: 2.2, cr: 2.2, alb: 1.6, drug: 2.2, k: 2.2, rbc: 1.2 };       // particles a second at normal plasma levels
+    const RATE = { water: 9, na: 5, glucose: 3.4, urea: 3.4, cr: 3.4, alb: 1.6, drug: 3.4, k: 3.4, rbc: 1.2 };       // particles a second at normal plasma levels
     const marks = numbered(svg, opts.marksAt || []);
     view.setMarks = (on) => marks.setAttribute('opacity', on ? 1 : 0);
     view.show = (kinds) => { view.kinds = kinds.slice(); for (const p of parts) if (!view.kinds.includes(p.k)) p.dead = true; };
@@ -302,8 +316,8 @@
       // faults
       damageG.setAttribute('opacity', b.s.filterDamage > 0 ? 1 : 0); setText(faultF, b.s.filterDamage > 0 ? 'damaged' : '');
       const blockL = 1 - (1 - b.s.loopBlock) * (1 - b.diureticBlock());
-      setText(segNotes[0], b.s.glucoseCarrier < 1 ? `glucose carriers ${Math.round(100 * (1 - b.s.glucoseCarrier))} % blocked` : (f.ex.glucose > 0.5 ? 'glucose carriers full' : ''));
-      setText(segNotes[1], blockL > 0.03 ? `salt carriers ${Math.round(100 * blockL)} % blocked` : '');
+      setText(segNotes[0], noBack ? '' : b.s.glucoseCarrier < 1 ? `glucose carriers ${Math.round(100 * (1 - b.s.glucoseCarrier))} % blocked` : (f.ex.glucose > 0.5 ? 'glucose carriers full' : ''));
+      setText(segNotes[1], !noBack && blockL > 0.03 ? `salt carriers ${Math.round(100 * blockL)} % blocked` : '');
       if (opts.lastDials) {
         const wPct = at[2] > 0 ? 100 * (1 - at[3] / at[2]) : 0, naPct = f.reachNa > 0 ? 100 * (1 - f.ex.na / f.reachNa) : 0;
         setText(lastW, `takes back ${fx(wPct, wPct > 99 ? 1 : 0)} % of its water, ${fx(naPct, naPct > 99 ? 1 : 0)} % of its salt`);
@@ -316,6 +330,14 @@
       setText(urT[0], f.urine.flow > 0.02 ? `${flow(f.urine.flow)} mL/min` : 'almost none');
       setText(urT[1], f.urine.flow > 20 ? '' : `= ${fx(u.perDay, 1)} L a day`);
       setText(urT[2], opts.urineDetail && f.urine.flow > 0.02 && f.urine.flow < 20 ? `${big(Math.round(u.osm / 10) * 10)} mOsm/L · ${colourWord(u.colour)}` : '');
+      if (rep) {
+        const vals = [`${fx(u.perDay, 1)} L/day`, colourWord(u.colour), `${big(Math.round(u.osm / 10) * 10)} mOsm/L`, u.protein, u.glucose, u.blood, `${big(b.glucose)} mg/dL`];
+        const bad = [u.perDay > 3 || u.perDay < 0.5, false, false, u.protein !== 'negative', u.glucose !== 'negative', u.blood !== 'negative', b.glucose > 140];
+        rep.cells.forEach((cell, i) => {
+          setText(cell.val, vals[i]); cell.val.setAttribute('fill', bad[i] ? '#b0352b' : COL.ink);
+          cell.box.setAttribute('stroke', bad[i] ? '#d24b3f' : '#d9d6cc'); if (i === 1) cell.box.setAttribute('fill', urineColour(u.colour));
+        });
+      }
       // the ledger
       for (const key of ledKeys) {
         const L = b.ledger(key), U = LEDGER[key], shown = view.revealed.has(key), n = (v) => `${v * U.k < 0.05 && U.dp ? '0' : (U.dp ? fx(v * U.k, U.dp) : big(v * U.k))} ${U.unit}`;

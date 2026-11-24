@@ -54,7 +54,7 @@
       const order = [3, 1, 0, 2];
       cache.patients = order.map((i, n) => {
         const b = WHO[i][2](), bp = b.bp, lab = b.labPanel(['creatinine', 'BUN', 'K', 'glucose']);
-        return { key: WHO[i][0], answer: WHO[i][1], title: `Chart ${'ABCD'[n]}`, sub: `BP ${bp.sys}/${bp.dia}`, body: b, html: urineHTML(b.urineReport(), { title: 'Urine', hourly: true }) + labHTML(lab, 'Blood') };
+        return { key: WHO[i][0], answer: WHO[i][1], title: `Chart ${'ABCD'[n]}`, sub: `BP ${bp.sys}/${bp.dia}`, body: b, html: `<div class="pair"><div>${urineHTML(b.urineReport(), { title: 'Urine', hourly: true, compact: true })}</div><div>${labHTML(lab, 'Blood')}</div></div>` };
       });
     }
     return cache.patients;
@@ -81,7 +81,6 @@
     loss: () => { if (!isBody()) return []; const b = app.sim; return [['Working nephrons', `${Math.round(100 * b.s.nephrons)} %`], ['Filtered (GFR)', `${fx(b.f.gfr, 0)} mL/min`], ['Creatinine', `${fx(b.creatinine, 1)} mg/dL`, b.creatinine > 1.25 ? 'bad' : 'good']]; },
   };
   const STRIP = (o) => Object.assign({ kinds: ['water'], ledger: [] }, o);
-  const report = (o) => () => (isBody() ? urineHTML(app.sim.urineReport(), Object.assign({ title: 'Her urine, as a test strip and a measuring jug report it' }, o || {})) : '');
 
   // Scene 7: one substance at a time, with the three questions.
   const Q1 = '1. Does it get through the filter?', Q2 = '2. Is it taken back from the tubule?', Q3 = '3. Is extra pushed in from the return line?', Q4 = 'So, in the urine there is…';
@@ -202,13 +201,12 @@
       id: 'break', title: 'Break a step, read the urine', speed: 30,
       steps: [
         {
-          view: 'strip', viewOpts: STRIP({ kinds: ['alb', 'glucose', 'water'], ledger: ['water', 'na', 'glucose', 'alb'], revealed: ['water', 'na', 'glucose', 'alb'], names: true, urineDetail: true, caption: 'The same nephron. From here on, one step at a time will be broken.' }), remount: true,
+          view: 'strip', viewOpts: STRIP({ kinds: ['alb', 'glucose', 'water'], ledger: ['water', 'na', 'glucose', 'alb'], revealed: ['water', 'na', 'glucose', 'alb'], names: true, urineDetail: true, report: true, caption: 'The same nephron, with a report on its urine underneath. From here on, one step at a time will be broken.' }), remount: true,
           graph: NO_GRAPH, meters: NO_METERS,
           title: 'A urine report',
           setup: () => setSim(rest()),
           enter: (c) => c.view().show(['alb', 'glucose', 'water']),
-          text: `<p>Urine is easy to collect, and it is evidence of what the nephron did. This is the healthy student's report. Her blood contains 90 mg/dL of glucose and 4 g/dL of protein; her urine has neither.</p>`,
-          status: report(),
+          text: `<p>Urine is easy to collect, and it is evidence of what the nephron did. Under the picture is the healthy student's urine as a <b>test strip</b> (protein, glucose, blood) and a measuring jug would report it. Her blood contains 90 mg/dL of glucose and 4 g/dL of protein; her urine has neither.</p>`,
           question: { prompt: 'Is glucose missing from her urine for the same reason that protein is?', options: [
             { t: 'No: protein never got through the filter; glucose got through and was all taken back', ok: true, fb: 'Two different steps. So each can fail by itself, and the urine will show which one did.' },
             { t: 'Yes: the filter holds both back', fb: 'In scene 5 glucose passed the filter as freely as water. What happened to it afterwards?' },
@@ -226,7 +224,7 @@
             { t: 'Nothing new: the tubule will take back whatever leaks through', fb: 'The tubule has carriers for a short list of things. Are large proteins and red cells on it?' },
           ] }),
           actions: [{ label: 'Damage the filter', cls: 'warnb', disabled: (c) => afterPrediction(c) || data(c).ran, run: (c) => { app.sim.set('filterDamage', 1); c.view().show(['alb', 'rbc', 'water']); data(c).ran = true; c.recordValue('damage', app.sim.urineReport()); c.refresh(); } }],
-          status: (c) => (data(c).ran ? report()() + nameBox('Protein in the urine: <b>proteinuria</b>. Blood in the urine: <b>hematuria</b>. Either points to the filter, because nothing downstream can let them in.') : report()()),
+          status: (c) => (data(c).ran ? `The report now shows protein <b>${c.record.values.damage.protein}</b> and blood <b>${c.record.values.damage.blood}</b>; glucose is still negative.${nameBox('Protein in the urine: <b>proteinuria</b>. Blood in the urine: <b>hematuria</b>. Either points to the filter, because nothing downstream can let them in.')}` : ''),
           waitFor: (c) => data(c).ran, waitHint: 'Damage the filter',
         },
         {
@@ -234,9 +232,8 @@
           setup: () => setSim(rest()),
           enter: (c) => c.view().show(['glucose', 'water']),
           text: `${caseNote('Sam Reyes', SAM)}
-                 <p>Sam's filter and tubule are healthy. Raise the blood glucose step by step and watch the green glucose in the first stretch, and the report.</p>`,
+                 <p>Sam's filter and tubule are healthy. Raise the blood glucose step by step. Watch the green glucose in the first stretch, and the report under the picture.</p>`,
           extra: (el, c) => glucoseDial(el, c),
-          status: report({ title: 'The urine' }),
           question: { type: 'number', prompt: 'To the nearest 10: what is the highest blood glucose at which the urine test for glucose is still negative?', unit: 'mg/dL', answer: () => threshold(), tol: 10, recordAs: 'threshold',
             hint: () => 'Start at 90 and go up 10 at a time, reading the Glucose line of the report each time.',
             explain: () => `The carriers can take back only so much each minute. Up to about 180 mg/dL they take back everything that is filtered. Above that, the extra stays in the tubule and leaves in the urine.${nameBox('The most a carrier system can move: its <b>transport maximum</b>. The blood level at which a substance first appears in the urine: its <b>renal threshold</b> (for glucose, about 180 mg/dL). Glucose in the urine: <b>glucosuria</b>.')}` },
@@ -264,7 +261,7 @@
             { t: 'No: the filter will hold the glucose back', fb: 'The filter passes glucose whatever happens downstream.' },
           ] }),
           actions: [{ label: 'Give the drug', cls: 'drugb', disabled: (c) => afterPrediction(c) || data(c).ran, run: (c) => { app.sim.set('glucoseCarrier', 0.3); data(c).ran = true; c.recordValue('carrier', { g: app.sim.ledger('glucose').excreted, report: app.sim.urineReport().glucose }); c.refresh(); } }],
-          status: (c) => report({ bloodGlucose: 90 })() + (data(c).ran ? `<div class="feedback note">About <b>${fx(c.record.values.carrier.g, 0)} g</b> of glucose a day now leaves in the urine. That is the point of the drug: in diabetes it lowers blood glucose by letting the kidneys spill it. A positive urine glucose in someone taking it is expected.</div>` : ''),
+          status: (c) => (data(c).ran ? `<div class="feedback note">About <b>${fx(c.record.values.carrier.g, 0)} g</b> of glucose a day now leaves in the urine. That is the point of the drug: in diabetes it lowers blood glucose by letting the kidneys spill it. A positive urine glucose in someone taking it is expected.</div>` : ''),
           waitFor: (c) => data(c).ran, waitHint: 'Give the drug',
         },
         {
@@ -373,7 +370,7 @@
           setup: () => autoDayAt(15.5 * HOUR),
           text: `<p>At 3:30 she goes for a run and sweats out a litre of water, with some salt, in an hour. She drinks nothing until she gets home.</p>`,
           question: predict({ prompt: 'Predict her urine at the end of the run.', options: [
-            { t: 'A trickle, dark and concentrated, with almost no salt in it', ok: true, fb: 'Run it, then finish her day.' },
+            { t: 'A trickle, dark and concentrated', ok: true, fb: 'Run it, then finish her day.' },
             { t: 'The usual amount: the kidneys cannot tell she is sweating', fb: 'They do not need to know why. Her blood has become more concentrated and her blood volume smaller, and both are sensed.' },
             { t: 'None at all', fb: 'Close, but wastes still have to leave, and they need some water to carry them. How little can she get away with?' },
           ] }),
@@ -381,7 +378,7 @@
             { label: 'Run the hour of the run', cls: 'go', disabled: (c) => afterPrediction(c) || busy(c) || data(c).ran, run: (c) => experiment(c, { minutes: 68, speed: 8, after: (b, c) => c.recordValue('heat', { flow: b.f.urine.flow, osm: b.f.urine.osm, salt: b.f.ex.na * 60 / SALT, water: b.waterExcess, adh: b.w, aldo: b.a }) }) },
             { label: 'Finish her day (to 11 pm)', disabled: (c) => busy(c) || !data(c).ran || data(c).day, run: (c) => experiment(c, { minutes: 23 * HOUR - app.sim.t, speed: 30, key: 'day', after: (b, c) => c.recordValue('autoDay', { urine: b.cum.urine / 1000, flowLo: minOf('flow'), flowHi: maxOf('flow'), osmLo: minOf('osm'), osmHi: maxOf('osm') }) }) },
           ],
-          status: (c) => { const v = c.record.values.heat, a = c.record.values.autoDay, d = data(c); return (d.ran && v ? `End of the run: urine <b>${fx(v.flow, 1)} mL/min</b> at <b>${big(v.osm)} mOsm/L</b>, salt ${fx(v.salt, 2)} g an hour. Both hormones are high. She is still ${fx(-v.water, 1)} L short of water: the kidneys can only slow the loss.` : '') + (d.day && a ? `<br>The whole day: urine flow ranged from <b>${fx(a.flowLo, 1)} to ${fx(a.flowHi, 1)} mL/min</b>; the concentration of her blood only from <b>${big(a.osmLo)} to ${big(a.osmHi)}</b>.` : ''); },
+          status: (c) => { const v = c.record.values.heat, a = c.record.values.autoDay, d = data(c); return (d.ran && v ? `End of the run: urine <b>${fx(v.flow, 1)} mL/min</b> at <b>${big(v.osm)} mOsm/L</b>, and the salt in it is falling (${fx(v.salt, 2)} g an hour). Both hormones are rising. She is still ${fx(-v.water, 1)} L short of water: the kidneys can only slow the loss.` : '') + (d.day && a ? `<br>The whole day: urine flow ranged from <b>${fx(a.flowLo, 1)} to ${fx(a.flowHi, 1)} mL/min</b>; the concentration of her blood only from <b>${big(a.osmLo)} to ${big(a.osmHi)}</b>.` : ''); },
           waitFor: (c) => data(c).ran && data(c).day, waitHint: 'Run the hour, then finish her day',
         },
         {
@@ -442,7 +439,7 @@
             { t: 'Only wastes such as urea', fb: 'Look at his weight and his potassium. Neither is a waste, and both are out of range.' },
             { t: 'Only the extra water', fb: 'Look at his potassium and his urea as well.' },
           ] }),
-          actions: [{ label: 'Connect him and run the four-hour session', cls: 'go', disabled: (c) => afterPrediction(c) || busy(c) || data(c).ran, run: (c) => { const pre = { w: app.sim.weight, k: app.sim.potassium, bun: app.sim.bun }; experiment(c, { before: (b) => { b.dialyse({ hours: 4, removeWater: (b.weight - 82) * 1000 }); KD.mark('dialysis'); }, minutes: 4 * HOUR, speed: 30, after: (b, c) => c.recordValue('session', { pre, post: { w: b.weight, k: b.potassium, bun: b.bun } }) }); } }],
+          actions: [{ label: 'Connect him and run the four-hour session', cls: 'go', disabled: (c) => afterPrediction(c) || busy(c) || data(c).ran, run: (c) => { const pre = { w: app.sim.weight, k: app.sim.potassium, bun: app.sim.bun }; experiment(c, { before: (b) => { b.dialyse({ hours: 4, removeWater: (b.weight - 82) * 1000 }); KD.mark('dialysis'); }, minutes: 4 * HOUR, speed: 30, after: (b, c) => { c.view().machineNote = 'session finished'; c.recordValue('session', { pre, post: { w: b.weight, k: b.potassium, bun: b.bun } }); } }); } }],
           status: (c) => { const v = c.record.values.session; return data(c).ran && v ? `Weight ${fx(v.pre.w, 1)} → <b>${fx(v.post.w, 1)} kg</b> · potassium ${fx(v.pre.k, 1)} → <b>${fx(v.post.k, 1)}</b> · urea (BUN) ${fx(v.pre.bun, 0)} → <b>${fx(v.post.bun, 0)}</b>.${nameBox('Cleaning the blood through an artificial membrane: <b>hemodialysis</b>. The machine has a filter but no tubule, so it cannot take things back. Instead its cleaning fluid already contains the right amounts of what he should keep.')}` : ''; },
           waitFor: (c) => data(c).ran, waitHint: 'Run the session',
         },
@@ -492,7 +489,7 @@
           title: 'Four patients, four charts',
           setup: () => setSim(rest()),
           text: `${caseNote('Four patients', RUNNER + BLED + SAM.replace(' (from EndoSim)', '') + LIN)}
-                 <p>Match each chart to its patient. Use the urine and the blood together.</p>`,
+                 <p>Match each chart to its patient. Use the urine and the blood together. (A healthy adult at rest passes about 40 to 80 mL of urine an hour.)</p>`,
           extra: (el, c) => matchTable(el, c, 'charts', patientCards(), '<b>All four matched.</b> Two of these patients (Maya and Tom) pass almost no urine, and it is concentrated: in one the kidneys are saving water, in the other they are barely being supplied with blood. The blood pressure tells them apart.'),
           waitFor: () => false, waitHint: 'Match all four charts',
         },
@@ -538,9 +535,10 @@
         <div style="margin-top:4px;color:var(--muted)">Now: urine ${flow(u)} mL/min, ${big(Math.round(f.urine.osm / 10) * 10)} mOsm/L, salt ${fx(salt, 2)} g an hour</div>`;
       if (d.flood && d.trickle && d.nosalt) { c.recordValue('lateDials', true); c.complete(); }
     };
-    dial(el, { cls: 'water', id: 'dial-w', label: 'Water taken back by the last stretch', min: 0, max: 100, step: 1, value: cur.w * 100, show: () => 'less … more', ends: ['almost none', 'nearly all'],
+    const pcts = () => { const f = app.sim.f, reach = f.gfr * f.frac.water[2]; return [reach > 0 ? 100 * (1 - f.urine.flow / reach) : 0, f.reachNa > 0 ? 100 * (1 - f.ex.na / f.reachNa) : 0]; };
+    dial(el, { cls: 'water', id: 'dial-w', label: 'Water taken back by the last stretch', min: 0, max: 100, step: 1, value: cur.w * 100, show: () => `${fx(pcts()[0], pcts()[0] > 99 ? 1 : 0)} % of what reaches it`, ends: ['less', 'more'],
       onInput: (v) => { app.sim.manualLate.w = v / 100; app.sim.compute(); paint(); } });
-    dial(el, { cls: 'salt', id: 'dial-a', label: 'Salt taken back by the last stretch', min: 0, max: 100, step: 1, value: cur.a * 100, show: () => 'less … more', ends: ['least', 'nearly all'],
+    dial(el, { cls: 'salt', id: 'dial-a', label: 'Salt taken back by the last stretch', min: 0, max: 100, step: 1, value: cur.a * 100, show: () => `${fx(pcts()[1], pcts()[1] > 99 ? 1 : 0)} % of what reaches it`, ends: ['less', 'more'],
       onInput: (v) => { app.sim.manualLate.a = v / 100; app.sim.compute(); paint(); } });
     el.appendChild(checks); paint();
   }

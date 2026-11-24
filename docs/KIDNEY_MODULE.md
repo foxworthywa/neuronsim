@@ -519,8 +519,13 @@ Each milestone is usable in a course on its own.
   - *Scene 9* does not repeat scene 2's day by hand. The student first works out what 1 % less
     take-back would do (1.8 L), then tries the two dials of the last stretch until they have made
     a flood, a trickle and a nearly salt-free urine, and then **predicts and runs the day in
-    three parts** with the kidney left to itself (the bottle of water, the salty lunch, the run),
-    naming ADH and aldosterone as each is seen to move. The bleed is a separate short run on Tom
+    three parts** with the kidney left to itself (the bottle of water, the salty lunch, the run).
+    The two hormones are introduced by name **before** the first run (instructor review, Nov
+    2026: they had first appeared as two unexplained chips above the picture): the step says
+    where each is made and what it tells the last stretch to do, and they are drawn as two
+    gauges under the nephron (ADH, from the pituitary gland, more water taken back; aldosterone,
+    from the adrenal glands, more salt taken back), each with a tick at its usual level and the
+    word low, usual or high. The name boxes after each run then confirm what was seen. The bleed is a separate short run on Tom
     Bradley. The four-events table asks for urine volume (more, about the same, less),
     concentration, and what the kidney is doing, each compared with her usual urine; the salty
     lunch changes what is in the urine and not its volume. A last step uses dark urine after a

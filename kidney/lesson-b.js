@@ -82,11 +82,13 @@
   };
   const METERS = {
     drain: () => { if (!isBody()) return []; const b = app.sim, p = b.bp; return [['Time', `${Math.round(b.t)} min`], ['Fluid lost', `${fx(70 - b.weight, 1)} L`, 70 - b.weight > 1 ? 'bad' : ''], ['Blood pressure', `${p.sys}/${p.dia}`, p.sys < 100 ? 'bad' : '']]; },
-    hormones: () => { if (!isBody()) return []; const b = app.sim, w = b.manualLate ? b.manualLate.w : b.w, a = b.manualLate ? b.manualLate.a : b.a; return [['Filtered (GFR)', `${fx(b.f.gfr, 0)} mL/min`], [b.manualLate ? 'Water taken back (you)' : 'ADH', bar(w)], [b.manualLate ? 'Salt taken back (you)' : 'Aldosterone', bar(a)]]; },
+    hormones: () => { if (!isBody()) return []; const b = app.sim, w = b.manualLate ? b.manualLate.w : b.w, a = b.manualLate ? b.manualLate.a : b.a; return [['Filtered (GFR)', `${fx(b.f.gfr, 0)} mL/min`]].concat(b.manualLate ? [['Water taken back (you)', bar(w)], ['Salt taken back (you)', bar(a)]] : []); },      // the hormones themselves are drawn on the stage
     bleed: () => { if (!isBody()) return []; const b = app.sim, p = b.bp; return [['Blood pressure', `${p.sys}/${p.dia}`, p.sys < 100 ? 'bad' : ''], ['Filtered (GFR)', `${fx(b.f.gfr, 0)} mL/min`, b.f.gfr < 60 ? 'bad' : ''], ['Urine', `${fx(b.f.urine.flow * 60, 0)} mL/hour`, b.f.urine.flow * 60 < 30 ? 'bad' : '']]; },
     loss: () => { if (!isBody()) return []; const b = app.sim; return [['Working nephrons', `${Math.round(100 * b.s.nephrons)} %`], ['Filtered (GFR)', `${fx(b.f.gfr, 0)} mL/min`], ['Creatinine', `${fx(b.creatinine, 1)} mg/dL`, b.creatinine > 1.25 ? 'bad' : 'good']]; },
   };
   const STRIP = (o) => Object.assign({ kinds: ['water'], ledger: [] }, o);
+  // the strip with the two hormone gauges under it, for the steps in which the kidney runs itself
+  const HORMONES = (caption) => STRIP({ kinds: ['na', 'water'], ledger: [], hormones: true, names: true, urineDetail: true, lastDials: true, short: true, caption });
 
   // Scene 7: one substance at a time, with the three questions.
   const Q1 = '1. Does it get through the filter?', Q2 = '2. Is it taken back from the tubule?', Q3 = '3. Is extra pushed in from the return line?', Q4 = 'So, in the urine there is…';
@@ -336,16 +338,19 @@
           waitFor: (c) => data(c).flood && data(c).trickle && data(c).nosalt, waitHint: 'Make all three kinds of urine',
         },
         {
-          view: 'strip', title: 'Morning: a big bottle of water',
+          view: 'strip', viewOpts: HORMONES('Her kidneys running themselves. The two gauges under the picture are the hormones that set the last stretch.'), remount: true,
+          title: 'Morning: a big bottle of water',
           graph: GRAPH.day, meters: METERS.hormones, speed: 15,
           setup: () => autoDayAt(7 * HOUR),
           enter: (c) => c.view().show(['na', 'water']),
-          text: `<p>The same day as scene 2, but now her kidneys run themselves. Two meters at the top show two <b>hormones</b>. The graph shows the concentration of her blood (the top row; the band is the same ¾ L of water you defended), and her urine.</p>
-                 <p>At 9:30 she drinks 800 mL of water.</p>`,
+          text: `<p>The same day as scene 2, but now nobody is turning the dials. In the body, two <b>hormones</b> turn them. Their levels are the two gauges under the picture, each with a tick at its usual level.</p>
+                 <ul><li><b>ADH</b> (antidiuretic hormone) is released from the <b>pituitary gland</b>, under the brain. The more ADH, the more <b>water</b> the last stretch takes back.</li>
+                 <li><b>Aldosterone</b> is made by the <b>adrenal glands</b>, which sit on top of the kidneys (scene 3). The more aldosterone, the more <b>salt</b> the last stretch takes back.</li></ul>
+                 <p>The graph shows the concentration of her blood (the top row; its band is the same ¾ L of water you defended in scene 2) and her urine. At 9:30 she drinks 800 mL of water.</p>`,
           question: predict({ prompt: 'Predict her urine over the following two hours.', options: [
-            { t: 'More of it, and more dilute', ok: true, fb: 'Run the morning and watch which meter moves.' },
+            { t: 'More of it, and more dilute', ok: true, fb: 'Run the morning, and watch which of the two gauges moves.' },
             { t: 'More of it, and more concentrated', fb: 'She has taken in water with nothing dissolved in it. What needs to leave?' },
-            { t: 'No change: the kidneys filter at a steady rate', fb: 'They do filter at a steady rate. But filtering is not what sets the urine: think of the dial you turned in the last step.' },
+            { t: 'No change: the kidneys filter at a steady rate', fb: 'They do filter at a steady rate. But filtering is not what sets the urine: think of the dials you turned in the last step, and of what turns them now.' },
           ] }),
           actions: [{ label: 'Run the morning (to 12:30)', cls: 'go', disabled: (c) => afterPrediction(c) || busy(c) || data(c).ran, run: (c) => experiment(c, { minutes: 5.5 * HOUR, speed: 15, after: (b, c) => c.recordValue('morning', { peak: maxOf('flow'), dilute: minOf('uosm'), gfrLo: minOf('gfr'), gfrHi: maxOf('gfr'), osmLo: minOf('osm') }) }) }],
           status: (c) => { const v = c.record.values.morning; return data(c).ran && v ? `Urine flow rose to <b>${fx(v.peak, 1)} mL/min</b> and its concentration fell to <b>${big(v.dilute)} mOsm/L</b>. Her blood never went below ${big(v.osmLo)}. Filtering stayed at ${fx(v.gfrLo, 0)}–${fx(v.gfrHi, 0)} mL/min.` : ''; },
@@ -356,7 +361,7 @@
           setup: () => autoDayAt(12.5 * HOUR),
           text: `<p>Look at the graph. The water diluted her blood a little; within the hour her urine was a flood of nearly clear water; then everything returned to where it started.</p>`,
           question: { prompt: 'The filtering rate did not change. What did?', options: [
-            { t: 'One hormone fell, and the last stretch took back less water', ok: true, fb: `Cells in the brain sense the concentration of the blood. When it falls, they release less of this hormone.${nameBox('The hormone is <b>antidiuretic hormone (ADH)</b>, released from the posterior pituitary (the gland you met in EndoSim). ADH acts on the last stretch, chiefly the <b>collecting duct</b>: it makes the wall let water through, so water can follow salt back to the blood. More ADH, less urine: "anti-diuretic".')}` },
+            { t: 'ADH fell, and the last stretch took back less water', ok: true, fb: `Cells in the brain sense the concentration of the blood. The water diluted it a little, so less ADH was released; as the water left, ADH came back up.${nameBox('<b>Antidiuretic hormone (ADH)</b> is released from the posterior pituitary (the gland you met in EndoSim). ADH acts on the last stretch, chiefly the <b>collecting duct</b>: it makes the wall let water through, so water can follow salt back to the blood. More ADH, less urine: "anti-diuretic".')}` },
             { t: 'She filtered more', fb: 'Read the status line of the last step, or the Filtered meter: it stayed at about 125 mL/min all morning.' },
             { t: 'The first stretch took back less', fb: 'The first stretch takes back the same two-thirds whatever happens. Which stretch can be adjusted?' },
           ] },
@@ -366,12 +371,12 @@
           setup: () => autoDayAt(12.5 * HOUR),
           text: `<p>At 12:30 she eats a salty lunch: about 5 g of salt, a teaspoonful, with a small drink.</p>`,
           question: predict({ prompt: 'Predict her urine this afternoon.', options: [
-            { t: 'More salt in it, and no more water than usual', ok: true, fb: 'Run the afternoon and watch the other meter.' },
+            { t: 'More salt in it, and no more water than usual', ok: true, fb: 'Run the afternoon and watch the aldosterone gauge.' },
             { t: 'More salt, carried out in a large volume of water', fb: 'She has too much salt, not too much water. Losing a lot of water with it would leave her blood even more concentrated.' },
-            { t: 'No extra salt: the tubule always takes back the same amount', fb: 'The first stretch and the loop do. Think of the second dial on the last stretch.' },
+            { t: 'No extra salt: the tubule always takes back the same amount', fb: 'The first stretch and the loop do. Think of the second dial on the last stretch, and of the hormone that turns it.' },
           ] }),
           actions: [{ label: 'Run the afternoon (to 3:30)', cls: 'go', disabled: (c) => afterPrediction(c) || busy(c) || data(c).ran, run: (c) => { const na0 = app.sim.f.ex.na; experiment(c, { minutes: 3 * HOUR, speed: 15, after: (b, c) => c.recordValue('lunch', { before: na0 * 60 / SALT, after: b.f.ex.na * 60 / SALT, osm: b.f.urine.osm, flow: b.f.urine.flow }) }); } }],
-          status: (c) => { const v = c.record.values.lunch; return data(c).ran && v ? `Salt in her urine: ${fx(v.before, 2)} → <b>${fx(v.after, 2)} g an hour</b> (her usual is about 0.4). Urine flow ${fx(v.flow, 1)} mL/min, about her usual 1, and more concentrated: <b>${big(v.osm)} mOsm/L</b>.${nameBox('The second hormone is <b>aldosterone</b>, from the adrenal cortex. Aldosterone acts on the last stretch (the end of the distal convoluted tubule and the collecting duct): it makes it take back more salt (and push out more potassium). After a salty meal it falls, so more salt is left in the urine.')}` : ''; },
+          status: (c) => { const v = c.record.values.lunch; return data(c).ran && v ? `Salt in her urine: ${fx(v.before, 2)} → <b>${fx(v.after, 2)} g an hour</b> (her usual is about 0.4). Urine flow ${fx(v.flow, 1)} mL/min, about her usual 1, and more concentrated: <b>${big(v.osm)} mOsm/L</b>.${nameBox('<b>Aldosterone</b> comes from the outer layer of the adrenal gland, the adrenal cortex. It falls when the blood and the fluid around the cells hold more salt and water than usual, as they do after this lunch. Aldosterone acts on the last stretch (the end of the distal convoluted tubule and the collecting duct): it makes it take back more salt (and push out more potassium). After a salty meal it falls, so more salt is left in the urine.')}` : ''; },
           waitFor: (c) => data(c).ran, waitHint: 'Run the afternoon',
         },
         {
@@ -391,7 +396,7 @@
           waitFor: (c) => data(c).ran && data(c).day, waitHint: 'Run the hour, then finish her day',
         },
         {
-          view: 'strip', viewOpts: STRIP({ kinds: ['na', 'water'], ledger: ['water', 'na'], revealed: ['water', 'na'], names: true, urineDetail: true, lastDials: true, short: true, caption: 'Tom Bradley. Time is running: 2 minutes a second.' }), remount: true,
+          view: 'strip', viewOpts: HORMONES('Tom Bradley. Time is running: 2 minutes a second.'), remount: true,
           graph: GRAPH.bleed, meters: METERS.bleed, speed: 2,
           title: 'A bleed',
           setup: () => setSim(rest()),
@@ -419,6 +424,18 @@
           waitFor: () => false, waitHint: 'Complete the table',
         },
         {
+          view: 'strip', viewOpts: HORMONES('A nurse at the end of a long shift on a hot ward.'), remount: true,
+          title: 'What dark urine means',
+          setup: () => { const b = rest(); b.steady = false; b.lose({ sweat: 1500, over: 90 }); setSim(b); skip(120); },
+          graph: NO_GRAPH, meters: METERS.hormones,
+          text: `<p>A friend finishes a long shift on a hot ward having drunk almost nothing, notices that her urine is dark, and worries that her kidneys are struggling.</p>`,
+          question: { prompt: 'What does the colour tell you?', options: [
+            { t: 'Her kidneys are working: they are keeping water, so the same wastes are in less of it', ok: true, fb: 'Dark, scanty urine in someone short of water is the kidney doing its job. The cure is a drink. (Urine that is red or brown, or stays dark however much she drinks, is a different matter.)' },
+            { t: 'Her kidneys are failing to clear wastes', fb: 'The wastes are being cleared: that is what colours the urine. What has changed is the amount of water they are dissolved in.' },
+            { t: 'She is losing too much salt', fb: 'Look at the line under "last stretch": nearly all the salt is being taken back. The colour comes from less water, not more salt.' },
+          ] },
+        },
+        {
           view: 'strip', viewOpts: STRIP({ kinds: ['na', 'water'], ledger: [], names: false, short: true, caption: 'The nephron with its plain names only. Give each part the name your textbook uses.' }), remount: true,
           graph: NO_GRAPH, meters: NO_METERS,
           title: 'The parts by name',
@@ -430,17 +447,6 @@
             done: '<b>All six.</b> These are the names on every figure of the nephron. From here on you should be able to read "proximal convoluted tubule" and see the first stretch, taking back two-thirds of everything; or read "collecting duct" and think of ADH.',
           }),
           waitFor: () => false, waitHint: 'Name all six parts',
-        },
-        {
-          view: 'strip', title: 'What dark urine means',
-          setup: () => { const b = rest(); b.steady = false; b.lose({ sweat: 1500, over: 90 }); setSim(b); skip(120); },
-          graph: NO_GRAPH, meters: METERS.hormones,
-          text: `<p>A friend finishes a long shift on a hot ward having drunk almost nothing, notices that her urine is dark, and worries that her kidneys are struggling.</p>`,
-          question: { prompt: 'What does the colour tell you?', options: [
-            { t: 'Her kidneys are working: they are keeping water, so the same wastes are in less of it', ok: true, fb: 'Dark, scanty urine in someone short of water is the kidney doing its job. The cure is a drink. (Urine that is red or brown, or stays dark however much she drinks, is a different matter.)' },
-            { t: 'Her kidneys are failing to clear wastes', fb: 'The wastes are being cleared: that is what colours the urine. What has changed is the amount of water they are dissolved in.' },
-            { t: 'She is losing too much salt', fb: 'Look at the line under "last stretch": nearly all the salt is being taken back. The colour comes from less water, not more salt.' },
-          ] },
         },
       ],
     },

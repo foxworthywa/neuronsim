@@ -233,7 +233,7 @@
   views.strip = function (opts) {
     const ledKeys = opts.ledger || [], inset = opts.inset !== false && !opts.short;
     const repY = (ledKeys.length ? 384 + ledKeys.length * 26 : 356) + 14;
-    const H = Math.max(inset ? 540 : ledKeys.length ? 372 + 22 + ledKeys.length * 26 : 356, opts.report ? repY + 80 : 0);
+    const H = Math.max(inset ? 540 : ledKeys.length ? 372 + 22 + ledKeys.length * 26 : 356, opts.report ? repY + 80 : 0, opts.hormones ? 456 : 0);
     const svg = svgEl('svg', { viewBox: `0 0 1000 ${H}`, role: 'img', 'aria-label': 'One nephron drawn straightened: the filter at the left, the tubule running to the right, the return line above it carrying back what is taken back, and the urine at the right' }, stage);
     const view = { svg, kinds: (opts.kinds || ['water']).slice(), revealed: new Set(opts.revealed || []), names: opts.names !== false };      // each part carries its plain name and its anatomical name, unless a step is testing the names
     const body = () => app.sim;
@@ -250,7 +250,7 @@
     // unseen guides that the particles follow
     const affPath = svgEl('path', { d: AFF, fill: 'none', stroke: 'none' }, svg), tuft = svgEl('path', { d: TUFT, fill: 'none', stroke: 'none' }, svg);
     const retLine = svgEl('path', { d: `M108,176 C116,120 130,${RY} 190,${RY} L944,${RY}`, fill: 'none', stroke: 'none' }, svg);
-    label(svg, 6, 62, 'blood in:', { 'font-size': 13.5, fill: '#8f2620' });
+    const inT = label(svg, 6, 62, 'blood in:', { 'font-size': 13.5, fill: '#8f2620' });
     const affT = label(svg, 6, 78, 'afferent arteriole', { 'font-size': 13, fill: '#8f2620', 'font-weight': 650 }), effT = label(svg, 138, 142, 'efferent arteriole', { 'font-size': 13, fill: '#8f2620', 'font-weight': 650 });
     const retName = label(svg, 560, RY - 22, 'the return line: back to the body', { 'font-size': 13.5, fill: '#8f2620', 'text-anchor': 'middle' });
     // ---- the filter
@@ -312,6 +312,30 @@
         ledRows[key] = [1, 2, 3, 4].map((i) => label(g, LX[i] + LW[i] - 14, y, '', { 'font-size': 14, 'text-anchor': 'end', 'font-weight': i === 4 ? 700 : 400 }));
       });
     }
+    // ---- the two hormones that set the last stretch: where each comes from, what it tells the
+    // last stretch to do, and its level now (with a tick at its usual level)
+    let horm = null;
+    if (opts.hormones) {
+      const hg = svgEl('g', { transform: 'translate(104,362)' }, svg);
+      svgEl('rect', { x: 0, y: -14, width: 792, height: 100, rx: 10, fill: '#fff', stroke: '#d9d6cc' }, hg);
+      label(hg, 12, 4, 'TWO HORMONES SET WHAT THE LAST STRETCH TAKES BACK', { 'font-size': 12, 'font-weight': 700, fill: COL.muted });
+      const BW = 160;
+      const one = (x, name, full, from, does, col, usual) => {
+        const g = svgEl('g', { transform: `translate(${x},22)` }, hg);
+        const t = label(g, 0, 4, name, { 'font-size': 16, 'font-weight': 700, fill: col }); svgEl('tspan', { text: full, 'font-size': 13, 'font-weight': 400, fill: COL.muted }, t);
+        small(g, 0, 21, from, { 'font-size': 12.5 });
+        svgEl('rect', { x: 0, y: 30, width: BW, height: 13, rx: 6.5, fill: '#e9e6dc' }, g);
+        const bar = svgEl('rect', { x: 0, y: 30, height: 13, rx: 6.5, fill: col }, g);
+        svgEl('path', { d: `M${BW * usual},26 L${BW * usual},47`, stroke: COL.ink, 'stroke-width': 2 }, g); small(g, BW * usual, 59, 'usual', { 'font-size': 11, 'text-anchor': 'middle' });
+        const word = label(g, BW + 10, 41, '', { 'font-size': 13.5, 'font-weight': 700, fill: col });
+        small(g, BW + 52, 41, does, { 'font-size': 12.5 });
+        return { bar, word, usual };
+      };
+      horm = {
+        adh: one(14, 'ADH', '  antidiuretic hormone', 'from the pituitary gland, under the brain', '→ more water taken back', COL.adh, 0.82),
+        aldo: one(408, 'Aldosterone', '', 'from the adrenal glands, on top of the kidneys', '→ more salt taken back', COL.aldo, 0.5),
+      };
+    }
     // ---- the urine as a test strip and a measuring jug would report it
     let rep = null;
     if (opts.report) {
@@ -357,6 +381,7 @@
       outlet.setAttribute('d', `M${X[3]},${TY - hEnd - 6} L${X[3] + 30},${TY - hEnd - 6} M${X[3]},${TY + hEnd + 6} L${X[3] + 30},${TY + hEnd + 6}`);
       // names
       affT.setAttribute('opacity', view.names ? 1 : 0); effT.setAttribute('opacity', view.names ? 1 : 0);
+      setText(inT, view.names ? 'blood in:' : 'blood in');
       setText(filtTerm, view.names ? 'glomerulus + capsule' : ''); SEGS.forEach((s, i) => setText(segTerms[i], view.names ? s[2] : ''));
       setText(retName, view.names ? 'the return line (peritubular capillaries): back to the body' : 'the return line: back to the body');
       // flow at the four places
@@ -380,6 +405,13 @@
         const wPct = at[2] > 0 ? 100 * (1 - at[3] / at[2]) : 0, naPct = f.reachNa > 0 ? 100 * (1 - f.ex.na / f.reachNa) : 0;
         setText(lastW, `takes back ${fx(wPct, wPct > 99 ? 1 : 0)} % of its water, ${fx(naPct, naPct > 99 ? 1 : 0)} % of its salt`);
       } else setText(lastW, '');
+      if (horm) {
+        for (const [key, v] of [['adh', b.manualLate ? b.manualLate.w : b.w], ['aldo', b.manualLate ? b.manualLate.a : b.a]]) {
+          const hm = horm[key], lvl = clamp(v, 0, 1);
+          hm.bar.setAttribute('width', Math.max(4, 160 * lvl));
+          setText(hm.word, lvl < hm.usual * 0.8 ? 'low' : lvl > Math.min(0.97, hm.usual * 1.15) ? 'high' : 'usual');
+        }
+      }
       // the urine
       const u = b.urineReport();
       setAttrs(urFill, { fill: urineColour(u.colour) }); drip.setAttribute('fill', urineColour(Math.max(0.25, u.colour)));

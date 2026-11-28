@@ -19,6 +19,7 @@
  *   scenes    number of scenes
  *   minutes   class time, only where it has been measured or decided (omit otherwise)
  *   format    optional short note, e.g. 'Groups'
+ *   status    optional short note shown as a highlighted chip, e.g. 'Draft, in review'; remove it when it no longer applies
  *   verify    true if instructors can check a completion code at <page>#verify
  *   frozen    optional { label, href }: an unchanging copy that is safe to assign
  *   color     accent colour of the card
@@ -63,6 +64,12 @@
       id: 'immune', title: 'ImmuneSim', subtitle: 'The immune response', group: 'BIO 142',
       src: 'immune/index.html', page: 'immune.html', scenes: 13, minutes: 90, color: '#2f9e5b', format: 'Groups or alone', verify: true,
       summary: 'Part A, outside the cells: barriers, phagocytes, inflammation, lymphocyte clones, antibody and memory. Part B, inside the cells: viruses, MHC class I and cytotoxic T-lymphocytes, vaccines. Four patient cases.',
+    },
+    {
+      id: 'kidney', title: 'KidneySim', subtitle: 'The kidney · the body’s adjustable exit', group: 'BIO 142',
+      src: 'kidney/index.html', page: 'kidney.html', scenes: 10, minutes: 55, color: '#2d8fd5', verify: true,
+      status: 'Draft, in review',
+      summary: 'The kidneys as the body’s adjustable exit: keep a healthy person’s water and salt steady by hand, then find why the kidney filters everything small and takes back what must be kept. Hormones, diuretics and dialysis; follows Mr. Herrera.',
     },
   ];
 

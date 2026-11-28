@@ -98,6 +98,40 @@ pasted into the lab's own handout (`assignments/blood.md`). Design, model and op
 `docs/BLOOD_MODULE.md`. Tests: `tests/blood.test.js` (biology) and `npm run test:blood` (performs
 every step in Chromium).
 
+**KidneySim (BIO 142): the kidney:** https://foxworthywa.github.io/neuronsim/kidney.html.
+A separate page in `kidney/` with its own engine (`kidney/engine.js`: the body's water, salt,
+potassium, urea and creatinine; one nephron standing for all, with a filter driven by blood
+pressure, a first stretch that takes most of the filtrate back, a loop, and a last stretch set by
+ADH and aldosterone; a dialysis machine; and a design bench) and the shared lesson runner. Ten
+scenes in about an hour, built around two ideas the anatomy-first chapter tends to bury: **the
+kidneys are the body's adjustable exit**, and **they filter everything small and then take back
+what must be kept**. A dialysis patient's two days between sessions; the student keeps a healthy
+person's water and salt steady by hand for a day; where the kidneys are and what a nephron is;
+a design problem (a pump for each waste fails the first time a new drug arrives; filter-then-take-back
+does not); the filter, which sorts by size and is held steady by its arteriole; taking back, and
+"water follows salt"; four substances through three questions (filtered? taken back? pushed in?)
+into a ledger; breaking one step at a time and reading the urine (protein, glucose, a diuretic);
+the last stretch, where two hormones adjust the urine through an ordinary day and after a bleed;
+and back to the patients (dialysis, losing nephrons, four charts to match). Two pictures stay on
+screen: the **day graph** (the blood nearly flat over the urine swinging) and the **nephron
+strip** (the tubule drawn straightened, its width the model's flow, with the return line above
+it). Plain words come first and each technical term is then named; a Terms button and a table on
+the handout collect them. It assumes no wet lab: every urine report comes from the model. Patient
+cases: Mr. Herrera (dialysis), Sam Reyes from EndoSim (glucose in the urine), Dana Brooks from
+HeartSim (furosemide), and three short ones. The completion code comes from the names typed
+(instructors check it at `kidney.html#verify`), progress is saved in the browser, and the graded
+work is a handout in two versions with the same questions: a print version
+(`docs/worksheet/KidneySim-handout.pdf`) and a type-in version for Google Docs
+(`docs/worksheet/KidneySim-handout-typed.docx`), both built by
+`node docs/worksheet/make-kidney-worksheet.js` (Canvas page `assignments/kidney.md`). The two
+anatomical figures in scene 3 are "The Kidney" and "Blood Flow in the Nephron" by OpenStax
+College, CC BY 3.0, which are not covered by this repository's own licence
+(`kidney/img/CREDITS.md`). Design and
+model, including what is left for a Part B (how urine is concentrated; volume against
+concentration): `docs/KIDNEY_MODULE.md`. Tests: `tests/kidney.test.js` (physiology),
+`npm run test:kidney` (performs every step in Chromium) and `node tests/ui/kidney-jump.js` (enters
+every step directly).
+
 No build step. Open `index.html` (the home page) or any simulation page in a browser (or serve the folder with any static server).
 
 ```
@@ -107,6 +141,7 @@ node build.js     # bundle each page into dist/<page>.html (one self-contained f
 npm run test:ui     # walk every scene, step and lab view in headless Chromium
 npm run test:walk   # perform every muscle activity through the panel buttons
 npm run test:robust # no step callback throws, and the loop survives one that does
+npm run test:kidney # perform every KidneySim step in headless Chromium (after node build.js)
 ```
 
 Each `dist/<page>.html` is a single-file version: copy it anywhere, double-click it, or drop it on

@@ -1,7 +1,7 @@
 {
   "name": "neuronsim",
   "version": "0.3.0",
-  "description": "Interactive, model-driven simulations that teach how excitable cells signal: a neuron (receive → integrate → fire → propagate → transmit) and a skeletal muscle fibre (shock → impulse → Ca²⁺ → force → tetanus, then the neuromuscular junction); the heart and circulation (HeartSim, BIO 142); hormones and feedback (EndoSim, BIO 142); the immune response (ImmuneSim, BIO 142); and the white blood cell differential (BloodSim, BIO 142).",
+  "description": "Interactive, model-driven simulations that teach how excitable cells signal: a neuron (receive → integrate → fire → propagate → transmit) and a skeletal muscle fibre (shock → impulse → Ca²⁺ → force → tetanus, then the neuromuscular junction); the heart and circulation (HeartSim, BIO 142); hormones and feedback (EndoSim, BIO 142); the immune response (ImmuneSim, BIO 142); the white blood cell differential (BloodSim, BIO 142); and the kidney (KidneySim, BIO 142).",
   "scripts": {
     "test": "node --test tests/*.test.js",
     "start": "npx --yes serve -l 8080 .",
@@ -12,7 +12,8 @@
     "test:heart": "node tests/ui/heart-walk.js",
     "test:endo": "node tests/ui/endo-walk.js",
     "test:immune": "node tests/ui/immune-walk.js",
-    "test:blood": "node tests/ui/blood-walk.js"
+    "test:blood": "node tests/ui/blood-walk.js",
+    "test:kidney": "node tests/ui/kidney-walk.js"
   },
   "license": "MIT",
   "private": true

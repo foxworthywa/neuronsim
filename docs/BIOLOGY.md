@@ -203,3 +203,32 @@ Targets and model details: `HEART_MODULE.md`.
 - A vaccine raises antibody and memory with no virus and no infected cells; protection takes about
   two weeks. Borrowed antibody protects at once and leaves no memory.
 
+## The kidney (KidneySim; targets in `KIDNEY_MODULE.md`)
+
+- Water, sodium, potassium, urea and creatinine are conserved: what comes in is in the body or
+  has gone out.
+- At rest about 125 mL/min is filtered (180 L/day, the plasma volume about 60 times), and about
+  99 % of the water and more than 99 % of the sodium are taken back.
+- The filter passes by size: glucose, salts, urea and water as freely as each other; no albumin
+  and no cells unless it is damaged.
+- Filtering is driven by pressure. With the feeding arteriole adjusting, it stays within 10 % of
+  normal from 80 to 180 mmHg, is below 30 % at 60 mmHg and has stopped by about 50.
+- Glucose is all taken back up to a blood glucose of about 180 mg/dL. The carriers fill
+  unevenly, so some escapes from there on, well before all of them are full (375 mg/min, reached
+  at about 300 mg/dL); what escapes takes water with it.
+- Creatinine: excreted = filtered. A substance that is also secreted is excreted in a larger
+  amount than is filtered. A substance with no carrier at all is still cleared, in hours.
+- Water follows solute: salt or glucose left in the tubule raises urine volume; filtering does
+  not change.
+- A litre of water gives dilute urine within the hour and is mostly excreted within three; a
+  salty meal raises sodium excretion in a smaller, more concentrated urine; sweating gives a
+  trickle of concentrated urine with little salt. Through an ordinary day urine flow varies about
+  tenfold while plasma concentration varies by a few percent.
+- The kidney can slow a loss of water but cannot replace it.
+- With no nephrons, an ordinary diet raises weight by 1 to 1.5 kg a day, urea (BUN) by about
+  25 mg/dL a day, and potassium out of range within two days; a four-hour dialysis session
+  reverses all three.
+- Half the filtering doubles plasma creatinine; a quarter gives about fourfold, with urea raised
+  and a urine that can no longer be made very concentrated. Potassium stays in range until late,
+  because each surviving nephron pushes out more: high-normal at a quarter, out of range at an
+  eighth. These are steady states (with thirst), not drifts.

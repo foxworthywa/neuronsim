@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Physiology simulations</title>
-<meta name="description" content="Interactive, model-driven physiology lessons: NeuronSim, MuscleSim, HeartSim, EndoSim, BloodSim and ImmuneSim.">
+<meta name="description" content="Interactive, model-driven physiology lessons: NeuronSim, MuscleSim, HeartSim, EndoSim, BloodSim, ImmuneSim and KidneySim.">
 <style>
   /* Home page. Colours follow lib/base.css (docs/VISUAL_STYLE.md). The cards come from catalog.js. */
   :root { --bg: #f6f5f0; --panel: #ffffff; --ink: #1f2430; --muted: #5f6675; --line: #d9d6cc; --accent: #2f6fd6; }
@@ -24,6 +24,7 @@
   .card .sum { font-size: 14.5px; margin: 0 0 10px; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; padding: 0; list-style: none; }
   .chips li { font-size: 12.5px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; background: #faf9f5; white-space: nowrap; }
+  .chips li.status { color: #8a4b0f; background: #fff3d6; border-color: #ecd9a8; font-weight: 600; }
   .card .foot { margin-top: auto; }
   a.open { display: inline-block; background: var(--accent); color: #fff; text-decoration: none; font-weight: 600; font-size: 15px; padding: 8px 16px; border-radius: 8px; }
   a.open:hover { background: #2a62bd; }
@@ -72,6 +73,7 @@
  *   scenes    number of scenes
  *   minutes   class time, only where it has been measured or decided (omit otherwise)
  *   format    optional short note, e.g. 'Groups'
+ *   status    optional short note shown as a highlighted chip, e.g. 'Draft, in review'; remove it when it no longer applies
  *   verify    true if instructors can check a completion code at <page>#verify
  *   frozen    optional { label, href }: an unchanging copy that is safe to assign
  *   color     accent colour of the card
@@ -117,6 +119,12 @@
       src: 'immune/index.html', page: 'immune.html', scenes: 13, minutes: 90, color: '#2f9e5b', format: 'Groups or alone', verify: true,
       summary: 'Part A, outside the cells: barriers, phagocytes, inflammation, lymphocyte clones, antibody and memory. Part B, inside the cells: viruses, MHC class I and cytotoxic T-lymphocytes, vaccines. Four patient cases.',
     },
+    {
+      id: 'kidney', title: 'KidneySim', subtitle: 'The kidney · the body’s adjustable exit', group: 'BIO 142',
+      src: 'kidney/index.html', page: 'kidney.html', scenes: 10, minutes: 55, color: '#2d8fd5', verify: true,
+      status: 'Draft, in review',
+      summary: 'The kidneys as the body’s adjustable exit: keep a healthy person’s water and salt steady by hand, then find why the kidney filters everything small and takes back what must be kept. Hormones, diuretics and dialysis; follows Mr. Herrera.',
+    },
   ];
 
   const api = { GROUPS, SIMS };
@@ -158,7 +166,7 @@
         el('h3', { text: s.title }),
         el('p', { class: 'subt', text: s.subtitle }),
         el('p', { class: 'sum', text: s.summary }),
-        el('ul', { class: 'chips' }, chips.map(c => el('li', { text: c }))),
+        el('ul', { class: 'chips' }, chips.map(c => el('li', { text: c })).concat(s.status ? [el('li', { class: 'status', text: s.status })] : [])),
         el('div', { class: 'foot' }, [
           el('a', { class: 'open', href, 'aria-label': 'Open ' + s.title, text: 'Open ' + s.title }),
           more.length ? el('ul', { class: 'more' }, more) : null,

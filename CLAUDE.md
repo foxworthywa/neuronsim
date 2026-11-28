@@ -13,7 +13,8 @@ that is not in the catalog is not built, so it cannot go live without appearing 
 it, without being asked.** A simulation is not finished until all of these are true:
 
 1. It has an entry in `catalog.js` (title, subtitle, group, `src`, `page`, summary, scenes, colour;
-   `minutes` only when the time is known; `verify: true` if it has a completion-code checker).
+   `minutes` only when the time is known; `verify: true` if it has a completion-code checker;
+   `status: 'Draft, in review'` until the instructor has reviewed it, then remove that line).
    A new course or topic area gets a new `group`, added to `GROUPS` in the order it should appear.
 2. Its header starts with the link back to the home page, copied from an existing page:
    `<a class="home" href="../index.html" target="_blank" rel="noopener" ...>All simulations</a>`

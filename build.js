@@ -1,13 +1,17 @@
 // Bundle each page into one self-contained file under dist/: every <script src="..."> and
 // <link rel="stylesheet" href="..."> that points at a local file is inlined (nested paths such
-// as scenes/shared.js included). Pages that do not exist yet are skipped with a note.
+// as scenes/shared.js included).
+// WHAT is published comes from catalog.js, the one list of simulations: the home page
+// (index.html) draws its cards from it and this script builds exactly its pages, so a page
+// cannot be published without also being listed on the home page. Every page must also link
+// back to the home page (<a class="home" ...>); the build stops if one does not.
+// Pages in their own folder (heart/, endo/, ...) resolve their files relative to that folder.
 // Frozen releases (v1/) are copied through untouched so their URLs keep working forever.
-// Pages in their own folder (heart/, endo/, immune/, blood/) resolve their files relative to that folder.
-// Usage: node build.js            → dist/index.html, dist/muscle.html, dist/heart.html, dist/endo.html, dist/immune.html, dist/blood.html, dist/v1/*
+// Usage: node build.js            → dist/index.html (home), dist/<page> for each catalog entry, dist/v1/*
 const fs = require('fs'), path = require('path');
 const root = __dirname;
-const PAGES = ['index.html', 'muscle.html'];
-const FOLDER_PAGES = [['heart/index.html', 'heart.html'], ['endo/index.html', 'endo.html'], ['immune/index.html', 'immune.html'], ['blood/index.html', 'blood.html']];   // [source, published name]
+const { SIMS } = require('./catalog.js');
+const HOME = 'index.html';
 const FROZEN = ['v1'];   // already-bundled snapshots: copied verbatim, never rebuilt
 const isLocal = (p) => !/^(https?:)?\/\//.test(p) && !p.startsWith('data:');
 
@@ -25,21 +29,29 @@ function inline(html, base = root) {
   return html;
 }
 
-fs.mkdirSync(path.join(root, 'dist'), { recursive: true });
-for (const page of PAGES) {
-  const src = path.join(root, page);
-  if (!fs.existsSync(src)) { console.log(`skip ${page}: not found (not built yet)`); continue; }
-  const html = inline(fs.readFileSync(src, 'utf8'));
-  fs.writeFileSync(path.join(root, 'dist', page), html);
-  console.log(`wrote dist/${page}`, (html.length / 1024).toFixed(0), 'KB');
-}
-
-for (const [page, out] of FOLDER_PAGES) {
-  const src = path.join(root, page);
-  if (!fs.existsSync(src)) { console.log(`skip ${page}: not found (not built yet)`); continue; }
-  const html = inline(fs.readFileSync(src, 'utf8'), path.dirname(src));
+const write = (out, html) => {
   fs.writeFileSync(path.join(root, 'dist', out), html);
   console.log(`wrote dist/${out}`, (html.length / 1024).toFixed(0), 'KB');
+};
+
+fs.mkdirSync(path.join(root, 'dist'), { recursive: true });
+
+// The home page: links go to the published (flat) page names.
+{
+  const html = inline(fs.readFileSync(path.join(root, HOME), 'utf8'));
+  if (!html.includes('window.CATALOG_BUILT = false;')) throw new Error(`${HOME}: the CATALOG_BUILT marker is missing`);
+  write(HOME, html.replace('window.CATALOG_BUILT = false;', 'window.CATALOG_BUILT = true;'));
+}
+
+for (const sim of SIMS) {
+  const src = path.join(root, sim.src);
+  if (sim.page === HOME) throw new Error(`${sim.id}: ${HOME} is the home page; publish under another name`);
+  const nested = path.dirname(sim.src) !== '.';
+  const homeLink = `<a class="home" href="${nested ? '../' : ''}${HOME}"`;
+  const raw = fs.readFileSync(src, 'utf8');
+  if (!raw.includes(homeLink)) throw new Error(`${sim.src}: no link back to the home page (expected ${homeLink} ...> in the header)`);
+  // a page in its own folder reaches the home page with ../ in the repository, but sits beside it once published
+  write(sim.page, inline(raw, path.dirname(src)).split(homeLink).join(`<a class="home" href="${HOME}"`));
 }
 
 for (const dir of FROZEN) {

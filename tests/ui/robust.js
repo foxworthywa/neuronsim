@@ -21,7 +21,7 @@ const PAGES = process.argv.slice(2).filter(a => !a.startsWith('--'));
 (async () => {
   const browser = await chromium.launch();
   const failures = [];
-  for (const page_ of (PAGES.length ? PAGES : ['index.html', 'muscle.html'])) {
+  for (const page_ of (PAGES.length ? PAGES : ['neuron.html', 'muscle.html'])) {
     const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
     await page.goto('file://' + ROOT + '/' + page_);
     await page.waitForFunction('!!window.__simapp');

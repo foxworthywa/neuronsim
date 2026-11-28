@@ -553,10 +553,10 @@ Rather than copy them:
   `pumpRundownRate`, `conc`, `E`, `t`, `advance`, `reset`, `setStim`, `trigger`, `takeEvents`,
   `naState`/`kState`/`caState`.
 - The views gain `zoomMuscle`, `fibre`, `triad`, `sarcomere`, `twitchPlot`, `nmj`, `motorUnit`.
-- Each module is its own page: `index.html` (neuron) and `muscle.html` (muscle). Both load
+- Each module is its own page: `neuron.html` (neuron) and `muscle.html` (muscle). Both load
   `engine.js`, `app.js` and `scenes/shared.js`; `muscle.html` additionally loads `muscle.js`.
   `build.js` takes a page list, inlines every `<script src>` tag (including nested paths) and
-  writes `dist/<page>`; both bundles are committed, as `dist/index.html` is today. The Pages
+  writes `dist/<page>`; both bundles are committed, as `dist/neuron.html` is today. The Pages
   workflow already runs `npm test` and uploads `dist/`, so it needs no change. Opening either page
   directly still needs no build step.
 - When the muscle module ships, the neuron module's opening copy changes to "you fired a muscle

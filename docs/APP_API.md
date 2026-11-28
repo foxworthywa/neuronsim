@@ -3,7 +3,7 @@
 `app.js` is a page-agnostic library: it draws membranes, runs the lesson (questions, activities,
 navigation), records the trace and drives the frame loop, but knows nothing about the cell. A page
 supplies a **model**, a **profile**, a **whole-cell drawing**, extra **views**, a **lesson** and a
-**lab**. `index.html` is the reference page; `muscle.html` is built the same way.
+**lab**. `neuron.html` is the reference page; `muscle.html` is built the same way.
 
 ```
 engine.js          model classes (NeuronSim.Neuron; muscle.js adds MuscleFibre)
@@ -11,14 +11,14 @@ app.js             SimApp.init(config) — generic renderer + lesson engine
 scenes/shared.js   SharedScenes: resting membrane, recording electrode, action potential
 lessons/neuron.js  NeuronLesson: profile, drawCell, views, lesson, lab for the neuron page
 style.css          page styles (shared by every page)
-index.html         loads the four scripts and boots: SimApp.init({ model, ...NeuronLesson })
+neuron.html        loads the four scripts and boots: SimApp.init({ model, ...NeuronLesson })
 build.js           inlines scripts and stylesheets into dist/<page>.html
 tests/ui/smoke.js  Playwright walk of every scene, step and lab view
 ```
 
 All files are classic scripts (no ES modules): pages must open from `file://`. Load order:
 `engine.js` (+ `muscle.js`), `app.js`, `scenes/shared.js`, `lessons/<page>.js`, then the boot
-script. The page HTML must contain the same elements as `index.html`: `#stage`, `#stage-caption`,
+script. The page HTML must contain the same elements as `neuron.html`: `#stage`, `#stage-caption`,
 `#vm-label`, `#vm-value`, `#narrator`, `#paused-badge`, `#panel`, `#progress`, `#speed` (a select;
 `setSpeed` adds a missing option), `#btn-pause`, `#btn-lab`, `#trace`, `#trace-title`,
 `#trace-legend`, `#show-g`, `#sim-clock`.
@@ -197,13 +197,13 @@ Step keys: resting membrane `solutions, pump, kLeak, naOpen, naObserve, kObserve
 
 ## Build and test
 
-- `node build.js` writes `dist/index.html` and, once `muscle.html` exists, `dist/muscle.html`
+- `node build.js` writes `dist/neuron.html` and, once `muscle.html` exists, `dist/muscle.html`
   (every local `<script src>` and `<link rel="stylesheet">` inlined).
 - `npm run test:robust` checks that no step callback throws and that the animation loop survives
   one that does (see **Lesson** above). `npm run test:walk` performs every muscle scene's activity
   through the panel buttons and checks the completion conditions.
 - `npm test` runs the model tests; `npm run test:ui` walks every scene, step and lab view of
-  `index.html` and `dist/index.html` in headless Chromium, fails on any console/page error and
+  `neuron.html` and `dist/neuron.html` in headless Chromium, fails on any console/page error and
   writes one screenshot per scene. `node tests/ui/smoke.js muscle.html dist/muscle.html` checks
   another page; `--out=DIR`, `--compare=DIR` (pixel diff against earlier screenshots) and
   `--dwell=MS` are optional. Playwright must be installed globally (`NODE_PATH` may be needed).
